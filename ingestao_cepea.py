@@ -38,11 +38,8 @@ URL_NOTICIAS_AGRICOLAS = "https://www.noticiasagricolas.com.br/cotacoes/milho/in
 
 
 def _criar_ssl_context():
-    """Cria contexto SSL permissivo para conexões públicas informativas."""
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    """Cria contexto SSL padrão com validação estrita de certificados."""
+    return ssl.create_default_context()
 
 
 def _parsear_tabela_cepea(html: str) -> List[Dict]:
