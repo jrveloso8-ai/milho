@@ -15,7 +15,7 @@ qualquer parte dele ao sistema principal.
 
 1.1. O indicador técnico (trix_v5.py) já é validado e NÃO deve ser reimplementado nem
    ajustado. É réplica literal do indicador NTSL TRIX_REVERSAL_v5 (anexo ao final deste
-   prompt, seção 7), com paridade testada (229 vs 233 trades, WR 51,09% vs 51,07%,
+   prompt, seção 8), com paridade testada (229 vs 233 trades, WR 51,09% vs 51,07%,
    PF 2,84 vs 2,86 — ver cabeçalho de trix_v5.py). Parâmetros ativos e fixos:
    PTrix=7, TipoTrix=1, PSinal=3, UsarFiltroTendencia=1, PTrend=100, UsarStopTecnico=0,
    PATR=14, ATRMult=2.50. Este módulo só CHAMA calc_sinais_trix_v5() — não reimplementa
@@ -102,13 +102,35 @@ qualquer parte dele ao sistema principal.
 
 1.7. PRÉ-REQUISITO ANTES DE ESCREVER QUALQUER LINHA DE CÓDIGO: repositório git.
    A pasta C:\Projetos Phyton\Milho ainda não tem repositório git. A auditoria
-   deste trabalho (seção 6) depende de hash de commit e diff — sem repositório,
+   deste trabalho (seções 6 e 7) depende de hash de commit e diff — sem repositório,
    não existe nem um nem outro. Antes de começar: `git init` na pasta do projeto
    e um primeiro commit de BASELINE com o estado atual (antes de qualquer arquivo
    novo deste módulo). Só depois disso o trabalho do módulo começa, em commits
    próprios, separados dessa baseline. Não pule esta etapa nem a faça depois —
    sem baseline, o "diff" da entrega final seria o arquivo inteiro do zero, não
    uma mudança isolada e revisável.
+
+1.8. Regra geral — vale para QUALQUER dado deste módulo, não só os casos já
+   listados nas seções acima (Call Wall/Put Wall, SIMULADO, régua de cor):
+   NUNCA fabricar, estimar sem marcar, ou simular um valor para preencher espaço
+   vazio ou fazer o gráfico/lista "parecer completo". Vale para preço, indicador,
+   barreira de opções, contagem de contratos em aberto, valor da watchlist
+   (item 2.6b), e qualquer campo que vier a ser adicionado depois. Regra prática:
+   se a fonte real não responder, o campo mostra N/D — nunca um número
+   aproximado, nunca o valor de outro contrato/vencimento "só para não ficar
+   vazio", nunca um placeholder que pareça dado real. Na dúvida se um valor é
+   seguro de mostrar como está, PARE e pergunte antes de codar — não decida
+   sozinho.
+
+   Disciplina de commit: trabalhe em commits pequenos e frequentes, um por etapa
+   lógica (ex.: um commit para coletar_historico_ccm(), outro para a conversão
+   do seed, outro para a costura com offset aditivo, outro para o motor de
+   proveniência, outro para o dashboard, outro para a watchlist) — nunca um
+   commit único no final. A entrega inclui o HISTÓRICO COMPLETO de commits desde
+   a baseline do item 1.7, sem squash. É isso que faz a auditoria das seções 6 e
+   7 ("um achado = uma correção = um teste", nunca agrupados) funcionar de
+   verdade — um commit único no final me obriga a auditar tudo de uma vez, sem
+   poder isolar em que etapa um problema entrou.
 
 ------------------------------------------------------------------------------------------
 2. ESCOPO — O QUE CONSTRUIR
@@ -152,7 +174,7 @@ contrato vivo retornado por ingestao_brapi.coletar_curva_ccm():
        (o trecho sintético nunca aparece desenhado como candle real — ele existe só
        para alimentar o cálculo do indicador, é ESTIMADO, não MEDIDO, ver seção 3).
      - Cor do candle = ESTADO do sistema (coluna posicao_trix_v5), replicando o
-       PaintBar do NTSL anexado na seção 7: COMPRADO = verde, VENDIDO = vermelho,
+       PaintBar do NTSL anexado na seção 8: COMPRADO = verde, VENDIDO = vermelho,
        FLAT = cinza/branco neutro. NÃO pinte pela relação Close vs Open do próprio
        candle (isso é convenção comum de candle, mas NÃO é o que o indicador
        validado faz).
@@ -180,6 +202,23 @@ contrato vivo retornado por ingestao_brapi.coletar_curva_ccm():
      - Seletor de contrato (dropdown ou equivalente) no topo, trocando entre todos
        os vencimentos vivos da curva — não gerar um arquivo separado por contrato
        sem seletor.
+
+2.6b. Lista de observação (watchlist) — só para conferência visual, não participa
+   de nenhum cálculo nem do veredito. Painel simples, lateral ou abaixo do gráfico
+   principal (o programador escolhe o layout que ficar melhor dentro do dashboard
+   do item 2.5 — não precisa ficar idêntico a nenhum mockup anterior, isso nunca
+   foi maquetado). Conteúdo:
+     - Cada contrato vivo da curva CCM: código + último fechamento REAL (Close do
+       dia mais recente com is_sintetico=False — nunca usar dia do trecho
+       sintético aqui, mesmo que seja o mais recente da série ajustada).
+     - RTCNI: último fechamento disponível. RTCNI NÃO está na BRAPI (já
+       confirmado: get_ticker_coverage retorna historical=false/ticker=false para
+       esse índice) — continua vindo de CSV local. Reaproveite
+       convergencia.analisar_convergencia() (campo rtcni_preco do retorno) em vez
+       de reimplementar a leitura do zero.
+   É tabela/lista simples de preço bruto — sem indicador, sem cor de estado, sem
+   veredito. Atualiza a cada execução do módulo. Classificação de proveniência
+   (seção 3): MEDIDO para todos os valores desta lista.
 
 2.6. Resumo em texto simples (console ou .txt), por contrato: código, posição atual
    (posicao_trix_v5), se houve entrada/saída hoje, se a SMA(100) está com histórico
@@ -265,9 +304,65 @@ deixam de ser ESTIMADO e passam a ser DERIVADO puro.
   - Tabela de proveniência preenchida (pode ser comentário no PR ou um .txt à
     parte): para cada campo exibido, qual classificação carrega e por quê. Isto é
     entregável obrigatório, não nota de rodapé.
+  - Script único de Portão de Auditoria (seção 6): testes, verificador
+    anti-dados-fabricados, lint, typecheck e higiene do Git, tudo num só comando.
 
 ------------------------------------------------------------------------------------------
-6. CRITÉRIO DE FECHAMENTO E COMO ISSO VAI SER AUDITADO
+6. PORTÃO DE AUDITORIA (AUDIT GATE) — SCRIPT OBRIGATÓRIO, ENTREGÁVEL
+------------------------------------------------------------------------------------------
+
+Mesmo padrão que já uso em outro projeto meu (RADAR B3 PRO IA — um .bat que roda
+tudo de uma vez e imprime um parecer único). A função deste script NÃO é
+substituir minha leitura de diff (seção 7) — é dar um sinal objetivo, automático,
+antes de qualquer entrega, do tipo "algo mudou e é testável", não a aprovação em
+si. Adapte a mesma disciplina para este módulo em Python:
+
+6.1. Suite de testes (pytest). Cobertura mínima obrigatória, não exaustiva:
+   montar_serie_ajustada() — offset aditivo calculado certo, is_sintetico marcado
+   certo nos dois lados da costura; classificar_proveniencia() — a regra de
+   contágio (ESTIMADO contamina DERIVADO) testada nos casos de borda exatos da
+   fronteira da janela de 100 pregões; coletar_historico_ccm() — tratamento de
+   Open nulo, descarte de linha sem negócio, e resposta a erro de rede/token
+   ausente (usar mocks da resposta da BRAPI — a suite de testes nunca bate na
+   API real).
+
+6.2. Verificador dinâmico anti-dados-fabricados (script próprio, ex.:
+   verificar_dados_fabricados.py). Varre a saída gerada (o resumo do item 2.6, a
+   watchlist do item 2.6b e a tabela de proveniência do item 5) e FALHA se
+   encontrar: qualquer valor de Call Wall/Put Wall/Max Pain/contratos em aberto
+   sem classificação de proveniência registrada; qualquer dia com
+   is_sintetico=True desenhado como candle real; qualquer preço da watchlist que
+   não seja MEDIDO.
+
+6.3. Lint com barreira estrutural. Python não tem de fábrica o equivalente
+   direto do `no-restricted-syntax` do ESLint, mas o princípio é o mesmo: nenhum
+   número literal (preço, contagem de contratos em aberto, etc.) escrito
+   diretamente dentro das funções de plot/renderização — todo valor exibido
+   precisa vir de uma variável que já passou por classificar_proveniencia(). Use
+   ruff/flake8 com regra customizada, ou um script próprio baseado no módulo
+   `ast` do Python varrendo as funções de plot em busca de `ast.Constant`
+   numérico fora das exceções documentadas (os parâmetros fixos do TRIX v5,
+   que são configuração, não dado exibido). Espere ter que reforçar essa regra
+   mais de uma vez conforme aparecerem formas de escapar dela — isso é esperado,
+   não é falha do processo.
+
+6.4. Typecheck (recomendado, não bloqueante): se o módulo usar type hints —
+   recomendo usar, mesmo que o resto do projeto não use, por ser código novo —
+   rodar mypy sobre ele. Não trava a entrega se o restante do projeto não seguir
+   esse padrão, mas facilita a auditoria.
+
+6.5. Higiene do Git: `git status --porcelain` limpo — nada solto, tudo
+   commitado, seguindo a disciplina de commits pequenos do item 1.8.
+
+6.6. Entregável: um script único (ex.: portao_auditoria.bat, mesmo padrão do
+   projeto RADAR B3 PRO IA) que roda 6.1 a 6.5 em sequência e imprime um parecer
+   final claro: REPROVADO, apontando exatamente qual dos itens falhou, ou
+   APROVADO — com ressalva explícita se o Git estiver sujo mesmo com todo o
+   resto passando. Este script faz parte da entrega, junto com os demais itens
+   da seção 5.
+
+------------------------------------------------------------------------------------------
+7. CRITÉRIO DE FECHAMENTO E COMO ISSO VAI SER AUDITADO
 ------------------------------------------------------------------------------------------
   - A entrega vem com hash de commit e diff. Um relatório do tipo "rodei e funcionou"
     não é aceito como prova — o diff é lido linha por linha antes de qualquer
@@ -285,7 +380,7 @@ deixam de ser ESTIMADO e passam a ser DERIVADO puro.
     não adivinhar, perguntar antes de codar.
 
 ------------------------------------------------------------------------------------------
-7. ANEXO — INDICADOR VALIDADO (NTSL, referência de comportamento, NÃO É PARA PORTAR
+8. ANEXO — INDICADOR VALIDADO (NTSL, referência de comportamento, NÃO É PARA PORTAR
    DE NOVO — trix_v5.py já é a réplica testada; isto é só para conferir a régua de
    cor/plot que a seção 2.5 exige)
 ------------------------------------------------------------------------------------------

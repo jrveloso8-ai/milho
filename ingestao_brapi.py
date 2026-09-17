@@ -38,7 +38,25 @@ reconstruir série histórica de validação.
 import os
 from datetime import datetime
 
+import pandas as pd
 import requests
+
+# 1.6: Suporte a .env.local (sem sobrescrever se já definido no ambiente do SO)
+try:
+    from dotenv import load_dotenv
+    _env_local = os.path.join(os.path.dirname(__file__), ".env.local")
+    load_dotenv(dotenv_path=_env_local, override=False)
+except ImportError:
+    _env_local = os.path.join(os.path.dirname(__file__), ".env.local")
+    if os.path.isfile(_env_local):
+        with open(_env_local, "r", encoding="utf-8") as _f:
+            for _linha in _f:
+                _linha = _linha.strip()
+                if _linha and not _linha.startswith("#") and "=" in _linha:
+                    _k, _v = _linha.split("=", 1)
+                    _k, _v = _k.strip(), _v.strip().strip('"').strip("'")
+                    if _k and _k not in os.environ:
+                        os.environ[_k] = _v
 
 from oi_opcoes import calcular_wall, calcular_max_pain, OI_VAZIO
 
@@ -154,6 +172,67 @@ def coletar_curva_ccm() -> dict:
         vencimento_ativo = curva[0]["contrato"] if curva else None
 
     return {"vencimento_ativo": vencimento_ativo, "curva": curva}
+
+
+def coletar_historico_ccm(codigo_contrato: str) -> pd.DataFrame | None:
+    """
+    Coleta histórico diário de um contrato CCM via BRAPI (/v2/futures/historical).
+    Retorna DataFrame padronizado com Data/Open/High/Low/Close/Volume/Qtd,
+    ordenado por Data crescente (mesmo schema de leitor_csv.ler_csv()).
+
+    Tratamentos obrigatórios (seção 1.3 / 2.1 do prompt):
+      a) Open proxy: Open = Close do pregão anterior (proxy documentado no código,
+         não é o valor real de abertura). Para o primeiro pregão, usa o próprio Close.
+      b) Descarte de dias sem negócio: descarta linhas de calendário com close nulo/NaN
+         ou sem negócios. Não faz fillna nem interpolação.
+
+    Retorna None em erro de rede, HTTP ou token ausente — nunca lança exceção.
+    """
+    if not codigo_contrato:
+        return None
+
+    data = _get("/v2/futures/historical", params={"symbol": codigo_contrato})
+    if not data:
+        return None
+
+    fut = data.get("future") or {}
+    hist = fut.get("history") or []
+    if not hist:
+        return None
+
+    try:
+        df = pd.DataFrame(hist)
+        if "close" not in df.columns or "date" not in df.columns:
+            return None
+
+        # Descarte de dias de calendário sem negócio real
+        df = df.dropna(subset=["close"])
+        df = df[df["close"] > 0].copy()
+        if df.empty:
+            return None
+
+        # Data: conversão de timestamp Unix (segundos) e normalização para início do dia
+        df["Data"] = pd.to_datetime(df["date"], unit="s").dt.normalize()
+        df = df.sort_values("Data").reset_index(drop=True)
+
+        # Mapeamento OHLC
+        df["Close"] = df["close"].astype(float)
+        df["High"] = df["high"].astype(float) if "high" in df.columns else df["Close"]
+        df["Low"] = df["low"].astype(float) if "low" in df.columns else df["Close"]
+
+        # Proxy de Open: Close do pregão anterior (primeiro registro usa Close do dia)
+        df["Open"] = df["Close"].shift(1)
+        if len(df) > 0 and pd.isna(df.loc[0, "Open"]):
+            df.loc[0, "Open"] = df.loc[0, "Close"]
+
+        # Volume e Trades (Qtd)
+        df["Volume"] = df["volume"].fillna(0).astype(float) if "volume" in df.columns else 0.0
+        df["Qtd"] = df["trades"].fillna(0).astype(float) if "trades" in df.columns else 0.0
+
+        colunas = ["Data", "Open", "High", "Low", "Close", "Volume", "Qtd"]
+        return df[colunas].copy()
+    except Exception:
+        return None
 
 
 # ══════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,96 @@
+====================================================================================================
+MILHO TRADER — RELATÓRIO TRIX v5 POR CONTRATO (CURVA CCM)
+Gerado em: 2026-09-17 12:21:02 | Fonte Primária: BRAPI | Seed: 2008–2026
+====================================================================================================
+
+CONTRATO: CCMX26  (Vencimento: 2026-11-16)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 76.25  [MEDIDO]
+  Posição TRIX v5 : FLAT  [DERIVADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 73.36  [DERIVADO]
+  Histórico Real  : 235 pregões reais
+  Status SMA(100) : 235 pregões reais (>= 100). Transicionou para DERIVADO puro em 27/02/2026.
+  Barreiras Opções: Call Wall: R$ 80.00 — 7,642 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 65.00 — 3,082 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 70.00  [DERIVADO]
+----------------------------------------------------------------------------------------------------
+CONTRATO: CCMF27  (Vencimento: 2027-01-15)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 80.15  [MEDIDO]
+  Posição TRIX v5 : FLAT  [DERIVADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 75.97  [DERIVADO]
+  Histórico Real  : 168 pregões reais
+  Status SMA(100) : 168 pregões reais (>= 100). Transicionou para DERIVADO puro em 11/06/2026.
+  Barreiras Opções: Call Wall: R$ 90.00 — 4,000 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 70.00 — 3,430 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 76.00  [DERIVADO]
+----------------------------------------------------------------------------------------------------
+CONTRATO: CCMH27  (Vencimento: 2027-03-15)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 81.85  [MEDIDO]
+  Posição TRIX v5 : FLAT  [DERIVADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 77.37  [DERIVADO]
+  Histórico Real  : 156 pregões reais
+  Status SMA(100) : 156 pregões reais (>= 100). Transicionou para DERIVADO puro em 29/06/2026.
+  Barreiras Opções: Call Wall: R$ 84.00 — 1,273 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 75.00 — 629 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 75.25  [DERIVADO]
+----------------------------------------------------------------------------------------------------
+CONTRATO: CCMK27  (Vencimento: 2027-05-17)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 80.39  [MEDIDO]
+  Posição TRIX v5 : FLAT  [ESTIMADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 76.56  [ESTIMADO]
+  Histórico Real  : 80 pregões reais
+  Status SMA(100) : Possui apenas 80 pregões reais (< 100). Status atual: ESTIMADO por contágio do seed.
+  Barreiras Opções: Call Wall: R$ 85.00 — 700 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 73.00 — 772 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 78.00  [DERIVADO]
+----------------------------------------------------------------------------------------------------
+CONTRATO: CCMN27  (Vencimento: 2027-07-15)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 78.94  [MEDIDO]
+  Posição TRIX v5 : FLAT  [ESTIMADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 74.24  [ESTIMADO]
+  Histórico Real  : 59 pregões reais
+  Status SMA(100) : Possui apenas 59 pregões reais (< 100). Status atual: ESTIMADO por contágio do seed.
+  Barreiras Opções: Call Wall: R$ 79.00 — 1,242 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 72.75 — 2,200 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 72.75  [DERIVADO]
+----------------------------------------------------------------------------------------------------
+CONTRATO: CCMU27  (Vencimento: 2027-09-15)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 79.14  [MEDIDO]
+  Posição TRIX v5 : FLAT  [DERIVADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 73.75  [DERIVADO]
+  Histórico Real  : 119 pregões reais
+  Status SMA(100) : 119 pregões reais (>= 100). Transicionou para DERIVADO puro em 19/08/2026.
+  Barreiras Opções: Call Wall: R$ 80.00 — 7,354 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 67.00 — 5,724 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 74.00  [DERIVADO]
+----------------------------------------------------------------------------------------------------
+CONTRATO: CCMX27  (Vencimento: 2027-11-16)
+  Data Referência : 2026-09-16
+  Último Preço    : R$ 81.79  [MEDIDO]
+  Posição TRIX v5 : FLAT  [ESTIMADO]
+  Entrada Hoje    : Nenhum
+  Saída Hoje      : Nenhum
+  SMA(100) / VTend: R$ 75.92  [ESTIMADO]
+  Histórico Real  : 41 pregões reais
+  Status SMA(100) : Possui apenas 41 pregões reais (< 100). Status atual: ESTIMADO por contágio do seed.
+  Barreiras Opções: Call Wall: R$ 83.00 — 6 contratos  [DERIVADO/MEDIDO]
+                    Put Wall : R$ 68.00 — 500 contratos  [DERIVADO/MEDIDO]
+                    Max Pain : R$ 72.00  [DERIVADO]
+----------------------------------------------------------------------------------------------------
