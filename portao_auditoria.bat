@@ -54,7 +54,7 @@ echo [6.4] Executando mypy (recomendado, nao bloqueante)...
 echo ----------------------------------------------------------------------
 python -m mypy ccm_trix_curva.py 2>nul
 if errorlevel 1 (
-    echo [AVISO] mypy retornou apontamentos ou nao esta instalado (etapa nao bloqueante).
+    echo [AVISO] mypy retornou apontamentos ou nao esta instalado - etapa nao bloqueante.
 ) else (
     echo [OK] 6.4: mypy executado com sucesso.
 )
