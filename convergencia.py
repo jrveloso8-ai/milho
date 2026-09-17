@@ -49,6 +49,28 @@ def _data_vencimento(codigo_vencimento: str):
         return None
 
 
+def obter_rtcni_atual(pasta: str) -> dict:
+    """
+    Lê o CSV do RTCNI e retorna apenas o último preço físico medido e sua data
+    de referência, sem exigir preço futuro nem calcular spread/z-score contaminados.
+    Atende à Watchlist da curva CCM (Seção 2.6b).
+    """
+    try:
+        df_rtcni = ler_arquivo(pasta, 'RTCNI')
+    except FileNotFoundError:
+        return {'rtcni_preco': None, 'rtcni_data': 'N/D', 'erro': 'RTCNI não encontrado'}
+
+    preco_fisico = ultimo_valor(df_rtcni, 'Close')
+    if preco_fisico is None:
+        return {'rtcni_preco': None, 'rtcni_data': 'N/D', 'erro': 'RTCNI sem fechamento'}
+
+    data_rtcni = str(df_rtcni['Data'].iloc[-1].date())
+    return {
+        'rtcni_preco': round(preco_fisico, 2),
+        'rtcni_data': data_rtcni,
+    }
+
+
 def analisar_convergencia(pasta, preco_futuro, vencimento_ativo=None, hoje=None):
     hoje = hoje or date.today()
 

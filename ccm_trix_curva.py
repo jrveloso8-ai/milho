@@ -314,9 +314,11 @@ def montar_watchlist(resultados: list, pasta_projeto: str = PASTA_PROJETO) -> li
     do último fechamento do RTCNI (via convergencia.analisar_convergencia()).
     Lista simples, sem indicador, sem cor de estado, proveniência MEDIDO para todos os valores.
     """
-    dados_conv = convergencia.analisar_convergencia(pasta_projeto, preco_futuro=0.0)
-    rtcni_preco = dados_conv.get("rtcni_preco")
-    rtcni_data = str(dados_conv.get("rtcni_data", "N/D"))
+    # Rodada 2 - Item 1 (Opção a): chamada dedicada a obter_rtcni_atual() para não
+    # usar preço futuro fabricado (0.0) nem calcular métricas contaminadas (spread/z-score).
+    dados_rtcni = convergencia.obter_rtcni_atual(pasta_projeto)
+    rtcni_preco = dados_rtcni.get("rtcni_preco")
+    rtcni_data = str(dados_rtcni.get("rtcni_data", "N/D"))
 
     watchlist = []
     for r in resultados:
