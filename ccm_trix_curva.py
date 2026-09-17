@@ -34,6 +34,7 @@ import plotly.graph_objects as go
 import ingestao_brapi as ib
 import convergencia
 import trix_v5
+import leitor_csv
 
 SEED_FILE = os.path.join(os.path.dirname(__file__), "ccmfut_seed_2008_2026.csv")
 ARQUIVO_RESUMO_TXT = os.path.join(os.path.dirname(__file__), "resumo_trix_curva.txt")
@@ -446,20 +447,30 @@ def gerar_resumo_texto(resultados: list, watchlist: list = None) -> str:
 def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, watchlist: list = None):
     """
     Gera gráfico interativo standalone em HTML utilizando Plotly,
-    replicando com fidelidade visual o mockup aprovado em mockup_ccm_trix_selecao_contrato.html:
+    replicando com fidelidade visual o padrão de design Profit:
+      - Estética escura profissional (dark terminal / trading desk).
       - Candlesticks desenhados SOMENTE para dias reais (is_sintetico == False).
-      - Cor dos candles baseada no ESTADO (PaintBar NTSL: COMPRADO=verde, VENDIDO=vermelho, FLAT=cinza).
-      - Linha única no painel de preço: SMA(100) / VTend.
-      - Sem linhas de TRIX ou Sinal no gráfico.
-      - Marcadores de Entrada COMPRA (triângulo verde para cima) e Entrada VENDA (triângulo vermelho para baixo).
-      - Linhas horizontais destacadas para Call Wall, Put Wall (com contratos em aberto) e Max Pain.
+      - Cor dos candles baseada no ESTADO (PaintBar NTSL: COMPRADO=verde Profit, VENDIDO=vermelho Profit, FLAT=cinza).
+      - Linha única no painel de preço: SMA(100) / VTend em branco/prata nítido.
+      - Linha pontilhada magenta (#ff00cc) para o RTCNI Físico (Cepea/Esalq).
+      - Escala de preços no lado direito (side="right", padrão Profit).
+      - Marcadores de Entrada COMPRA e Entrada VENDA.
+      - Linhas horizontais destacadas para Call Wall, Put Wall e Max Pain.
       - Seletor de contrato via dropdown menu (updatemenus).
-      - Tabela visual de Watchlist (Seção 2.6b) no rodapé do documento.
+      - Tabela visual de Watchlist (Seção 2.6b) de alta legibilidade e contraste no rodapé.
     """
     validos = [r for r in resultados if r.get("sucesso")]
     if not validos:
         print("Nenhum contrato válido para gerar gráfico.")
         return
+
+    # Carrega série do RTCNI para plotagem da linha de referência física (Estilo Profit)
+    df_rtcni = None
+    try:
+        df_rtcni = leitor_csv.ler_arquivo(PASTA_PROJETO, "RTCNI")
+        df_rtcni["Data"] = pd.to_datetime(df_rtcni["Data"]).dt.normalize()
+    except Exception:
+        df_rtcni = None
 
     all_traces = []
     buttons = []
@@ -480,6 +491,24 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
         is_vendido = df_plot["posicao_trix_v5"] == "VENDIDO"
         is_flat = df_plot["posicao_trix_v5"] == "FLAT"
 
+        # Prepara série alinhada do RTCNI Físico
+        serie_rtcni = None
+        rtcni_val = None
+        if watchlist:
+            for w in watchlist:
+                if w.get("contrato") == cod:
+                    rtcni_val = w.get("rtcni_preco")
+                    break
+            if rtcni_val is None and len(watchlist) > 0:
+                rtcni_val = watchlist[0].get("rtcni_preco")
+
+        if df_rtcni is not None and not df_rtcni.empty:
+            df_m = pd.merge(df_plot[["Data"]], df_rtcni[["Data", "Close"]], on="Data", how="left")
+            df_m["Close"] = df_m["Close"].ffill().bfill()
+            serie_rtcni = df_m["Close"]
+        elif rtcni_val is not None:
+            serie_rtcni = pd.Series([rtcni_val] * len(datas))
+
         # Trace 0 do contrato: Candlestick base invisível (fornece range/hover)
         t_base = go.Candlestick(
             x=datas,
@@ -494,7 +523,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             visible=(idx_contrato == 0),
         )
 
-        # Trace 1: Candles COMPRADO (Verde #3fb950)
+        # Trace 1: Candles COMPRADO (Verde Profit #00d060)
         t_comp = go.Candlestick(
             x=datas,
             open=df_plot["Open"].where(is_comprado),
@@ -502,13 +531,13 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             low=df_plot["Low"].where(is_comprado),
             close=df_plot["Close"].where(is_comprado),
             name="COMPRADO",
-            increasing={"fillcolor": "#3fb950", "line": {"color": "#3fb950"}},
-            decreasing={"fillcolor": "#3fb950", "line": {"color": "#3fb950"}},
+            increasing={"fillcolor": "#00d060", "line": {"color": "#00d060"}},
+            decreasing={"fillcolor": "#00d060", "line": {"color": "#00d060"}},
             showlegend=True,
             visible=(idx_contrato == 0),
         )
 
-        # Trace 2: Candles VENDIDO (Vermelho #f85149)
+        # Trace 2: Candles VENDIDO (Vermelho Profit #ff3b30)
         t_vend = go.Candlestick(
             x=datas,
             open=df_plot["Open"].where(is_vendido),
@@ -516,13 +545,13 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             low=df_plot["Low"].where(is_vendido),
             close=df_plot["Close"].where(is_vendido),
             name="VENDIDO",
-            increasing={"fillcolor": "#f85149", "line": {"color": "#f85149"}},
-            decreasing={"fillcolor": "#f85149", "line": {"color": "#f85149"}},
+            increasing={"fillcolor": "#ff3b30", "line": {"color": "#ff3b30"}},
+            decreasing={"fillcolor": "#ff3b30", "line": {"color": "#ff3b30"}},
             showlegend=True,
             visible=(idx_contrato == 0),
         )
 
-        # Trace 3: Candles FLAT (Cinza #c9d1d9)
+        # Trace 3: Candles FLAT (Cinza Neutro #8b949e)
         t_flat = go.Candlestick(
             x=datas,
             open=df_plot["Open"].where(is_flat),
@@ -530,19 +559,19 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             low=df_plot["Low"].where(is_flat),
             close=df_plot["Close"].where(is_flat),
             name="FLAT",
-            increasing={"fillcolor": "#c9d1d9", "line": {"color": "#c9d1d9"}},
-            decreasing={"fillcolor": "#c9d1d9", "line": {"color": "#c9d1d9"}},
+            increasing={"fillcolor": "#8b949e", "line": {"color": "#8b949e"}},
+            decreasing={"fillcolor": "#8b949e", "line": {"color": "#8b949e"}},
             showlegend=True,
             visible=(idx_contrato == 0),
         )
 
-        # Trace 4: Linha única sobreposta: SMA(100) / VTend
+        # Trace 4: Linha sobreposta SMA(100) / VTend (Branco nítido)
         t_sma = go.Scatter(
             x=datas,
             y=df_plot[f"trend_sma{trix_v5.P_TREND}"],
             mode="lines",
             name="SMA(100) — VTend",
-            line={"color": "#e6edf3", "width": 1.5},
+            line={"color": "#f0f6fc", "width": 1.5},
             showlegend=True,
             visible=(idx_contrato == 0),
         )
@@ -554,7 +583,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             y=ent_comp["Low"] * 0.995,
             mode="markers",
             name="Entrada COMPRA",
-            marker={"symbol": "triangle-up", "color": "#3fb950", "size": 13},
+            marker={"symbol": "triangle-up", "color": "#00d060", "size": 13},
             showlegend=True,
             visible=(idx_contrato == 0),
         )
@@ -566,12 +595,27 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             y=ent_vend["High"] * 1.005,
             mode="markers",
             name="Entrada VENDA",
-            marker={"symbol": "triangle-down", "color": "#f85149", "size": 13},
+            marker={"symbol": "triangle-down", "color": "#ff3b30", "size": 13},
             showlegend=True,
             visible=(idx_contrato == 0),
         )
 
         contrato_traces = [t_base, t_comp, t_vend, t_flat, t_sma, t_ent_comp, t_ent_vend]
+
+        # Trace 7: Linha do RTCNI Físico (Estilo Profit — magenta pontilhada #ff00cc)
+        if serie_rtcni is not None and not serie_rtcni.empty:
+            ult_rtcni = float(serie_rtcni.iloc[-1])
+            lbl_rtcni = f"RTCNI (Físico) R$ {ult_rtcni:.2f}"
+            t_rtcni = go.Scatter(
+                x=datas,
+                y=serie_rtcni,
+                mode="lines",
+                name=lbl_rtcni,
+                line={"color": "#ff00cc", "dash": "dot", "width": 2.0},
+                showlegend=True,
+                visible=(idx_contrato == 0),
+            )
+            contrato_traces.append(t_rtcni)
 
         # Barreiras de opções (Call Wall, Put Wall, Max Pain)
         if op["disponivel"] and op["call_wall"] is not None:
@@ -626,7 +670,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             "method": "update",
             "args": [
                 {"visible": []},
-                {"title": f"MILHO TRADER · TRIX v5 (cor = estado, PaintBar NTSL) · Contrato: {cod}"},
+                {"title": f"MILHO TRADER · TRIX v5 (PaintBar NTSL) · Contrato: {cod}"},
             ],
             "_start": trace_offset,
             "_count": n_traces_este,
@@ -647,102 +691,250 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
 
     primeiro_cod = validos[0]["codigo"]
     layout = go.Layout(
-        title={"text": f"MILHO TRADER · TRIX v5 (cor = estado, PaintBar NTSL) · Contrato: {primeiro_cod}"},
-        plot_bgcolor="#0e1117",
-        paper_bgcolor="#0e1117",
-        font={"color": "#e6edf3", "family": "Inter, sans-serif"},
+        title={
+            "text": f"<b>CCM FUTURO · TRIX v5 (PaintBar NTSL)</b> · Contrato: {primeiro_cod}",
+            "font": {"size": 16, "color": "#f0f6fc"},
+            "x": 0.5,
+            "xanchor": "center",
+        },
+        plot_bgcolor="#13161c",
+        paper_bgcolor="#101216",
+        font={"color": "#e6edf3", "family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"},
         height=720,
-        xaxis={"rangeslider": {"visible": False}, "title": {"text": "Data"}, "gridcolor": "#21262d"},
-        yaxis={"title": {"text": "R$ / saca"}, "gridcolor": "#21262d"},
-        legend={"font": {"color": "#c9d1d9"}, "orientation": "h", "y": 1.1, "x": 1, "xanchor": "right"},
+        xaxis={
+            "rangeslider": {"visible": False},
+            "title": {"text": ""},
+            "gridcolor": "#20252e",
+            "showgrid": True,
+            "zeroline": False,
+            "tickfont": {"size": 11, "color": "#8b949e"},
+        },
+        yaxis={
+            "title": {"text": "Preço (R$ / saca)"},
+            "side": "right",
+            "gridcolor": "#20252e",
+            "showgrid": True,
+            "zeroline": False,
+            "tickformat": ".2f",
+            "tickfont": {"size": 12, "color": "#cad5e2"},
+        },
+        legend={
+            "font": {"color": "#cad5e2", "size": 11},
+            "orientation": "h",
+            "y": 1.1,
+            "x": 0.5,
+            "xanchor": "center",
+            "bgcolor": "rgba(19, 22, 28, 0.8)",
+            "bordercolor": "#2a313d",
+            "borderwidth": 1,
+        },
         updatemenus=[{
             "buttons": buttons,
             "direction": "down",
-            "bgcolor": "#161b22",
-            "bordercolor": "#30363d",
-            "font": {"color": "#e6edf3"},
+            "bgcolor": "#1c212b",
+            "bordercolor": "#384152",
+            "font": {"color": "#ffffff", "size": 12},
             "x": 0.0,
             "xanchor": "left",
             "y": 1.16,
             "active": 0,
         }],
-        annotations=[{
-            "align": "left",
-            "font": {"color": "#8b949e", "size": 10},
-            "showarrow": False,
-            "text": (
-                "Padrão validado NTSL: cor do candle = estado (verde=comprado, vermelho=vendido, cinza=flat). "
-                "Linha única sobreposta = SMA(100)/VTend. O trecho sintético do seed (2008–2026) alimenta o cálculo do indicador "
-                "mas não é plotado. Barreiras de opções exibem contratos em aberto (OI) ou N/D se indisponíveis."
-            ),
-            "x": 0,
-            "xref": "paper",
-            "y": -0.12,
-            "yref": "paper",
-        }],
+        annotations=[
+            {
+                "text": "<b>CCM FUTURO · 1D</b><br><span style='font-size:14px;'>Milho B3 · PaintBar NTSL</span>",
+                "xref": "paper",
+                "yref": "paper",
+                "x": 0.5,
+                "y": 0.5,
+                "showarrow": False,
+                "font": {"size": 24, "color": "rgba(255, 255, 255, 0.04)"},
+                "align": "center",
+            },
+            {
+                "align": "left",
+                "font": {"color": "#8b949e", "size": 10},
+                "showarrow": False,
+                "text": (
+                    "Padrão validado NTSL: cor do candle = estado (verde=comprado, vermelho=vendido, cinza=flat). "
+                    "Linha branca = SMA(100)/VTend. Linha magenta pontilhada = RTCNI Físico ESALQ. "
+                    "O trecho sintético do seed (2008–2026) alimenta o cálculo do indicador mas não é plotado. "
+                    "Barreiras de opções exibem contratos em aberto (OI) ou N/D se indisponíveis."
+                ),
+                "x": 0,
+                "xref": "paper",
+                "y": -0.12,
+                "yref": "paper",
+            }
+        ],
     )
 
     fig = go.Figure(data=all_traces, layout=layout)
     fig.write_html(output_html, config={"responsive": True})
 
-    # Injeta a tabela visual de Watchlist no HTML gerado
+    # Injeta estilização visual Profit e tabela visual de Watchlist no HTML gerado
     if watchlist:
         linhas_tr = []
         for w in watchlist:
             ccm_str = f"R$ {w['ccm_close']:.2f}"
             rtcni_str = f"R$ {w['rtcni_preco']:.2f}" if w["rtcni_preco"] else "N/D"
             sp = w["spread_vs_rtcni"]
-            cor_sp = "#3fb950" if sp and sp > 0 else ("#f85149" if sp and sp < 0 else "#c9d1d9")
+            cor_sp = "#00d060" if sp and sp > 0 else ("#ff3b30" if sp and sp < 0 else "#e6edf3")
             sp_str = f"{sp:+0.2f}" if sp is not None else "N/D"
             rtcni_badge_defasado = ""
             if w.get('aviso_defasado'):
-                rtcni_badge_defasado = f" <span style='font-size:10px; color:#f0883e; background:#381704; border:1px solid #bd561d; padding:2px 6px; border-radius:4px; font-weight:600;'>{w['aviso_defasado']}</span>"
+                rtcni_badge_defasado = f'<span class="badge-defasado">{w["aviso_defasado"]}</span>'
+
             linhas_tr.append(
-                f"<tr style='border-bottom: 1px solid #21262d;'>"
-                f"<td style='padding: 10px; font-weight: 600; color: #58a6ff;'>{w['contrato']}</td>"
-                f"<td style='padding: 10px; color: #8b949e;'>{w['vencimento_iso']}</td>"
-                f"<td style='padding: 10px;'>{ccm_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_ccm']}]</span></td>"
-                f"<td style='padding: 10px;'>{rtcni_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_rtcni']}]</span>{rtcni_badge_defasado}</td>"
-                f"<td style='padding: 10px; font-weight: 600; color: {cor_sp};'>{sp_str}</td>"
-                f"<td style='padding: 10px; color: #8b949e;'>{w['ccm_data']}</td>"
-                f"<td style='padding: 10px; color: #8b949e;'>{w['rtcni_data']}</td>"
+                f"<tr>"
+                f"<td style='padding: 14px 20px; font-family: Consolas, monospace; font-size: 15px; font-weight: 700; color: #58a6ff;'>{w['contrato']}</td>"
+                f"<td style='padding: 14px 16px; color: #e6edf3; font-weight: 500;'>{w['vencimento_iso']}</td>"
+                f"<td style='padding: 14px 16px;'><span style='font-family: Consolas, monospace; font-size: 15px; font-weight: 700; color: #ffffff;'>{ccm_str}</span> <span class='badge-medido'>[{w['prov_ccm']}]</span></td>"
+                f"<td style='padding: 14px 16px;'><span style='font-family: Consolas, monospace; font-size: 15px; font-weight: 700; color: #ffffff;'>{rtcni_str}</span> <span class='badge-medido'>[{w['prov_rtcni']}]</span>{rtcni_badge_defasado}</td>"
+                f"<td style='padding: 14px 16px; font-family: Consolas, monospace; font-size: 15px; font-weight: 700; color: {cor_sp};'>{sp_str}</td>"
+                f"<td style='padding: 14px 16px; color: #cad5e2; font-family: Consolas, monospace; font-size: 13px;'>{w['ccm_data']}</td>"
+                f"<td style='padding: 14px 20px; color: #cad5e2; font-family: Consolas, monospace; font-size: 13px;'>{w['rtcni_data']}</td>"
                 f"</tr>"
             )
         corpo_tabela = "\n".join(linhas_tr)
+
+        css_profit = """
+        <style>
+            body {
+                margin: 0 !important;
+                padding: 16px 20px 40px 20px !important;
+                background-color: #0b0d11 !important;
+                color: #e6edf3 !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+            }
+            .profit-card {
+                max-width: 1440px;
+                margin: 24px auto 40px auto;
+                background: #141720;
+                border: 1px solid #232a38;
+                border-radius: 10px;
+                box-shadow: 0 12px 36px rgba(0,0,0,0.55);
+                overflow: hidden;
+            }
+            .profit-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16px 24px;
+                background: #181d28;
+                border-bottom: 1px solid #232a38;
+            }
+            .profit-title-text {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 700;
+                color: #ffffff;
+                letter-spacing: 0.5px;
+            }
+            .profit-subtitle {
+                margin: 4px 0 0 0;
+                font-size: 13px;
+                color: #9ba7b7;
+            }
+            .profit-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 14px;
+                text-align: left;
+            }
+            .profit-table th {
+                background: #12151d;
+                color: #a0afc0;
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                padding: 14px 18px;
+                border-bottom: 2px solid #232a38;
+            }
+            .profit-table td {
+                padding: 14px 18px;
+                border-bottom: 1px solid #1c222e;
+                vertical-align: middle;
+            }
+            .profit-table tr:nth-child(even) {
+                background-color: #12151d;
+            }
+            .profit-table tr:nth-child(odd) {
+                background-color: #141720;
+            }
+            .profit-table tr:hover {
+                background-color: #1d2331;
+            }
+            .badge-medido {
+                font-size: 11px;
+                background: rgba(0, 208, 96, 0.15);
+                color: #00d060;
+                border: 1px solid rgba(0, 208, 96, 0.4);
+                padding: 2px 7px;
+                border-radius: 4px;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+                margin-left: 6px;
+            }
+            .badge-defasado {
+                font-size: 11px;
+                background: rgba(240, 136, 62, 0.2);
+                color: #f0883e;
+                border: 1px solid rgba(240, 136, 62, 0.55);
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-weight: 700;
+                letter-spacing: 0.3px;
+                margin-left: 8px;
+            }
+        </style>
+        """
+
         tabela_html = f"""
-        <div style="max-width: 1200px; margin: 24px auto; padding: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; font-family: 'Inter', sans-serif; color: #e6edf3;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 12px; margin-bottom: 16px;">
+        <div class="profit-card">
+            <div class="profit-card-header">
                 <div>
-                    <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #f0f6fc;">WATCHLIST — Curva CCM vs Físico RTCNI (Seção 2.6b)</h3>
-                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #8b949e;">Último fechamento real medido por contrato contra indicador físico ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO. Caso a defasagem entre Data CCM e Data RTCNI exceda 7 dias corridos, exibe o aviso [DEFASADO — Xd].</p>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="display: inline-block; width: 10px; height: 10px; background: #00d060; border-radius: 50%; box-shadow: 0 0 8px #00d060;"></span>
+                        <h3 class="profit-title-text">WATCHLIST — Curva CCM vs Físico RTCNI (Seção 2.6b)</h3>
+                    </div>
+                    <p class="profit-subtitle">
+                        Último fechamento real medido por contrato contra indicador físico ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO. Caso a defasagem entre Data CCM e Data RTCNI exceda 7 dias corridos, exibe o aviso [DEFASADO — Xd].
+                    </p>
                 </div>
-                <span style="background: #238636; color: #fff; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">PROVENIÊNCIA: MEDIDO</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: #1f6feb; color: #ffffff; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">PROVENIÊNCIA: MEDIDO</span>
+                </div>
             </div>
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'JetBrains Mono', monospace; text-align: left;">
-                <thead>
-                    <tr style="border-bottom: 1px solid #30363d; color: #8b949e; font-size: 11px; text-transform: uppercase;">
-                        <th style="padding: 8px 10px;">Contrato</th>
-                        <th style="padding: 8px 10px;">Vencimento</th>
-                        <th style="padding: 8px 10px;">CCM Real</th>
-                        <th style="padding: 8px 10px;">RTCNI (Físico)</th>
-                        <th style="padding: 8px 10px;">Spread (Fut-Fís)</th>
-                        <th style="padding: 8px 10px;">Data CCM</th>
-                        <th style="padding: 8px 10px;">Data RTCNI</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {corpo_tabela}
-                </tbody>
-            </table>
+            <div style="overflow-x: auto;">
+                <table class="profit-table">
+                    <thead>
+                        <tr>
+                            <th style="padding: 14px 20px;">Contrato</th>
+                            <th style="padding: 14px 16px;">Vencimento</th>
+                            <th style="padding: 14px 16px;">CCM Real (B3)</th>
+                            <th style="padding: 14px 16px;">RTCNI (Físico ESALQ)</th>
+                            <th style="padding: 14px 16px;">Spread (Fut - Fís)</th>
+                            <th style="padding: 14px 16px;">Data CCM</th>
+                            <th style="padding: 14px 20px;">Data RTCNI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {corpo_tabela}
+                    </tbody>
+                </table>
+            </div>
         </div>
         """
         try:
             with open(output_html, "r", encoding="utf-8") as f:
                 conteudo = f.read()
+            if "</head>" in conteudo:
+                conteudo = conteudo.replace("</head>", f"{css_profit}\n</head>")
             if "</body>" in conteudo:
                 conteudo = conteudo.replace("</body>", f"{tabela_html}\n</body>")
-                with open(output_html, "w", encoding="utf-8") as f:
-                    f.write(conteudo)
+            with open(output_html, "w", encoding="utf-8") as f:
+                f.write(conteudo)
         except Exception as e:
             print(f"Aviso ao anexar watchlist ao HTML: {e}")
 
