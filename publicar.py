@@ -69,7 +69,10 @@ def main():
     if "origin" in remotes:
         executar_comando("git push origin master", "Enviando branch master para o GitHub", obrigatorio=False)
         executar_comando("git push origin master:main", "Sincronizando branch main para a Vercel", obrigatorio=False)
-        print("\n[SUCESSO] Código enviado para o GitHub! O deploy na Vercel foi acionado.")
+        print("\n[SUCESSO] Código enviado para o GitHub com sucesso (master e main)!")
+        print(" -> Se você já importou este repositório na Vercel, o deploy está sendo executado automaticamente.")
+        print(" -> Se é a PRIMEIRA VEZ: acesse https://vercel.com/new, importe 'jrveloso8-ai/milho' e clique em 'Deploy'.")
+        print("    (Depois de importar uma única vez, todos os próximos envios da bat serão 100% automáticos!)")
     else:
         print("\n[AVISO] Nenhum remote 'origin' configurado. Configure com 'git remote add origin ...'")
 
