@@ -274,6 +274,36 @@ def processar_contrato(
     cw_oi = calls.get(call_wall) if call_wall is not None else None
     pw_oi = puts.get(put_wall) if put_wall is not None else None
 
+    # Monta a grade detalhada por strike para a tabela de opções
+    strikes_todos = sorted(set(list(calls.keys()) + list(puts.keys())))
+    grade = []
+    preco_comp = preco_ref if preco_ref is not None else 0.0
+
+    strike_atm = None
+    if strikes_todos and preco_comp > 0:
+        strike_atm = min(strikes_todos, key=lambda s: abs(float(s) - float(preco_comp)))
+
+    for s in strikes_todos:
+        s_float = float(s)
+        oi_c = int(calls.get(s, 0))
+        oi_p = int(puts.get(s, 0))
+        s_cents = int(round(s_float * 100))
+        ticker_c = f"{codigo}C{s_cents:06d}"
+        ticker_p = f"{codigo}P{s_cents:06d}"
+        grade.append({
+            "strike": s_float,
+            "ticker_call": ticker_c,
+            "oi_call": oi_c,
+            "is_call_wall": bool(call_wall is not None and abs(s_float - float(call_wall)) < 0.001),
+            "is_itm_call": bool(s_float <= preco_comp),
+            "ticker_put": ticker_p,
+            "oi_put": oi_p,
+            "is_put_wall": bool(put_wall is not None and abs(s_float - float(put_wall)) < 0.001),
+            "is_itm_put": bool(s_float >= preco_comp),
+            "is_max_pain": bool(max_pain is not None and abs(s_float - float(max_pain)) < 0.001),
+            "is_atm": bool(strike_atm is not None and abs(s_float - float(strike_atm)) < 0.001),
+        })
+
     return {
         "codigo": codigo,
         "vencimento_iso": vencimento_iso,
@@ -300,6 +330,9 @@ def processar_contrato(
             "max_pain": max_pain,
             "total_calls": sum(calls.values()),
             "total_puts": sum(puts.values()),
+            "grade": grade,
+            "meta": oi_dados.get("meta"),
+            "preco_ref": preco_ref,
         },
     }
 
@@ -438,6 +471,502 @@ def gerar_resumo_texto(resultados: list, watchlist: list = None) -> str:
 
     texto = "\n".join(linhas)
     return texto
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 5b. GERADOR DA GRADE DE OPÇÕES POR CONTRATO (CALLS E PUTS ABERTAS)
+# ══════════════════════════════════════════════════════════════════════════
+
+def montar_html_grade_opcoes(resultados: list) -> tuple:
+    """
+    Gera os blocos HTML, CSS e JavaScript da tabela adicional de Grade de Opções
+    (Calls e Puts abertas por contrato), no padrão de design Profit Pro,
+    com seletor interativo em abas/botões e sincronização bidirecional com o gráfico Plotly.
+    """
+    validos = [r for r in resultados if r.get("sucesso")]
+    if not validos:
+        return "", "", ""
+
+    botoes_nav = []
+    containers_contratos = []
+
+    for idx, r in enumerate(validos):
+        cod = r["codigo"]
+        venc = r["vencimento_iso"]
+        op = r.get("opcoes") or {}
+        grade = op.get("grade") or []
+        tem_opcoes = op.get("disponivel", False) and len(grade) > 0
+        total_calls = op.get("total_calls", 0)
+        total_puts = op.get("total_puts", 0)
+        tot_oi = total_calls + total_puts
+        tot_oi_str = f"{tot_oi:,}" if tem_opcoes else "0"
+        cw = op.get("call_wall")
+        cw_oi = op.get("call_wall_oi")
+        pw = op.get("put_wall")
+        pw_oi = op.get("put_wall_oi")
+        mp = op.get("max_pain")
+        preco_ref = op.get("preco_ref")
+        meta = op.get("meta") or {}
+        data_lote = meta.get("data_referencia_lote", "N/D")
+
+        # Botão de navegação por contrato
+        cls_active = "active" if idx == 0 else ""
+        botoes_nav.append(
+            f'<button class="btn-contrato-opcoes {cls_active}" data-cod="{cod}" onclick="alternarGradeOpcoes(\'{cod}\', true)">'
+            f'<span>{cod}</span>'
+            f'<span class="btn-oi-badge">{tot_oi_str} OI</span>'
+            f'</button>'
+        )
+
+        # Barra de KPIs do Contrato Selecionado
+        cw_str = f"R$ {cw:.2f} ({cw_oi:,} ct)" if cw is not None and cw_oi is not None else (f"R$ {cw:.2f}" if cw is not None else "N/D")
+        pw_str = f"R$ {pw:.2f} ({pw_oi:,} ct)" if pw is not None and pw_oi is not None else (f"R$ {pw:.2f}" if pw is not None else "N/D")
+        mp_str = f"R$ {mp:.2f}" if mp is not None else "N/D"
+        ref_str = f"R$ {preco_ref:.2f}" if preco_ref is not None else "N/D"
+        pc_ratio_str = f"{(total_puts / total_calls):.2f}" if total_calls > 0 else "N/D"
+
+        kpi_bar = f"""
+        <div class="grade-kpi-bar">
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Vencimento Opções</span>
+                <span class="kpi-val" style="color: #cad5e2;">{venc}</span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Preço CCM Ref</span>
+                <span class="kpi-val" style="color: #ffffff;">{ref_str}</span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Call Wall (Resistência)</span>
+                <span class="kpi-val" style="color: #ff3b30;">{cw_str}</span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Put Wall (Suporte)</span>
+                <span class="kpi-val" style="color: #00d060;">{pw_str}</span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Max Pain</span>
+                <span class="kpi-val" style="color: #e3b341;">{mp_str}</span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Volume Calls / Puts</span>
+                <span class="kpi-val"><span style="color: #00d060;">{total_calls:,} C</span> · <span style="color: #ff3b30;">{total_puts:,} P</span></span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Razão P/C</span>
+                <span class="kpi-val" style="color: #58a6ff;">{pc_ratio_str}</span>
+            </div>
+            <div class="grade-kpi-item">
+                <span class="kpi-title">Data Lote B3</span>
+                <span class="kpi-val" style="color: #8b949e;">{data_lote}</span>
+            </div>
+        </div>
+        """
+
+        if not tem_opcoes:
+            corpo_conteudo = f"""
+            <div style="padding: 48px 24px; text-align: center; color: #8b949e;">
+                <div style="font-size: 16px; font-weight: 600; color: #cad5e2; margin-bottom: 6px;">Nenhuma Posição Aberta em Opções</div>
+                <p style="margin: 0; font-size: 13px;">Não foram encontradas posições em aberto de Call ou Put registradas na B3 para o contrato {cod} (vencimento {venc}).</p>
+            </div>
+            """
+        else:
+            max_oi = max([g["oi_call"] for g in grade] + [g["oi_put"] for g in grade] + [1])
+            linhas_grade = []
+            for g in grade:
+                oi_c = g["oi_call"]
+                oi_p = g["oi_put"]
+                pct_c = (oi_c / max_oi) * 100 if max_oi > 0 else 0
+                pct_p = (oi_p / max_oi) * 100 if max_oi > 0 else 0
+
+                # Status CALL
+                if g["is_call_wall"]:
+                    st_call = '<span class="badge-wall-call">CALL WALL</span>'
+                elif g["is_itm_call"] and oi_c > 0:
+                    st_call = '<span class="badge-itm">ITM</span>'
+                elif oi_c > 0:
+                    st_call = '<span class="badge-otm">OTM</span>'
+                else:
+                    st_call = '<span style="color: #30363d;">—</span>'
+
+                # Status PUT
+                if g["is_put_wall"]:
+                    st_put = '<span class="badge-wall-put">PUT WALL</span>'
+                elif g["is_itm_put"] and oi_p > 0:
+                    st_put = '<span class="badge-itm">ITM</span>'
+                elif oi_p > 0:
+                    st_put = '<span class="badge-otm">OTM</span>'
+                else:
+                    st_put = '<span style="color: #30363d;">—</span>'
+
+                # Badges Strike
+                badge_s = ""
+                if g["is_max_pain"]:
+                    badge_s += '<span class="badge-mp">MAX PAIN</span>'
+                if g["is_atm"]:
+                    badge_s += '<span class="badge-atm">ATM</span>'
+
+                # Classes de linha
+                cls_tr = []
+                if g["is_call_wall"]:
+                    cls_tr.append("row-call-wall")
+                if g["is_put_wall"]:
+                    cls_tr.append("row-put-wall")
+                if g["is_atm"]:
+                    cls_tr.append("row-atm")
+                tr_class_str = f' class="{" ".join(cls_tr)}"' if cls_tr else ""
+
+                cor_ticker_c = "#ffffff" if oi_c > 0 else "#484f58"
+                cor_ticker_p = "#ffffff" if oi_p > 0 else "#484f58"
+                cor_oi_c = "#00d060" if oi_c > 0 else "#484f58"
+                cor_oi_p = "#ff3b30" if oi_p > 0 else "#484f58"
+
+                str_oi_c = f"{oi_c:,}" if oi_c > 0 else "—"
+                str_oi_p = f"{oi_p:,}" if oi_p > 0 else "—"
+
+                linhas_grade.append(
+                    f'<tr{tr_class_str}>'
+                    f'<td style="font-family: Consolas, monospace; font-size: 13px; color: {cor_ticker_c}; font-weight: 600; text-align: left;">{g["ticker_call"]}</td>'
+                    f'<td style="text-align: center;">{st_call}</td>'
+                    f'<td style="font-family: Consolas, monospace; font-size: 13px; font-weight: 700; color: {cor_oi_c}; text-align: right;">{str_oi_c}</td>'
+                    f'<td><div class="mini-bar-track" style="justify-content: flex-end;"><div class="mini-bar-fill-call" style="width: {pct_c:.1f}%;"></div></div></td>'
+                    f'<td style="font-family: Consolas, monospace; font-size: 14px; font-weight: 700; color: #ffffff; text-align: center; background: #151922; border-left: 1px solid #232a38; border-right: 1px solid #232a38;">R$ {g["strike"]:.2f}{badge_s}</td>'
+                    f'<td><div class="mini-bar-track" style="justify-content: flex-start;"><div class="mini-bar-fill-put" style="width: {pct_p:.1f}%;"></div></div></td>'
+                    f'<td style="font-family: Consolas, monospace; font-size: 13px; font-weight: 700; color: {cor_oi_p}; text-align: left;">{str_oi_p}</td>'
+                    f'<td style="text-align: center;">{st_put}</td>'
+                    f'<td style="font-family: Consolas, monospace; font-size: 13px; color: {cor_ticker_p}; font-weight: 600; text-align: right;">{g["ticker_put"]}</td>'
+                    f'</tr>'
+                )
+
+            tabela_corpo = "\n".join(linhas_grade)
+            corpo_conteudo = f"""
+            <div style="overflow-x: auto; max-height: 560px; overflow-y: auto;">
+                <table class="opcoes-table">
+                    <thead>
+                        <tr>
+                            <th colspan="4" class="th-call-group">CALLS (ALTA)</th>
+                            <th class="th-strike-group">STRIKE</th>
+                            <th colspan="4" class="th-put-group">PUTS (BAIXA)</th>
+                        </tr>
+                        <tr class="th-sub">
+                            <th style="width: 130px; text-align: left;">Ticker Call</th>
+                            <th style="width: 90px; text-align: center;">Status</th>
+                            <th style="width: 90px; text-align: right;">OI Aberto</th>
+                            <th style="width: 100px; text-align: right;">Volume</th>
+                            <th style="width: 130px; text-align: center;">Strike (R$)</th>
+                            <th style="width: 100px; text-align: left;">Volume</th>
+                            <th style="width: 90px; text-align: left;">OI Aberto</th>
+                            <th style="width: 90px; text-align: center;">Status</th>
+                            <th style="width: 130px; text-align: right;">Ticker Put</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {tabela_corpo}
+                    </tbody>
+                </table>
+            </div>
+            """
+
+        display_style = "block" if idx == 0 else "none"
+        containers_contratos.append(
+            f'<div class="grade-contrato-container" id="grade-{cod}" style="display: {display_style};">'
+            f'{kpi_bar}'
+            f'{corpo_conteudo}'
+            f'</div>'
+        )
+
+    nav_html = "\n".join(botoes_nav)
+    containers_html = "\n".join(containers_contratos)
+
+    card_html = f"""
+    <div class="profit-card" id="card-grade-opcoes">
+        <div class="profit-card-header">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; background: #58a6ff; border-radius: 50%; box-shadow: 0 0 8px #58a6ff;"></span>
+                    <h3 class="profit-title-text">GRADE DE OPÇÕES — Posições Abertas de Calls e Puts por Contrato</h3>
+                </div>
+                <p class="profit-subtitle">
+                    Posições reais em aberto de Calls e Puts registradas na B3 (BRAPI). Compare strikes, concentração de contratos (Open Interest), Call Wall, Put Wall, Max Pain e zonas de proteção por contrato.
+                </p>
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">PROVENIÊNCIA: MEDIDO / B3</span>
+            </div>
+        </div>
+        <div class="opcoes-nav">
+            {nav_html}
+        </div>
+        <div class="opcoes-body">
+            {containers_html}
+        </div>
+    </div>
+    """
+
+    css_opcoes = """
+    <style>
+        .opcoes-nav {
+            display: flex;
+            gap: 8px;
+            padding: 12px 20px;
+            background: #101217;
+            border-bottom: 1px solid #232a38;
+            overflow-x: auto;
+        }
+        .btn-contrato-opcoes {
+            background: #181d28;
+            color: #9ba7b7;
+            border: 1px solid #2b3345;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .btn-contrato-opcoes:hover {
+            background: #232a38;
+            color: #ffffff;
+            border-color: #3b465c;
+        }
+        .btn-contrato-opcoes.active {
+            background: #1f6feb;
+            color: #ffffff;
+            border-color: #58a6ff;
+            box-shadow: 0 0 12px rgba(31, 111, 235, 0.4);
+        }
+        .btn-oi-badge {
+            background: rgba(0, 0, 0, 0.35);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #cad5e2;
+        }
+        .grade-kpi-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            padding: 14px 20px;
+            background: #12151d;
+            border-bottom: 1px solid #1c222e;
+        }
+        .grade-kpi-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .grade-kpi-item .kpi-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .grade-kpi-item .kpi-val {
+            font-family: Consolas, monospace;
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        .opcoes-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .opcoes-table th {
+            padding: 10px 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .th-call-group {
+            background: rgba(0, 208, 96, 0.12) !important;
+            color: #00d060 !important;
+            text-align: center;
+            border-bottom: 2px solid #232a38;
+            border-right: 2px solid #232a38;
+        }
+        .th-strike-group {
+            background: #181d28 !important;
+            color: #ffffff !important;
+            text-align: center;
+            border-bottom: 2px solid #232a38;
+            border-right: 2px solid #232a38;
+        }
+        .th-put-group {
+            background: rgba(255, 59, 48, 0.12) !important;
+            color: #ff3b30 !important;
+            text-align: center;
+            border-bottom: 2px solid #232a38;
+        }
+        .th-sub th {
+            background: #141720;
+            color: #8b949e;
+            font-size: 10px;
+            border-bottom: 1px solid #232a38;
+            padding: 8px 12px;
+        }
+        .opcoes-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #1c222e;
+            vertical-align: middle;
+        }
+        .opcoes-table tr:nth-child(even) {
+            background-color: #12151d;
+        }
+        .opcoes-table tr:nth-child(odd) {
+            background-color: #141720;
+        }
+        .opcoes-table tr:hover {
+            background-color: #1e2433;
+        }
+        .row-call-wall {
+            background: rgba(255, 59, 48, 0.12) !important;
+        }
+        .row-put-wall {
+            background: rgba(0, 208, 96, 0.12) !important;
+        }
+        .row-atm {
+            box-shadow: inset 0 1px 0 #58a6ff, inset 0 -1px 0 #58a6ff;
+        }
+        .mini-bar-track {
+            width: 80px;
+            background: #1c222e;
+            height: 7px;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+        }
+        .mini-bar-fill-call {
+            background: #00d060;
+            height: 100%;
+            border-radius: 3px;
+        }
+        .mini-bar-fill-put {
+            background: #ff3b30;
+            height: 100%;
+            border-radius: 3px;
+        }
+        .badge-wall-call {
+            font-size: 10px;
+            background: rgba(255, 59, 48, 0.25);
+            color: #ff3b30;
+            border: 1px solid #ff3b30;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+        .badge-wall-put {
+            font-size: 10px;
+            background: rgba(0, 208, 96, 0.25);
+            color: #00d060;
+            border: 1px solid #00d060;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+        }
+        .badge-itm {
+            font-size: 10px;
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        .badge-otm {
+            font-size: 10px;
+            color: #6e7681;
+        }
+        .badge-mp {
+            font-size: 10px;
+            background: rgba(210, 153, 34, 0.25);
+            color: #e3b341;
+            border: 1px solid #d29922;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+        .badge-atm {
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            border: 1px solid #8b949e;
+            padding: 2px 5px;
+            border-radius: 4px;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+    </style>
+    """
+
+    js_opcoes = r"""
+    <script>
+    function alternarGradeOpcoes(cod, sincronizarPlotly) {
+        var containers = document.querySelectorAll('.grade-contrato-container');
+        for (var i = 0; i < containers.length; i++) {
+            containers[i].style.display = 'none';
+        }
+        var alvo = document.getElementById('grade-' + cod);
+        if (alvo) {
+            alvo.style.display = 'block';
+        }
+
+        var botoes = document.querySelectorAll('.btn-contrato-opcoes');
+        for (var j = 0; j < botoes.length; j++) {
+            if (botoes[j].getAttribute('data-cod') === cod) {
+                botoes[j].classList.add('active');
+            } else {
+                botoes[j].classList.remove('active');
+            }
+        }
+
+        if (sincronizarPlotly) {
+            var gd = document.getElementsByClassName('plotly-graph-div')[0];
+            if (gd && gd._fullLayout && gd._fullLayout.updatemenus && gd._fullLayout.updatemenus[0]) {
+                var menu = gd._fullLayout.updatemenus[0];
+                for (var k = 0; k < menu.buttons.length; k++) {
+                    if (menu.buttons[k].label.indexOf(cod) !== -1) {
+                        Plotly.update(gd, menu.buttons[k].args[0], menu.buttons[k].args[1]);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // Sincronização quando o dropdown nativo do gráfico Plotly for alterado
+    document.addEventListener('DOMContentLoaded', function() {
+        var timerCheck = setInterval(function() {
+            var gd = document.getElementsByClassName('plotly-graph-div')[0];
+            if (gd && gd.on) {
+                clearInterval(timerCheck);
+                gd.on('plotly_restyle', function() {
+                    if (gd.data) {
+                        for (var i = 0; i < gd.data.length; i++) {
+                            if (gd.data[i].visible === true && gd.data[i].name) {
+                                var nome = gd.data[i].name;
+                                var match = nome.match(/CCM[FHKNUX]\d{2}/);
+                                if (match) {
+                                    alternarGradeOpcoes(match[0], false);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }, 200);
+    });
+    </script>
+    """
+
+    return card_html, css_opcoes, js_opcoes
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -926,17 +1455,20 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             </div>
         </div>
         """
+        grade_card_html, grade_css, grade_js = montar_html_grade_opcoes(validos)
+
         try:
             with open(output_html, "r", encoding="utf-8") as f:
                 conteudo = f.read()
             if "</head>" in conteudo:
-                conteudo = conteudo.replace("</head>", f"{css_profit}\n</head>")
+                conteudo = conteudo.replace("</head>", f"{css_profit}\n{grade_css}\n</head>")
             if "</body>" in conteudo:
-                conteudo = conteudo.replace("</body>", f"{tabela_html}\n</body>")
+                corpo_adicional = f"{grade_card_html}\n{tabela_html}\n{grade_js}"
+                conteudo = conteudo.replace("</body>", f"{corpo_adicional}\n</body>")
             with open(output_html, "w", encoding="utf-8") as f:
                 f.write(conteudo)
         except Exception as e:
-            print(f"Aviso ao anexar watchlist ao HTML: {e}")
+            print(f"Aviso ao anexar watchlist e grade de opções ao HTML: {e}")
 
     print(f"Gráfico interativo gerado com sucesso em: {output_html}")
 
