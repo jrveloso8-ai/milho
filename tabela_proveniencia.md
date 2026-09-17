@@ -62,3 +62,18 @@ Com base na execução sobre os dados reais da curva de contratos vivos em 17/09
 | **CCMN27** | 15/07/2027 | 59 | **ESTIMADO** | *Pendente* (faltam 41 pregões reais) | Call Wall: R$ 79,00 (1.242 contratos) \| Put Wall: R$ 72,75 (2.200 contratos) \| Max Pain: R$ 72,75 |
 | **CCMU27** | 15/09/2027 | 119 | **DERIVADO** | **19/08/2026** (100º pregão real) | Call Wall: R$ 80,00 (7.354 contratos) \| Put Wall: R$ 67,00 (5.724 contratos) \| Max Pain: R$ 74,00 |
 | **CCMX27** | 16/11/2027 | 41 | **ESTIMADO** | *Pendente* (faltam 59 pregões reais) | Call Wall: R$ 83,00 (6 contratos) \| Put Wall: R$ 68,00 (500 contratos) \| Max Pain: R$ 72,00 |
+
+---
+
+## 5. Proveniência da Watchlist (Curva CCM vs RTCNI Físico)
+
+Conforme especificado na seção 2.6b do prompt original, a Watchlist apresenta a lista de observação dos contratos vivos da curva CCM lado a lado com o preço físico do milho (RTCNI):
+
+| Campo da Watchlist | Origem dos Dados | Classificação | Justificativa / Rastreabilidade |
+| :--- | :--- | :--- | :--- |
+| **Último Fechamento CCM (R$)** | Close do dia mais recente com `is_sintetico=False` via BRAPI `/v2/futures/historical` | **MEDIDO** | Último preço de fechamento real e efetivamente negociado na B3 para o contrato CCM. |
+| **Preço RTCNI Físico (R$)** | `convergencia.analisar_convergencia()`, campo `rtcni_preco` | **MEDIDO** | Indicador físico Cepea/Esalq (RTCNI) obtido sem reimplementação, estritamente medido no mercado à vista. |
+| **Base / Spread (R$)** | Diferença aritmética simples (`Fechamento CCM - RTCNI`) | **DERIVADO** | Cálculo aritmético direto entre duas grandezas puramente medidas. |
+
+*Nota de Auditoria*: Nenhum indicador técnico, sinal de posição, interpolação ou cor de estado é aplicado na Watchlist. Todos os preços exibidos têm proveniência estritamente **MEDIDO**.
+

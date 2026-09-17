@@ -30,13 +30,15 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-# Ingestão e indicador (reaproveita módulos existentes sem alteração de regras)
+# Ingestão, convergência e indicador (reaproveita módulos existentes sem alteração)
 import ingestao_brapi as ib
+import convergencia
 import trix_v5
 
 SEED_FILE = os.path.join(os.path.dirname(__file__), "ccmfut_seed_2008_2026.csv")
 ARQUIVO_RESUMO_TXT = os.path.join(os.path.dirname(__file__), "resumo_trix_curva.txt")
 ARQUIVO_HTML = os.path.join(os.path.dirname(__file__), "ccm_trix_curva.html")
+PASTA_PROJETO = os.path.dirname(os.path.abspath(__file__))
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -302,19 +304,77 @@ def processar_contrato(
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 5. GERADOR DO RESUMO EM TEXTO (SEÇÃO 2.6)
+# 5. WATCHLIST E GERADOR DO RESUMO EM TEXTO (SEÇÃO 2.6 e 2.6b)
 # ══════════════════════════════════════════════════════════════════════════
 
-def gerar_resumo_texto(resultados: list) -> str:
+def montar_watchlist(resultados: list, pasta_projeto: str = PASTA_PROJETO) -> list:
     """
-    Gera o relatório formal em texto puro exigido pelo item 2.6.
+    Watchlist (Seção 2.6b): cada contrato vivo da curva CCM com seu último
+    fechamento REAL (Close do dia mais recente com is_sintetico=False) ao lado
+    do último fechamento do RTCNI (via convergencia.analisar_convergencia()).
+    Lista simples, sem indicador, sem cor de estado, proveniência MEDIDO para todos os valores.
+    """
+    dados_conv = convergencia.analisar_convergencia(pasta_projeto, preco_futuro=0.0)
+    rtcni_preco = dados_conv.get("rtcni_preco")
+    rtcni_data = str(dados_conv.get("rtcni_data", "N/D"))
+
+    watchlist = []
+    for r in resultados:
+        if not r.get("sucesso"):
+            continue
+        cod = r["codigo"]
+        venc = r["vencimento_iso"]
+        df_calc = r["df_calculado"]
+        reais = df_calc[~df_calc["is_sintetico"]]
+        if reais.empty:
+            continue
+        ult_real = reais.iloc[-1]
+        ccm_close = float(ult_real["Close"])
+        ccm_data = ult_real["Data"].strftime("%Y-%m-%d")
+        spread = round(ccm_close - rtcni_preco, 2) if rtcni_preco is not None else None
+
+        watchlist.append({
+            "contrato": cod,
+            "vencimento_iso": venc,
+            "ccm_close": ccm_close,
+            "ccm_data": ccm_data,
+            "rtcni_preco": rtcni_preco,
+            "rtcni_data": rtcni_data,
+            "spread_vs_rtcni": spread,
+            "prov_ccm": "MEDIDO",
+            "prov_rtcni": "MEDIDO",
+        })
+    return watchlist
+
+
+def gerar_resumo_texto(resultados: list, watchlist: list = None) -> str:
+    """
+    Gera o relatório formal em texto puro exigido pelos itens 2.6 e 2.6b.
     """
     linhas = []
     linhas.append("=" * 100)
     linhas.append("MILHO TRADER — RELATÓRIO TRIX v5 POR CONTRATO (CURVA CCM)")
     linhas.append(f"Gerado em: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Fonte Primária: BRAPI | Seed: 2008–2026")
     linhas.append("=" * 100)
-    linhas.append("")
+
+    # ── Bloco 2.6b: Watchlist Curva CCM vs RTCNI Físico ───────────────────────
+    if watchlist:
+        linhas.append("\n" + "=" * 100)
+        linhas.append("WATCHLIST — CURVA CCM vs FÍSICO (RTCNI) — PROVENIÊNCIA: MEDIDO (Seção 2.6b)")
+        linhas.append("Último fechamento real de cada contrato CCM contra último preço físico RTCNI (convergencia.py)")
+        linhas.append("-" * 100)
+        linhas.append(f"{'CONTRATO':<10} {'VENCIMENTO':<12} {'CCM REAL':<18} {'RTCNI FÍSICO':<18} {'SPREAD (FUT-FÍS)':<18} {'DATA CCM':<12} {'DATA RTCNI':<12}")
+        linhas.append("-" * 100)
+        for w in watchlist:
+            ccm_str = f"R$ {w['ccm_close']:.2f} [MEDIDO]"
+            rtcni_str = f"R$ {w['rtcni_preco']:.2f} [MEDIDO]" if w['rtcni_preco'] else "N/D"
+            spread_str = f"{w['spread_vs_rtcni']:+0.2f}" if w['spread_vs_rtcni'] is not None else "N/D"
+            linhas.append(f"{w['contrato']:<10} {w['vencimento_iso']:<12} {ccm_str:<18} {rtcni_str:<18} {spread_str:<18} {w['ccm_data']:<12} {w['rtcni_data']:<12}")
+        linhas.append("=" * 100 + "\n")
+
+    # ── Bloco 2.6: Resumo Técnico TRIX v5 e Opções por Contrato ───────────────
+    linhas.append("DETALHAMENTO TÉCNICO E PROVENIÊNCIA POR CONTRATO (Seção 2.6)")
+    linhas.append("-" * 100)
 
     for r in resultados:
         if not r.get("sucesso"):
@@ -361,7 +421,7 @@ def gerar_resumo_texto(resultados: list) -> str:
 # 6. GERADOR DO GRÁFICO INTERATIVO COM SELETOR (SEÇÃO 2.5 / MOCKUP VALIDADO)
 # ══════════════════════════════════════════════════════════════════════════
 
-def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML):
+def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, watchlist: list = None):
     """
     Gera gráfico interativo standalone em HTML utilizando Plotly,
     replicando com fidelidade visual o mockup aprovado em mockup_ccm_trix_selecao_contrato.html:
@@ -372,6 +432,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML):
       - Marcadores de Entrada COMPRA (triângulo verde para cima) e Entrada VENDA (triângulo vermelho para baixo).
       - Linhas horizontais destacadas para Call Wall, Put Wall (com contratos em aberto) e Max Pain.
       - Seletor de contrato via dropdown menu (updatemenus).
+      - Tabela visual de Watchlist (Seção 2.6b) no rodapé do documento.
     """
     validos = [r for r in resultados if r.get("sucesso")]
     if not validos:
@@ -495,7 +556,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML):
             cw_label = f"Call Wall R$ {op['call_wall']:.2f} — {op['call_wall_oi']:,} contratos"
             t_cw = go.Scatter(
                 x=[datas.iloc[0], datas.iloc[-1]],
-                y=[op["call_wall"], op["call_wall"],],
+                y=[op["call_wall"], op["call_wall"]],
                 mode="lines",
                 name=cw_label,
                 line={"color": "#f85149", "dash": "dash", "width": 1.4},
@@ -534,7 +595,6 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML):
         n_traces_este = len(contrato_traces)
 
         # Botão para o dropdown
-        # Define máscara de visibilidade booleana para todos os traces do gráfico
         btn_label = f"{cod}  ·  venc. {venc}"
         if not op["disponivel"]:
             btn_label += "  (sem OI de opções)"
@@ -543,7 +603,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML):
             "label": btn_label,
             "method": "update",
             "args": [
-                {"visible": []},  # Preenchido após saber o total de traces
+                {"visible": []},
                 {"title": f"MILHO TRADER · TRIX v5 (cor = estado, PaintBar NTSL) · Contrato: {cod}"},
             ],
             "_start": trace_offset,
@@ -602,6 +662,65 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML):
 
     fig = go.Figure(data=all_traces, layout=layout)
     fig.write_html(output_html, config={"responsive": True})
+
+    # Injeta a tabela visual de Watchlist no HTML gerado
+    if watchlist:
+        linhas_tr = []
+        for w in watchlist:
+            ccm_str = f"R$ {w['ccm_close']:.2f}"
+            rtcni_str = f"R$ {w['rtcni_preco']:.2f}" if w["rtcni_preco"] else "N/D"
+            sp = w["spread_vs_rtcni"]
+            cor_sp = "#3fb950" if sp and sp > 0 else ("#f85149" if sp and sp < 0 else "#c9d1d9")
+            sp_str = f"{sp:+0.2f}" if sp is not None else "N/D"
+            linhas_tr.append(
+                f"<tr style='border-bottom: 1px solid #21262d;'>"
+                f"<td style='padding: 10px; font-weight: 600; color: #58a6ff;'>{w['contrato']}</td>"
+                f"<td style='padding: 10px; color: #8b949e;'>{w['vencimento_iso']}</td>"
+                f"<td style='padding: 10px;'>{ccm_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_ccm']}]</span></td>"
+                f"<td style='padding: 10px;'>{rtcni_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_rtcni']}]</span></td>"
+                f"<td style='padding: 10px; font-weight: 600; color: {cor_sp};'>{sp_str}</td>"
+                f"<td style='padding: 10px; color: #8b949e;'>{w['ccm_data']}</td>"
+                f"<td style='padding: 10px; color: #8b949e;'>{w['rtcni_data']}</td>"
+                f"</tr>"
+            )
+        corpo_tabela = "\n".join(linhas_tr)
+        tabela_html = f"""
+        <div style="max-width: 1200px; margin: 24px auto; padding: 20px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; font-family: 'Inter', sans-serif; color: #e6edf3;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 12px; margin-bottom: 16px;">
+                <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #f0f6fc;">WATCHLIST — Curva CCM vs Físico RTCNI (Seção 2.6b)</h3>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #8b949e;">Último fechamento real medido por contrato contra indicador físico ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO.</p>
+                </div>
+                <span style="background: #238636; color: #fff; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">PROVENIÊNCIA: MEDIDO</span>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'JetBrains Mono', monospace; text-align: left;">
+                <thead>
+                    <tr style="border-bottom: 1px solid #30363d; color: #8b949e; font-size: 11px; text-transform: uppercase;">
+                        <th style="padding: 8px 10px;">Contrato</th>
+                        <th style="padding: 8px 10px;">Vencimento</th>
+                        <th style="padding: 8px 10px;">CCM Real</th>
+                        <th style="padding: 8px 10px;">RTCNI (Físico)</th>
+                        <th style="padding: 8px 10px;">Spread (Fut-Fís)</th>
+                        <th style="padding: 8px 10px;">Data CCM</th>
+                        <th style="padding: 8px 10px;">Data RTCNI</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {corpo_tabela}
+                </tbody>
+            </table>
+        </div>
+        """
+        try:
+            with open(output_html, "r", encoding="utf-8") as f:
+                conteudo = f.read()
+            if "</body>" in conteudo:
+                conteudo = conteudo.replace("</body>", f"{tabela_html}\n</body>")
+                with open(output_html, "w", encoding="utf-8") as f:
+                    f.write(conteudo)
+        except Exception as e:
+            print(f"Aviso ao anexar watchlist ao HTML: {e}")
+
     print(f"Gráfico interativo gerado com sucesso em: {output_html}")
 
 
@@ -645,17 +764,21 @@ def executar():
             u = res["ultimo_bar"]
             print(f"     Close: R$ {u['close']:.2f} [{u['prov_close']}] | Pos: {u['posicao']} [{u['prov_posicao']}] | SMA100: {u['sma100']:.2f}")
 
-    # 5. Gerar resumo em texto simples
-    resumo_texto = gerar_resumo_texto(resultados)
+    # 5. Montar Watchlist (Seção 2.6b)
+    print("\nMontando Watchlist (Curva CCM vs Físico RTCNI)...")
+    watchlist = montar_watchlist(resultados, PASTA_PROJETO)
+
+    # 6. Gerar resumo em texto simples
+    resumo_texto = gerar_resumo_texto(resultados, watchlist=watchlist)
     print("\n" + resumo_texto)
 
     with open(ARQUIVO_RESUMO_TXT, "w", encoding="utf-8") as f:
         f.write(resumo_texto)
     print(f"\nResumo gravado em: {ARQUIVO_RESUMO_TXT}")
 
-    # 6. Gerar gráfico interativo com seletor
-    print("\nGerando gráfico interativo com seletor de contratos...")
-    gerar_grafico_interativo(resultados, ARQUIVO_HTML)
+    # 7. Gerar gráfico interativo com seletor
+    print("\nGerando gráfico interativo com seletor de contratos e Watchlist...")
+    gerar_grafico_interativo(resultados, ARQUIVO_HTML, watchlist=watchlist)
 
     print("\nProcessamento concluído com sucesso.")
 
