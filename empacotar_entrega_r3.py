@@ -50,6 +50,8 @@ def criar_pacote_zip():
                 continue
 
             for file in files:
+                if file.startswith("~$") or file.endswith(".tmp") or file.endswith(".zip"):
+                    continue
                 caminho_completo = os.path.join(root, file)
                 caminho_relativo = os.path.relpath(caminho_completo, PASTA_PROJETO)
                 zf.write(caminho_completo, caminho_relativo)
