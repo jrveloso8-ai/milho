@@ -545,13 +545,119 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         overflow: hidden;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
         height: 100%;
+        display: flex;
+        flex-direction: column;
         box-sizing: border-box;
     }
 
-    .profit-card {
-        max-width: 1560px !important;
-        margin: 24px auto !important;
-        box-sizing: border-box;
+    .chart-main-container .plotly-graph-div {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+    }
+
+    /* ── BARRA SUPERIOR DE CONTRATOS (MOBILE-FIRST) ─────────────────── */
+    .chart-contract-pills-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        background: #151924;
+        border-bottom: 1px solid #232a38;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pills-label {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 11px;
+        font-weight: 800;
+        color: #8b949e;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+    .pills-scroll-wrapper {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .btn-top-contract {
+        background: #1c2230;
+        color: #9ba7b7;
+        border: 1px solid #2d374a;
+        border-radius: 6px;
+        padding: 6px 13px;
+        font-family: Consolas, monospace;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    .btn-top-contract:hover {
+        background: #252e42;
+        color: #ffffff;
+        border-color: #3f4e6b;
+    }
+    .btn-top-contract.active {
+        background: #1f6feb !important;
+        color: #ffffff !important;
+        border-color: #58a6ff !important;
+        box-shadow: 0 0 10px rgba(31, 111, 235, 0.45);
+    }
+
+    /* ── BARRA DE LEGENDAS EM CHIPS (ELIMINA SOBREPOSIÇÃO NO GRÁFICO) ── */
+    .chart-legend-chips-container {
+        background: #12151d;
+        border-top: 1px solid #1c222e;
+        padding: 9px 14px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .chart-legend-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    .legend-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #cad5e2;
+        background: #171b26;
+        padding: 3px 9px;
+        border-radius: 4px;
+        border: 1px solid #232b3a;
+        white-space: nowrap;
+    }
+    .chip-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+
+    /* ── LIBERAÇÃO DE SCROLL TOUCH VERTICAL SOBRE O PLOTLY ───────────── */
+    .plotly-graph-div,
+    .plotly-graph-div .draglayer,
+    .plotly-graph-div .nsewdrag,
+    .plotly-graph-div .drag,
+    .plotly-graph-div .plot-container,
+    .plotly-graph-div svg.main-svg,
+    .plotly-graph-div .svg-container {
+        touch-action: pan-y !important;
+    }
+
+    html, body {
+        touch-action: pan-y !important;
+        -webkit-overflow-scrolling: touch !important;
+        overflow-x: hidden !important;
     }
 
     /* ── RESPONSIVIDADE MULTI-DISPOSITIVO (TABLET E MOBILE) ────────────── */
@@ -563,17 +669,17 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             gap: 16px !important;
         }
         .chart-main-container {
-            order: 1 !important; /* Gráfico em destaque no topo no Mobile/Tablet */
+            order: 1 !important; /* Gráfico no topo no Tablet */
             width: 100% !important;
-            height: 560px !important;
-            min-height: 520px !important;
+            height: auto !important;
+            min-height: 540px !important;
         }
         .plotly-graph-div {
-            height: 100% !important;
+            height: 500px !important;
             width: 100% !important;
         }
         .news-sidebar {
-            order: 2 !important; /* Feed de Notícias abaixo do gráfico */
+            order: 2 !important; /* Feed de Notícias abaixo */
             width: 100% !important;
             min-width: 100% !important;
             max-width: 100% !important;
@@ -594,7 +700,7 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
 
     @media (max-width: 768px) {
         body {
-            padding: 8px 6px 32px 6px !important;
+            padding: 8px 6px 36px 6px !important;
         }
         .dashboard-outer-container {
             gap: 12px !important;
@@ -602,10 +708,39 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             padding: 0 !important;
         }
         .chart-main-container {
-            height: 520px !important;
+            height: auto !important;
             min-height: 480px !important;
             border-radius: 8px !important;
         }
+        .plotly-graph-div {
+            height: 460px !important;
+            min-height: 440px !important;
+        }
+
+        /* REMOVE TOTALMENTE A LEGENDA SVG DO PLOTLY NO MOBILE — ZERO SOBREPOSIÇÃO */
+        .plotly-graph-div .legend {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        .chart-contract-pills-bar {
+            padding: 8px 10px !important;
+            gap: 8px !important;
+        }
+        .btn-top-contract {
+            padding: 5px 10px !important;
+            font-size: 11px !important;
+        }
+        .chart-legend-chips-container {
+            padding: 8px 10px !important;
+        }
+        .legend-chip {
+            font-size: 10px !important;
+            padding: 2px 7px !important;
+        }
+
         .news-sidebar {
             height: 380px !important;
             border-radius: 8px !important;
@@ -614,26 +749,54 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             height: 46px !important;
             min-height: 46px !important;
         }
+
         .profit-card {
             margin: 12px 0 !important;
             border-radius: 8px !important;
             width: 100% !important;
         }
         .profit-card-header {
-            padding: 10px 12px !important;
+            padding: 12px 14px !important;
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 6px !important;
+            gap: 8px !important;
+        }
+        .profit-card-header > div:last-child {
+            width: 100%;
+            display: flex;
+            justify-content: flex-start;
         }
         .profit-title-text {
-            font-size: 13px !important;
+            font-size: 14px !important;
+            line-height: 1.3 !important;
         }
         .profit-subtitle {
             font-size: 11px !important;
+            line-height: 1.4 !important;
+        }
+
+        /* TABELAS 100% RESPONSIVAS COM SCROLL HORIZONTAL FLUIDO */
+        .table-scroll-container {
+            width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
+        }
+        .mobile-table-hint {
+            display: block !important;
+        }
+        .profit-table {
+            min-width: 760px !important;
+            width: 100% !important;
+            white-space: nowrap !important;
         }
         .profit-table th, .profit-table td {
-            padding: 9px 10px !important;
+            padding: 10px 12px !important;
             font-size: 12px !important;
+            white-space: nowrap !important;
+        }
+        .opcoes-table {
+            min-width: 860px !important;
+            width: 100% !important;
             white-space: nowrap !important;
         }
         .opcoes-table th, .opcoes-table td {
@@ -641,25 +804,38 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             font-size: 11px !important;
             white-space: nowrap !important;
         }
+
+        /* GRADE KPI EM CARDS MODERNOS (2 COLUNAS) NO MOBILE */
         .grade-kpi-bar {
-            padding: 8px 10px !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
             gap: 8px !important;
-            overflow-x: auto !important;
+            padding: 10px 12px !important;
         }
         .grade-kpi-item {
-            min-width: 100px !important;
+            background: #161a24 !important;
+            border: 1px solid #232b3b !important;
+            border-radius: 6px !important;
+            padding: 8px 10px !important;
+            min-width: 0 !important;
+        }
+        .grade-kpi-item .kpi-title {
+            font-size: 10px !important;
+            letter-spacing: 0.3px !important;
         }
         .grade-kpi-item .kpi-val {
-            font-size: 11px !important;
+            font-size: 12px !important;
         }
+
         .opcoes-nav {
-            padding: 6px 8px !important;
-            gap: 4px !important;
+            padding: 8px 10px !important;
+            gap: 6px !important;
             overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch !important;
         }
         .btn-contrato-opcoes {
-            padding: 5px 8px !important;
-            font-size: 10px !important;
+            padding: 6px 10px !important;
+            font-size: 11px !important;
             white-space: nowrap !important;
         }
     }
@@ -680,6 +856,15 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         }, 310);
     }
 
+    function desbloquearTouchScroll() {
+        var gd = document.getElementsByClassName('plotly-graph-div')[0];
+        if (!gd) return;
+        var targets = gd.querySelectorAll('.draglayer, .nsewdrag, .drag, svg.main-svg, .plot-container, .svg-container');
+        for (var i = 0; i < targets.length; i++) {
+            targets[i].style.setProperty('touch-action', 'pan-y', 'important');
+        }
+    }
+
     function ajustarGraficoMobile() {
         var gd = document.getElementsByClassName('plotly-graph-div')[0];
         if (!gd || !window.Plotly) return;
@@ -687,9 +872,9 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         var isMobile = w <= 768;
         var isTablet = w <= 1080 && w > 768;
         
-        var targetHeight = isMobile ? 520 : (isTablet ? 600 : 720);
+        var targetHeight = isMobile ? 460 : (isTablet ? 560 : 700);
         var targetMargin = isMobile 
-            ? { l: 8, r: 42, t: 40, b: 24, pad: 0 }
+            ? { l: 8, r: 40, t: 24, b: 20, pad: 0 }
             : { l: 16, r: 50, t: 40, b: 30, pad: 0 };
             
         try {
@@ -698,15 +883,16 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
                 margin: targetMargin,
                 'yaxis.tickfont.size': isMobile ? 10 : 12,
                 'xaxis.tickfont.size': isMobile ? 9 : 11,
-                'legend.y': isMobile ? -0.16 : -0.12,
-                'legend.font.size': isMobile ? 9 : 11
+                showlegend: !isMobile
             });
             Plotly.Plots.resize(gd);
+            desbloquearTouchScroll();
         } catch(e) {}
     }
 
     if (document.readyState === 'complete') {
         ajustarGraficoMobile();
+        desbloquearTouchScroll();
     } else {
         window.addEventListener('DOMContentLoaded', function() {
             if (window.innerWidth <= 1080) {
@@ -715,10 +901,16 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
                     sb.classList.add('collapsed');
                 }
             }
-            setTimeout(ajustarGraficoMobile, 150);
+            setTimeout(function() {
+                ajustarGraficoMobile();
+                desbloquearTouchScroll();
+            }, 150);
         });
         window.addEventListener('load', function() {
-            setTimeout(ajustarGraficoMobile, 350);
+            setTimeout(function() {
+                ajustarGraficoMobile();
+                desbloquearTouchScroll();
+            }, 350);
         });
     }
 
@@ -728,10 +920,14 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             Plotly.Plots.resize(gd);
         }
         ajustarGraficoMobile();
+        desbloquearTouchScroll();
     });
 
     window.addEventListener('orientationchange', function() {
-        setTimeout(ajustarGraficoMobile, 250);
+        setTimeout(function() {
+            ajustarGraficoMobile();
+            desbloquearTouchScroll();
+        }, 250);
     });
 
     function filtrarNoticias(cat, el) {

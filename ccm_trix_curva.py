@@ -690,7 +690,10 @@ def montar_html_grade_opcoes(resultados: list) -> tuple:
 
             tabela_corpo = "\n".join(linhas_grade)
             corpo_conteudo = f"""
-            <div style="overflow-x: auto; max-height: 560px; overflow-y: auto;">
+            <div class="table-scroll-container" style="max-height: 560px; overflow-y: auto;">
+                <div class="mobile-table-hint">
+                    <span>⇄ Deslize horizontalmente para navegar na grade completa</span>
+                </div>
                 <table class="opcoes-table">
                     <thead>
                         <tr>
@@ -974,6 +977,15 @@ def montar_html_grade_opcoes(resultados: list) -> tuple:
                 botoes[j].classList.add('active');
             } else {
                 botoes[j].classList.remove('active');
+            }
+        }
+
+        var botoesTop = document.querySelectorAll('.btn-top-contract');
+        for (var t = 0; t < botoesTop.length; t++) {
+            if (botoesTop[t].getAttribute('data-cod') === cod) {
+                botoesTop[t].classList.add('active');
+            } else {
+                botoesTop[t].classList.remove('active');
             }
         }
 
@@ -1396,7 +1408,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
     )
 
     fig = go.Figure(data=all_traces, layout=layout)
-    fig.write_html(output_html, config={"responsive": True})
+    fig.write_html(output_html, config={"responsive": True, "scrollZoom": False})
 
     # Injeta estilização visual Profit e tabela visual de Watchlist no HTML gerado
     if watchlist:
@@ -1533,7 +1545,10 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                     <span style="background: #1f6feb; color: #ffffff; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">PROVENIÊNCIA: MEDIDO</span>
                 </div>
             </div>
-            <div style="overflow-x: auto;">
+            <div class="table-scroll-container">
+                <div class="mobile-table-hint">
+                    <span>⇄ Deslize horizontalmente para ver todos os dados da curva</span>
+                </div>
                 <table class="profit-table">
                     <thead>
                         <tr>
@@ -1571,12 +1586,48 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                 m_plotly = re.search(r'(<div[^>]*class=["\']plotly-graph-div["\'][^>]*>[\s\S]*?</script>\s*</div>)', conteudo)
                 if m_plotly:
                     bloco_plotly = m_plotly.group(1)
+                    codigos_vivos = [r["codigo"] for r in validos]
+                    pills_btns = []
+                    for idx, c_cod in enumerate(codigos_vivos):
+                        cls_act = "active" if idx == 0 else ""
+                        pills_btns.append(
+                            f'<button class="btn-top-contract {cls_act}" data-cod="{c_cod}" '
+                            f'onclick="alternarGradeOpcoes(\'{c_cod}\', true)">{c_cod}</button>'
+                        )
+                    pills_html = "".join(pills_btns)
+
+                    top_bar_html = (
+                        f'<div class="chart-contract-pills-bar">\n'
+                        f'    <span class="pills-label">CONTRATO B3:</span>\n'
+                        f'    <div class="pills-scroll-wrapper">\n'
+                        f'        {pills_html}\n'
+                        f'    </div>\n'
+                        f'</div>'
+                    )
+
+                    legend_chips_html = (
+                        f'<div class="chart-legend-chips-container">\n'
+                        f'    <div class="chart-legend-chips">\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #00d060;"></span>Candle Alta</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #ff3b30;"></span>Candle Baixa</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #ffffff;"></span>SMA 100 (VTend)</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #ff00ff; border: 1px dashed #ff00ff;"></span>RTCNI (ESALQ)</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #ff3b30; border-radius: 2px;"></span>Call Wall</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #00d060; border-radius: 2px;"></span>Put Wall</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #00e5ff;"></span>TRIX v5</span>\n'
+                        f'        <span class="legend-chip"><span class="chip-dot" style="background: #ff9100;"></span>Sinal (9)</span>\n'
+                        f'    </div>\n'
+                        f'</div>'
+                    )
+
                     bloco_com_feed = (
                         f'<div class="dashboard-outer-container">\n'
                         f'    <div class="chart-and-news-wrapper">\n'
                         f'        {sidebar_html}\n'
                         f'        <div class="chart-main-container">\n'
+                        f'            {top_bar_html}\n'
                         f'            {bloco_plotly}\n'
+                        f'            {legend_chips_html}\n'
                         f'        </div>\n'
                         f'    </div>\n'
                         f'</div>'
