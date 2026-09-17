@@ -63,18 +63,18 @@ def main():
     # 4.1 Validação do Portão de Auditoria Oficial (Árvore limpa garantida)
     executar_comando("cmd /c portao_auditoria.bat", "4/5 (b): Validando Portão de Auditoria Oficial")
 
-    # 5. Push para GitHub (Master e Main)
-    print("\n>> 5/5: Publicando no GitHub e disparando Vercel...")
+    # 5. Push para GitHub (Master e Main) e Deploy Vercel
+    print("\n>> 5/5: Publicando no GitHub e na Vercel...")
     remotes = subprocess.check_output("git remote -v", cwd=PASTA_PROJETO, shell=True, text=True).strip()
     if "origin" in remotes:
         executar_comando("git push origin master", "Enviando branch master para o GitHub", obrigatorio=False)
         executar_comando("git push origin master:main", "Sincronizando branch main para a Vercel", obrigatorio=False)
-        print("\n[SUCESSO] Código enviado para o GitHub com sucesso (master e main)!")
-        print(" -> Se você já importou este repositório na Vercel, o deploy está sendo executado automaticamente.")
-        print(" -> Se é a PRIMEIRA VEZ: acesse https://vercel.com/new, importe 'jrveloso8-ai/milho' e clique em 'Deploy'.")
-        print("    (Depois de importar uma única vez, todos os próximos envios da bat serão 100% automáticos!)")
+        print("\n[OK] Código enviado para o GitHub com sucesso (master e main)!")
     else:
-        print("\n[AVISO] Nenhum remote 'origin' configurado. Configure com 'git remote add origin ...'")
+        print("\n[AVISO] Nenhum remote 'origin' configurado.")
+
+    # 5.1 Deploy direto na Vercel via CLI
+    executar_comando("vercel --prod", "Publicando diretamente na Vercel (Produção)")
 
     print("\n" + "=" * 70)
     print(" PROCESSO CONCLUÍDO COM SUCESSO! DASHBOARD NO AR.")

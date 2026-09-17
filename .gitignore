@@ -53,3 +53,6 @@ ehthumbs.db
 scratch/
 *.tmp
 *.zip
+
+.vercel
+.env*
