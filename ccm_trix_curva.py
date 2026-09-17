@@ -1357,16 +1357,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             "tickformat": ".2f",
             "tickfont": {"size": 12, "color": "#cad5e2"},
         },
-        legend={
-            "font": {"color": "#cad5e2", "size": 11},
-            "orientation": "h",
-            "y": 1.1,
-            "x": 0.5,
-            "xanchor": "center",
-            "bgcolor": "rgba(19, 22, 28, 0.8)",
-            "bordercolor": "#2a313d",
-            "borderwidth": 1,
-        },
+        showlegend=False,
         updatemenus=[{
             "buttons": buttons,
             "direction": "down",
@@ -1583,9 +1574,10 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                 pass
 
             if sidebar_html:
-                m_plotly = re.search(r'(<div[^>]*class=["\']plotly-graph-div["\'][^>]*>[\s\S]*?</script>\s*</div>)', conteudo)
+                m_plotly = re.search(r'(<div[^>]*class=["\']plotly-graph-div["\'][^>]*>[\s\S]*?</script>)(\s*</div>)', conteudo)
                 if m_plotly:
-                    bloco_plotly = m_plotly.group(1)
+                    bloco_plotly_inner = m_plotly.group(1)
+                    close_outer = m_plotly.group(2)
                     codigos_vivos = [r["codigo"] for r in validos]
                     pills_btns = []
                     for idx, c_cod in enumerate(codigos_vivos):
@@ -1626,13 +1618,15 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                         f'        {sidebar_html}\n'
                         f'        <div class="chart-main-container">\n'
                         f'            {top_bar_html}\n'
-                        f'            {bloco_plotly}\n'
+                        f'            <div class="plotly-wrapper-inner">\n'
+                        f'                {bloco_plotly_inner}\n'
+                        f'            </div>\n'
                         f'            {legend_chips_html}\n'
                         f'        </div>\n'
                         f'    </div>\n'
-                        f'</div>'
+                        f'</div>{close_outer}'
                     )
-                    conteudo = conteudo.replace(bloco_plotly, bloco_com_feed)
+                    conteudo = conteudo[:m_plotly.start()] + bloco_com_feed + conteudo[m_plotly.end():]
 
             meta_viewport = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">

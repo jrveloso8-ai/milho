@@ -566,6 +566,7 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         border-bottom: 1px solid #232a38;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        flex-shrink: 0;
     }
     .pills-label {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -615,6 +616,7 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         padding: 9px 14px;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        flex-shrink: 0;
     }
     .chart-legend-chips {
         display: flex;
@@ -641,6 +643,31 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         border-radius: 50%;
         display: inline-block;
         flex-shrink: 0;
+    }
+
+    /* ── ELIMINAÇÃO TOTAL DA LEGENDA SVG INTERNA EM TODAS AS RESOLUÇÕES ── */
+    .plotly-graph-div .legend {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+
+    /* ── WRAPPER INTERNO DO PLOTLY PARA OCUPAR 100% DO DESKTOP ──────── */
+    .plotly-wrapper-inner {
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    .plotly-wrapper-inner .plotly-graph-div {
+        flex: 1;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
     }
 
     /* ── LIBERAÇÃO DE SCROLL TOUCH VERTICAL SOBRE O PLOTLY ───────────── */
