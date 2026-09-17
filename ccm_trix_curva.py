@@ -1581,13 +1581,26 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                     )
                     conteudo = conteudo.replace(bloco_plotly, bloco_com_feed)
 
+            meta_viewport = """
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#0b0d11">
+    <title>Milho Trader — Curva CCM, TRIX v5 & Opções</title>
+"""
             if "</head>" in conteudo:
-                conteudo = conteudo.replace("</head>", f"{css_profit}\n{grade_css}\n{css_feed}\n</head>")
+                conteudo = conteudo.replace("</head>", f"{meta_viewport}\n{css_profit}\n{grade_css}\n{css_feed}\n</head>")
             if "</body>" in conteudo:
                 corpo_adicional = f"{tabela_html}\n{grade_card_html}\n{grade_js}\n{js_feed}"
                 conteudo = conteudo.replace("</body>", f"{corpo_adicional}\n</body>")
             with open(output_html, "w", encoding="utf-8") as f:
                 f.write(conteudo)
+
+            # Sincroniza index.html na raiz do projeto para deploy direto na Vercel
+            caminho_index = os.path.join(PASTA_PROJETO, "index.html")
+            try:
+                with open(caminho_index, "w", encoding="utf-8") as f_idx:
+                    f_idx.write(conteudo)
+            except Exception as e_idx:
+                print(f"Aviso ao sincronizar index.html para Vercel: {e_idx}")
         except Exception as e:
             print(f"Aviso ao anexar watchlist e grade de opções ao HTML: {e}")
 

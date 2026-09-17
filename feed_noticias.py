@@ -216,7 +216,7 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
 
         <div class="news-status-bar">
             <span id="newsStatusText">Atualização Horária &bull; Monitorando CEPEA/CONAB/USDA</span>
-            <button class="news-refresh-btn" onclick="simularAtualizacaoHora()">&#8635; Atualizar</button>
+            <button class="news-refresh-btn" onclick="atualizarFeedHorario()">&#8635; Atualizar</button>
         </div>
 
         <div class="news-tabs">
@@ -553,6 +553,87 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         margin: 24px auto !important;
         box-sizing: border-box;
     }
+
+    /* ── RESPONSIVIDADE MULTI-DISPOSITIVO (TABLET E MOBILE) ────────────── */
+    @media (max-width: 1080px) {
+        .chart-and-news-wrapper {
+            flex-direction: column !important;
+            height: auto !important;
+        }
+        .news-sidebar {
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+            height: 380px !important;
+        }
+        .news-sidebar.collapsed {
+            height: 52px !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            max-width: 100% !important;
+        }
+        .news-sidebar.collapsed .news-header {
+            flex-direction: row !important;
+            justify-content: space-between !important;
+            padding: 12px 16px !important;
+        }
+        .chart-main-container {
+            width: 100% !important;
+            height: 600px !important;
+        }
+        .plotly-graph-div {
+            height: 600px !important;
+        }
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding: 8px 8px 32px 8px !important;
+        }
+        .dashboard-outer-container {
+            gap: 16px !important;
+        }
+        .profit-card {
+            margin: 14px auto !important;
+            border-radius: 8px !important;
+        }
+        .profit-card-header {
+            padding: 12px 14px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+        }
+        .profit-title-text {
+            font-size: 14px !important;
+        }
+        .profit-subtitle {
+            font-size: 11px !important;
+        }
+        .chart-main-container {
+            height: 480px !important;
+        }
+        .plotly-graph-div {
+            height: 480px !important;
+        }
+        .news-sidebar {
+            height: 340px !important;
+        }
+        .grade-kpi-bar {
+            padding: 10px 12px !important;
+            gap: 12px !important;
+        }
+        .grade-kpi-item .kpi-val {
+            font-size: 12px !important;
+        }
+        .opcoes-nav {
+            padding: 8px 10px !important;
+            gap: 6px !important;
+        }
+        .btn-contrato-opcoes {
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+        }
+    }
     </style>
     """
 
@@ -569,6 +650,13 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             }
         }, 310);
     }
+
+    window.addEventListener('resize', function() {
+        var gd = document.getElementsByClassName('plotly-graph-div')[0];
+        if (gd && window.Plotly) {
+            Plotly.Plots.resize(gd);
+        }
+    });
 
     function filtrarNoticias(cat, el) {
         document.querySelectorAll('.news-tab').forEach(t => t.classList.remove('active'));
@@ -603,18 +691,24 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         });
     }
 
-    function simularAtualizacaoHora() {
+    function atualizarFeedHorario() {
         const btn = document.querySelector('.news-refresh-btn');
         const statusText = document.getElementById('newsStatusText');
-        btn.innerHTML = '&#8635; Atualizando...';
-        btn.style.opacity = '0.5';
+        if (btn) {
+            btn.innerHTML = '&#8635; Atualizando...';
+            btn.style.opacity = '0.5';
+        }
         setTimeout(() => {
-            btn.innerHTML = '&#8635; Atualizar';
-            btn.style.opacity = '1';
+            if (btn) {
+                btn.innerHTML = '&#8635; Atualizar';
+                btn.style.opacity = '1';
+            }
             const agora = new Date();
             const horaStr = agora.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'});
-            statusText.innerText = `Atualizado agora (${horaStr}) &bull; Próx. em 60 min`;
-        }, 600);
+            if (statusText) {
+                statusText.innerHTML = `Feed online (${horaStr}) &bull; Monitorando 24/7`;
+            }
+        }, 400);
     }
     </script>
     """

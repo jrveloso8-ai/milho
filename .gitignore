@@ -17,4 +17,7 @@ __pycache__/
 
 # Scratch e temporários
 scratch/
+*.tmp
+.pytest_cache/
+
 
