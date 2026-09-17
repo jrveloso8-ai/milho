@@ -330,6 +330,8 @@ def processar_contrato(
             "max_pain": max_pain,
             "total_calls": sum(calls.values()),
             "total_puts": sum(puts.values()),
+            "calls": calls,
+            "puts": puts,
             "grade": grade,
             "meta": oi_dados.get("meta"),
             "preco_ref": preco_ref,
@@ -474,7 +476,55 @@ def gerar_resumo_texto(resultados: list, watchlist: list = None) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════
-# 5b. GERADOR DA GRADE DE OPÇÕES POR CONTRATO (CALLS E PUTS ABERTAS)
+# 5b. SELEÇÃO DE OPÇÕES A 2 DESVIOS-PADRÃO (TOP 3 CALLS / TOP 3 PUTS)
+# ══════════════════════════════════════════════════════════════════════════
+
+def selecionar_top_opcoes_desvio(
+    df_calc: pd.DataFrame,
+    op: dict,
+    close_ref: float,
+    n_desvios: float = 2.0,
+    top_n: int = 3,
+) -> tuple:
+    """
+    Identifica as top N Calls e top N Puts com maior volume em aberto (OI)
+    cujos strikes estejam dentro da faixa de n_desvios desvios-padrão do preço de fechamento.
+    Utiliza a janela móvel de até 100 pregões reais (P_TREND do TRIX v5) para calcular o desvio padrão.
+    """
+    reais = df_calc[~df_calc["is_sintetico"]]
+    if reais.empty or not op.get("disponivel"):
+        return [], []
+
+    janela_std = min(len(reais), trix_v5.P_TREND)
+    std_val = float(reais["Close"].tail(janela_std).std(ddof=1))
+    if pd.isna(std_val) or std_val <= 0:
+        std_val = 2.0
+
+    limite_inf = close_ref - (n_desvios * std_val)
+    limite_sup = close_ref + (n_desvios * std_val)
+
+    calls = op.get("calls") or {}
+    puts = op.get("puts") or {}
+
+    calls_f = [
+        {"strike": float(s), "oi": int(oi), "tipo": "call"}
+        for s, oi in calls.items()
+        if limite_inf <= float(s) <= limite_sup and oi > 0
+    ]
+    calls_f.sort(key=lambda x: x["oi"], reverse=True)
+
+    puts_f = [
+        {"strike": float(s), "oi": int(oi), "tipo": "put"}
+        for s, oi in puts.items()
+        if limite_inf <= float(s) <= limite_sup and oi > 0
+    ]
+    puts_f.sort(key=lambda x: x["oi"], reverse=True)
+
+    return calls_f[:top_n], puts_f[:top_n]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 5c. GERADOR DA GRADE DE OPÇÕES POR CONTRATO (CALLS E PUTS ABERTAS)
 # ══════════════════════════════════════════════════════════════════════════
 
 def montar_html_grade_opcoes(resultados: list) -> tuple:
@@ -1185,6 +1235,45 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                 visible=(idx_contrato == 0),
             )
             contrato_traces.append(t_mp)
+
+        # Top 3 Calls e Top 3 Puts com maior volume a 2 desvios-padrão do fechamento
+        top_calls, top_puts = selecionar_top_opcoes_desvio(
+            df_plot, op, close_ref=float(df_plot["Close"].iloc[-1])
+        )
+
+        for c_i, c_opt in enumerate(top_calls):
+            c_strike = c_opt["strike"]
+            c_oi = c_opt["oi"]
+            if op.get("call_wall") is not None and abs(c_strike - float(op["call_wall"])) < 0.001:
+                continue
+            c_lbl = f"Top {c_i + 1} Call R$ {c_strike:.2f} — {c_oi:,} contratos"
+            t_c = go.Scatter(
+                x=[datas.iloc[0], datas.iloc[-1]],
+                y=[c_strike, c_strike],
+                mode="lines",
+                name=c_lbl,
+                line={"color": "#38bdf8", "dash": "dashdot", "width": 1.1},
+                showlegend=True,
+                visible=(idx_contrato == 0),
+            )
+            contrato_traces.append(t_c)
+
+        for p_i, p_opt in enumerate(top_puts):
+            p_strike = p_opt["strike"]
+            p_oi = p_opt["oi"]
+            if op.get("put_wall") is not None and abs(p_strike - float(op["put_wall"])) < 0.001:
+                continue
+            p_lbl = f"Top {p_i + 1} Put R$ {p_strike:.2f} — {p_oi:,} contratos"
+            t_p = go.Scatter(
+                x=[datas.iloc[0], datas.iloc[-1]],
+                y=[p_strike, p_strike],
+                mode="lines",
+                name=p_lbl,
+                line={"color": "#f43f5e", "dash": "dashdot", "width": 1.1},
+                showlegend=True,
+                visible=(idx_contrato == 0),
+            )
+            contrato_traces.append(t_p)
 
         all_traces.extend(contrato_traces)
         n_traces_este = len(contrato_traces)
