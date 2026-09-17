@@ -72,8 +72,11 @@ Conforme especificado na seção 2.6b do prompt original, a Watchlist apresenta 
 | Campo da Watchlist | Origem dos Dados | Classificação | Justificativa / Rastreabilidade |
 | :--- | :--- | :--- | :--- |
 | **Último Fechamento CCM (R$)** | Close do dia mais recente com `is_sintetico=False` via BRAPI `/v2/futures/historical` | **MEDIDO** | Último preço de fechamento real e efetivamente negociado na B3 para o contrato CCM. |
-| **Preço RTCNI Físico (R$)** | `convergencia.analisar_convergencia()`, campo `rtcni_preco` | **MEDIDO** | Indicador físico Cepea/Esalq (RTCNI) obtido sem reimplementação, estritamente medido no mercado à vista. |
+| **Preço RTCNI Físico (R$)** | `convergencia.obter_rtcni_atual()`, campo `rtcni_preco` | **MEDIDO** | Indicador físico Cepea/Esalq (RTCNI) obtido sem reimplementação, estritamente medido no mercado à vista. |
 | **Base / Spread (R$)** | Diferença aritmética simples (`Fechamento CCM - RTCNI`) | **DERIVADO** | Cálculo aritmético direto entre duas grandezas puramente medidas. |
 
+*Nota de Limitação e Rastreabilidade do RTCNI*: RTCNI obtido de arquivo CSV exportado manualmente do Profit/Genial — não é uma integração automática nem uma fonte de dado em tempo real. A data de referência (`rtcni_data`) pode ficar defasada em relação à data do CCM; o campo Data RTCNI na Watchlist existe exatamente para tornar essa defasagem visível a cada execução. Quando a defasagem entre Data CCM e Data RTCNI ultrapassar 7 dias corridos, um aviso explícito `[DEFASADO — Xd]` é exibido ao lado do valor no resumo de texto e no dashboard HTML, preservando a classificação **MEDIDO** (o valor reflete o último fechamento real medido no físico, sem alteração de proveniência).
+
 *Nota de Auditoria*: Nenhum indicador técnico, sinal de posição, interpolação ou cor de estado é aplicado na Watchlist. Todos os preços exibidos têm proveniência estritamente **MEDIDO**.
+
 

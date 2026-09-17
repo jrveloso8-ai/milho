@@ -335,6 +335,19 @@ def montar_watchlist(resultados: list, pasta_projeto: str = PASTA_PROJETO) -> li
         ccm_data = ult_real["Data"].strftime("%Y-%m-%d")
         spread = round(ccm_close - rtcni_preco, 2) if rtcni_preco is not None else None
 
+        # Rodada 2 - Item 2: cálculo de defasagem de dias corridos entre Data CCM e Data RTCNI
+        defasagem_dias = None
+        aviso_defasado = ""
+        if rtcni_data and rtcni_data != "N/D":
+            try:
+                dt_ccm = datetime.strptime(ccm_data, "%Y-%m-%d").date()
+                dt_rtcni = datetime.strptime(rtcni_data, "%Y-%m-%d").date()
+                defasagem_dias = (dt_ccm - dt_rtcni).days
+                if defasagem_dias > 7:
+                    aviso_defasado = f"[DEFASADO — {defasagem_dias}d]"
+            except Exception:
+                pass
+
         watchlist.append({
             "contrato": cod,
             "vencimento_iso": venc,
@@ -342,6 +355,8 @@ def montar_watchlist(resultados: list, pasta_projeto: str = PASTA_PROJETO) -> li
             "ccm_data": ccm_data,
             "rtcni_preco": rtcni_preco,
             "rtcni_data": rtcni_data,
+            "defasagem_dias": defasagem_dias,
+            "aviso_defasado": aviso_defasado,
             "spread_vs_rtcni": spread,
             "prov_ccm": "MEDIDO",
             "prov_rtcni": "MEDIDO",
@@ -364,15 +379,20 @@ def gerar_resumo_texto(resultados: list, watchlist: list = None) -> str:
         linhas.append("\n" + "=" * 100)
         linhas.append("WATCHLIST — CURVA CCM vs FÍSICO (RTCNI) — PROVENIÊNCIA: MEDIDO (Seção 2.6b)")
         linhas.append("Último fechamento real de cada contrato CCM contra último preço físico RTCNI (convergencia.py)")
-        linhas.append("-" * 100)
-        linhas.append(f"{'CONTRATO':<10} {'VENCIMENTO':<12} {'CCM REAL':<18} {'RTCNI FÍSICO':<18} {'SPREAD (FUT-FÍS)':<18} {'DATA CCM':<12} {'DATA RTCNI':<12}")
-        linhas.append("-" * 100)
+        linhas.append("Nota: RTCNI obtido de CSV manual do Profit. Se defasagem > 7 dias corridos, exibe [DEFASADO — Xd].")
+        linhas.append("-" * 120)
+        linhas.append(f"{'CONTRATO':<10} {'VENCIMENTO':<12} {'CCM REAL':<18} {'RTCNI FÍSICO':<38} {'SPREAD (FUT-FÍS)':<18} {'DATA CCM':<12} {'DATA RTCNI':<12}")
+        linhas.append("-" * 120)
         for w in watchlist:
             ccm_str = f"R$ {w['ccm_close']:.2f} [MEDIDO]"
-            rtcni_str = f"R$ {w['rtcni_preco']:.2f} [MEDIDO]" if w['rtcni_preco'] else "N/D"
+            rtcni_val = f"R$ {w['rtcni_preco']:.2f} [MEDIDO]" if w['rtcni_preco'] else "N/D"
+            if w.get('aviso_defasado'):
+                rtcni_str = f"{rtcni_val} {w['aviso_defasado']}"
+            else:
+                rtcni_str = rtcni_val
             spread_str = f"{w['spread_vs_rtcni']:+0.2f}" if w['spread_vs_rtcni'] is not None else "N/D"
-            linhas.append(f"{w['contrato']:<10} {w['vencimento_iso']:<12} {ccm_str:<18} {rtcni_str:<18} {spread_str:<18} {w['ccm_data']:<12} {w['rtcni_data']:<12}")
-        linhas.append("=" * 100 + "\n")
+            linhas.append(f"{w['contrato']:<10} {w['vencimento_iso']:<12} {ccm_str:<18} {rtcni_str:<38} {spread_str:<18} {w['ccm_data']:<12} {w['rtcni_data']:<12}")
+        linhas.append("=" * 120 + "\n")
 
     # ── Bloco 2.6: Resumo Técnico TRIX v5 e Opções por Contrato ───────────────
     linhas.append("DETALHAMENTO TÉCNICO E PROVENIÊNCIA POR CONTRATO (Seção 2.6)")
@@ -674,12 +694,15 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             sp = w["spread_vs_rtcni"]
             cor_sp = "#3fb950" if sp and sp > 0 else ("#f85149" if sp and sp < 0 else "#c9d1d9")
             sp_str = f"{sp:+0.2f}" if sp is not None else "N/D"
+            rtcni_badge_defasado = ""
+            if w.get('aviso_defasado'):
+                rtcni_badge_defasado = f" <span style='font-size:10px; color:#f0883e; background:#381704; border:1px solid #bd561d; padding:2px 6px; border-radius:4px; font-weight:600;'>{w['aviso_defasado']}</span>"
             linhas_tr.append(
                 f"<tr style='border-bottom: 1px solid #21262d;'>"
                 f"<td style='padding: 10px; font-weight: 600; color: #58a6ff;'>{w['contrato']}</td>"
                 f"<td style='padding: 10px; color: #8b949e;'>{w['vencimento_iso']}</td>"
                 f"<td style='padding: 10px;'>{ccm_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_ccm']}]</span></td>"
-                f"<td style='padding: 10px;'>{rtcni_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_rtcni']}]</span></td>"
+                f"<td style='padding: 10px;'>{rtcni_str} <span style='font-size:10px; color:#3fb950; font-weight:600;'>[{w['prov_rtcni']}]</span>{rtcni_badge_defasado}</td>"
                 f"<td style='padding: 10px; font-weight: 600; color: {cor_sp};'>{sp_str}</td>"
                 f"<td style='padding: 10px; color: #8b949e;'>{w['ccm_data']}</td>"
                 f"<td style='padding: 10px; color: #8b949e;'>{w['rtcni_data']}</td>"
@@ -691,7 +714,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 12px; margin-bottom: 16px;">
                 <div>
                     <h3 style="margin: 0; font-size: 16px; font-weight: 600; color: #f0f6fc;">WATCHLIST — Curva CCM vs Físico RTCNI (Seção 2.6b)</h3>
-                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #8b949e;">Último fechamento real medido por contrato contra indicador físico ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO.</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #8b949e;">Último fechamento real medido por contrato contra indicador físico ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO. Caso a defasagem entre Data CCM e Data RTCNI exceda 7 dias corridos, exibe o aviso [DEFASADO — Xd].</p>
                 </div>
                 <span style="background: #238636; color: #fff; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">PROVENIÊNCIA: MEDIDO</span>
             </div>

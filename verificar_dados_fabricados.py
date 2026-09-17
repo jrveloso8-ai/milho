@@ -70,6 +70,18 @@ def auditar_resumo_trix_curva():
                 f"resumo_trix_curva.txt: Contrato {contrato} na Watchlist possui classificação espúria (não-MEDIDO): {linha.strip()}"
             )
 
+        # Checa se defasagem > 7 dias corridos possui aviso [DEFASADO
+        datas_encontradas = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", linha)
+        if len(datas_encontradas) >= 2:
+            from datetime import datetime as _dt
+            d_ccm = _dt.strptime(datas_encontradas[0], "%Y-%m-%d").date()
+            d_rtcni = _dt.strptime(datas_encontradas[1], "%Y-%m-%d").date()
+            dias_def = (d_ccm - d_rtcni).days
+            if dias_def > 7 and "[DEFASADO" not in linha:
+                erros.append(
+                    f"resumo_trix_curva.txt: Contrato {contrato} com defasagem de {dias_def} dias sem aviso [DEFASADO]: {linha.strip()}"
+                )
+
     # 3. Auditoria de Barreiras de Opções no resumo
     for i, linha in enumerate(linhas, 1):
         if "Barreiras Opções:" in linha or "Put Wall" in linha or "Call Wall" in linha or "Max Pain" in linha:
@@ -110,6 +122,10 @@ def auditar_tabela_proveniencia():
     if "SIMULADO" not in conteudo or "Proibido" not in conteudo:
         erros.append("tabela_proveniencia.md: proibição de dados SIMULADOS não documentada.")
 
+    # Checar nota explícita de RTCNI via export manual do Profit e defasagem
+    if "exportado manualmente do Profit" not in conteudo:
+        erros.append("tabela_proveniencia.md: nota de limitação do RTCNI (export manual do Profit) não encontrada.")
+
     return erros
 
 
@@ -134,6 +150,10 @@ def auditar_grafico_html():
     # 3. Na tabela Watchlist do HTML, a proveniência dos preços deve ser estritamente MEDIDO
     if "PROVENIÊNCIA: MEDIDO" not in conteudo and "[MEDIDO]" not in conteudo:
         erros.append("ccm_trix_curva.html: tag/badge MEDIDO ausente na Watchlist do HTML.")
+
+    # 4. Checa se o aviso de defasagem está presente quando aplicável
+    if "[DEFASADO" in open(ARQ_RESUMO, encoding="utf-8").read() and "[DEFASADO" not in conteudo:
+        erros.append("ccm_trix_curva.html: badge/aviso [DEFASADO] ausente na Watchlist do HTML.")
 
     return erros
 
