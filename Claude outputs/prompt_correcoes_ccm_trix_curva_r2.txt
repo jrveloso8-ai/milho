@@ -1,0 +1,95 @@
+PROMPT PARA PROGRAMADOR — Rodada 2 de correções: módulo TRIX v5 por contrato (curva CCM)
+==========================================================================================
+Projeto: Milho Trader (CCM futuro, B3) — pasta C:\Projetos Phyton\Milho
+Referência: prompt_correcoes_ccm_trix_curva.txt (rodada 1), commits de correção de
+92dd9e55 a d6074bf3 (branch master).
+
+A rodada 1 foi auditada linha a linha no código real e no histórico de git (não no
+relatório de entrega) e está APROVADA: 9 commits atômicos confirmados um a um no
+`git log`, Portão de Auditoria (seção 6) real e funcional (li os 7 testes do
+test_ccm_trix_curva.py, o verificar_dados_fabricados.py e o verificar_literais_plot.py
+linha a linha), converter_seed_ccm.py corrigido com mapeamento canônico e validação
+OHLC, janela de contágio unificada em 100 pregões e documentada, proveniência do Open
+no 1º pregão real implementada e batendo com a tabela. Nenhum desses itens precisa de
+nova mudança.
+
+Esta rodada 2 trata de dois achados novos, encontrados ao ler o código real da
+Watchlist (item 2 da rodada 1) — não estavam no escopo original porque a Watchlist em
+si só foi especificada na rodada 1.
+
+------------------------------------------------------------------------------------------
+1. Achado técnico — chamada com valor fabricado em montar_watchlist()
+------------------------------------------------------------------------------------------
+
+Em ccm_trix_curva.py, a função montar_watchlist() chama:
+
+    dados_conv = convergencia.analisar_convergencia(pasta_projeto, preco_futuro=0.0)
+
+O parâmetro preco_futuro=0.0 é um valor fabricado — não existe contrato CCM cotado a
+R$0,00. Hoje isso não aparece na tela porque a Watchlist só consome os campos
+rtcni_preco e rtcni_data do retorno (que não dependem de preco_futuro). Mas a mesma
+chamada também calcula, sobre esse preço fictício, spread_futuro_fisico, spread_zscore,
+alerta_convergencia, direcao_alerta e interpretacao — todos contaminados por um insumo
+inventado, sem qualquer marca de que são inválidos. Isso é exatamente o padrão que a
+regra geral do item 1.8 do prompt original proíbe (nunca fabricar valor para "não
+ficar vazio" ou para simplificar uma chamada de função) — mesmo que o valor fabricado
+não esteja sendo exibido hoje, ele está sendo calculado e poderia vazar numa expansão
+futura da Watchlist sem que ninguém perceba a origem espúria.
+
+Corrigir uma das duas formas:
+  a) (preferível) Criar uma função pequena e dedicada em convergencia.py — ex.
+     obter_rtcni_atual(pasta) — que só lê o CSV do RTCNI e devolve
+     {rtcni_preco, rtcni_data}, sem exigir preco_futuro nem calcular spread/zscore.
+     montar_watchlist() passa a chamar essa função nova, não a
+     analisar_convergencia() inteira.
+  b) Se preferir não tocar em convergencia.py agora, ignorar explicitamente no
+     código (com comentário) todos os campos do retorno de analisar_convergencia()
+     além de rtcni_preco/rtcni_data, e deixar registrado por que o restante do
+     retorno é descartado (calculado sobre insumo fabricado, não usar em hipótese
+     nenhuma se a Watchlist for expandida depois).
+Qualquer uma das duas resolve. A opção (a) é mais limpa e evita o problema se acontecer
+de novo.
+
+------------------------------------------------------------------------------------------
+2. Achado de arquitetura — RTCNI na Watchlist não é uma fonte "externa" independente
+------------------------------------------------------------------------------------------
+
+Isto não é uma tarefa de código — é um alinhamento de entendimento antes de eu fechar
+a Watchlist como está.
+
+convergencia.analisar_convergencia() obtém o RTCNI via leitor_csv.ler_arquivo(pasta,
+'RTCNI') — ou seja, do arquivo RTCNI_F_0_Diário_*.csv, um export manual do Profit,
+pelo MESMO mecanismo que CCMFUT, DI, DOLFUT etc. Isso já estava especificado assim na
+seção 2.6b do prompt original (rodada 0) — é o comportamento que sempre existiu, não
+uma regressão desta entrega. Mas dado que o Duda reforçou explicitamente "nenhum dado
+de exportação, somente BRAPI e o RTCNI externo", registro aqui a divergência real
+antes de fechar: o RTCNI hoje NÃO vem de uma fonte externa independente (ex.:
+scraping direto do Cepea/Esalq) — vem de um CSV local que precisa ser reexportado
+manualmente do Profit, e que na prática fica desatualizado por semanas (o resumo
+gerado nesta auditoria mostrou RTCNI de 26/08/2026 contra CCM de 16/09/2026, quase 3
+semanas de defasagem).
+
+Decisão registrada para esta rodada: manter RTCNI-via-CSV como está, mas rotulado
+explicitamente como limitação conhecida, não como fonte externa equivalente à BRAPI.
+Ação exigida do programador:
+  a) Em tabela_proveniencia.md (seção 5, Watchlist), acrescentar uma nota explícita:
+     "RTCNI obtido de arquivo CSV exportado manualmente do Profit/Genial — não é uma
+     integração automática nem uma fonte de dado em tempo real. A data de referência
+     (rtcni_data) pode ficar defasada em relação à data do CCM; o campo Data RTCNI na
+     Watchlist existe exatamente para tornar essa defasagem visível a cada execução."
+  b) No resumo_trix_curva.txt e no HTML, quando a defasagem entre Data CCM e Data
+     RTCNI ultrapassar 7 dias corridos, acrescentar um aviso visível ao lado do valor
+     (ex.: "[DEFASADO — Xd]"), sem mudar a classificação MEDIDO (o valor em si
+     continua sendo o último fechamento real medido, só está velho).
+  c) Não implementar scraping ou qualquer fonte nova de RTCNI nesta rodada — isso é
+     tema de uma fase futura já mapeada separadamente (Fase 5 do roadmap do projeto),
+     fora do escopo deste módulo.
+
+------------------------------------------------------------------------------------------
+3. CRITÉRIO DE FECHAMENTO DESTA RODADA
+------------------------------------------------------------------------------------------
+  - Item 1 resolvido (opção a ou b, documentada no código).
+  - Item 2: nota de defasagem adicionada em tabela_proveniencia.md, resumo e HTML.
+  - Commits pequenos e separados (um para o item 1, um para o item 2) — mesma
+    disciplina já validada na rodada 1.
+  - Qualquer dúvida nova: perguntar antes de decidir sozinho.
