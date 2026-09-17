@@ -15,7 +15,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/5] Regenerando Dashboard e Sincronizando index.html...
+echo [1/5] Regenerando Dashboard e Sincronizando index.html com dados reais...
 python ccm_trix_curva.py
 if errorlevel 1 (
     echo [ERRO] Falha ao executar ccm_trix_curva.py. Abortando publicacao.
@@ -25,13 +25,31 @@ if errorlevel 1 (
 echo [OK] Dashboard ccm_trix_curva.html e index.html regenerados com sucesso.
 echo.
 
-echo [2/5] Executando Portao de Auditoria Completo (Testes, AST e Proveniencia)...
-call portao_auditoria.bat
+echo [2/5] Validando integridade tecnica (Testes pytest, AST e Proveniencia)...
+echo   -> Executando suite pytest...
+pytest -v test_ccm_trix_curva.py
 if errorlevel 1 (
-    echo [ERRO] Portao de auditoria reprovado. Abortando publicacao por seguranca.
+    echo [ERRO] Testes automatizados falharam. Abortando publicacao por seguranca.
     pause
     exit /b 1
 )
+
+echo   -> Verificando proveniencia e dados fabricados...
+python verificar_dados_fabricados.py
+if errorlevel 1 (
+    echo [ERRO] Violacao de proveniencia detectada. Abortando publicacao.
+    pause
+    exit /b 1
+)
+
+echo   -> Verificando barreira estrutural AST contra literais no plot...
+python verificar_literais_plot.py
+if errorlevel 1 (
+    echo [ERRO] Violacao AST detectada no plot. Abortando publicacao.
+    pause
+    exit /b 1
+)
+echo [OK] Todas as validacoes de dados reais foram aprovadas.
 echo.
 
 echo [3/5] Verificando seguranca de credenciais no repositorio...
@@ -43,7 +61,7 @@ if errorlevel 1 (
 )
 echo.
 
-echo [4/5] Verificando status do Git e criando commit de atualizacao...
+echo [4/5] Registrando commit das atualizacoes e validando Portao de Auditoria...
 git status --porcelain > "%TEMP%\git_status_check.txt"
 set "TEM_MUDANCAS="
 for /f "tokens=*" %%i in ("%TEMP%\git_status_check.txt") do (
@@ -54,12 +72,25 @@ del "%TEMP%\git_status_check.txt" 2>nul
 if defined TEM_MUDANCAS (
     echo Alteracoes detectadas. Preparando commit...
     git add -A
-    for /f "tokens=1-4 delims=/ " %%a in ("%date%") do set "DATA_HOJE=%%a/%%b/%%c"
+    for /f "tokens=1-4 delims=/ " %%a in ("%date%") do set "DATA_HOJE=%%a-%%b-%%c"
     for /f "tokens=1-2 delims=: " %%a in ("%time%") do set "HORA_HOJE=%%a:%%b"
-    git commit -m "Deploy: Atualizacao automatica do dashboard e dados da curva CCM (%DATA_HOJE% %HORA_HOJE%)"
+    git commit -m "Deploy: Atualizacao automatica do dashboard e dados da curva CCM (!DATA_HOJE! !HORA_HOJE!)"
+    if errorlevel 1 (
+        echo [ERRO] Falha ao criar commit (verifique o pre-commit hook).
+        pause
+        exit /b 1
+    )
     echo [OK] Novo commit registrado com sucesso.
 ) else (
-    echo [OK] Repositorio ja esta atualizado e commitado.
+    echo [OK] Nenhuma nova alteracao para commitar.
+)
+
+echo   -> Validando Portao de Auditoria Final (arvore limpa)...
+call portao_auditoria.bat
+if errorlevel 1 (
+    echo [ERRO] Portao de auditoria reprovado. Abortando envio.
+    pause
+    exit /b 1
 )
 echo.
 
@@ -72,26 +103,30 @@ for /f "tokens=*" %%i in ("%TEMP%\git_remotes.txt") do (
 del "%TEMP%\git_remotes.txt" 2>nul
 
 if defined TEM_REMOTE (
-    echo Enviando alteracoes para o GitHub (git push)...
-    git push
+    echo Enviando branch master para o GitHub...
+    git push origin master
     if errorlevel 1 (
-        echo [AVISO] O comando git push retornou codigo de erro. Verifique sua conexao ou permissao de branch.
+        echo [AVISO] O comando git push origin master retornou codigo de erro.
     ) else (
-        echo [OK] Codigo enviado com sucesso ao GitHub. O deploy na Vercel foi acionado automaticamente!
+        echo [OK] Branch master enviada com sucesso!
     )
+    
+    echo Sincronizando branch main no GitHub...
+    git push origin master:main
+    if errorlevel 1 (
+        echo [AVISO] Nao foi possivel atualizar a branch main.
+    ) else (
+        echo [OK] Branch main sincronizada com sucesso!
+    )
+    echo [OK] Deploy na Vercel disparado automaticamente!
 ) else (
-    echo [INFO] Nenhum remote configurado no Git ainda.
-    echo Para conectar seu GitHub a este repositorio local, execute:
-    echo   git remote add origin https://github.com/SEU_USUARIO/SEU_REPOSITORIO.git
-    echo   git push -u origin master
-    echo.
-    echo Apos configurar o remote uma vez, esta bat fara o push e deploy automaticamente!
+    echo [AVISO] Nenhum remote configurado no Git.
 )
 echo.
 
 echo ======================================================================
 echo  PROCESSO CONCLUIDO COM SUCESSO!
-echo  Dashboard pronto para visualizacao local e remota.
+echo  Dashboard publicado no GitHub e pronto para Vercel.
 echo ======================================================================
 pause
 exit /b 0
