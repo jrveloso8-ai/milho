@@ -74,8 +74,8 @@ def auditar_resumo_trix_curva():
         datas_encontradas = re.findall(r"\b\d{4}-\d{2}-\d{2}\b", linha)
         if len(datas_encontradas) >= 2:
             from datetime import datetime as _dt
-            d_ccm = _dt.strptime(datas_encontradas[0], "%Y-%m-%d").date()
-            d_rtcni = _dt.strptime(datas_encontradas[1], "%Y-%m-%d").date()
+            d_ccm = _dt.strptime(datas_encontradas[-2], "%Y-%m-%d").date()
+            d_rtcni = _dt.strptime(datas_encontradas[-1], "%Y-%m-%d").date()
             dias_def = (d_ccm - d_rtcni).days
             if dias_def > 7 and "[DEFASADO" not in linha:
                 erros.append(

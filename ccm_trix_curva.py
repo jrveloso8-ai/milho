@@ -415,7 +415,7 @@ def gerar_resumo_texto(resultados: list, watchlist: list = None) -> str:
         linhas.append("\n" + "=" * 100)
         linhas.append("WATCHLIST — CURVA CCM vs FÍSICO (RTCNI) — PROVENIÊNCIA: MEDIDO (Seção 2.6b)")
         linhas.append("Último fechamento real de cada contrato CCM contra último preço físico RTCNI (convergencia.py)")
-        linhas.append("Nota: RTCNI obtido de CSV manual do Profit. Se defasagem > 7 dias corridos, exibe [DEFASADO — Xd].")
+        linhas.append("Nota: RTCNI obtido online via CEPEA/ESALQ (com fallback local/Profit). Se defasagem > 7 dias corridos, exibe [DEFASADO — Xd].")
         linhas.append("-" * 120)
         linhas.append(f"{'CONTRATO':<10} {'VENCIMENTO':<12} {'CCM REAL':<18} {'RTCNI FÍSICO':<38} {'SPREAD (FUT-FÍS)':<18} {'DATA CCM':<12} {'DATA RTCNI':<12}")
         linhas.append("-" * 120)
@@ -1046,6 +1046,11 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
     # Carrega série do RTCNI para plotagem da linha de referência física (Estilo Profit)
     df_rtcni = None
     try:
+        try:
+            import ingestao_cepea
+            ingestao_cepea.sincronizar_dados_cepea(PASTA_PROJETO)
+        except Exception:
+            pass
         df_rtcni = leitor_csv.ler_arquivo(PASTA_PROJETO, "RTCNI")
         df_rtcni["Data"] = pd.to_datetime(df_rtcni["Data"]).dt.normalize()
     except Exception:
@@ -1518,7 +1523,7 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                         <h3 class="profit-title-text">WATCHLIST — Curva CCM vs Físico RTCNI (Seção 2.6b)</h3>
                     </div>
                     <p class="profit-subtitle">
-                        Último fechamento real medido por contrato contra indicador físico ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO. Caso a defasagem entre Data CCM e Data RTCNI exceda 7 dias corridos, exibe o aviso [DEFASADO — Xd].
+                        Último fechamento real medido por contrato contra indicador físico CEPEA/ESALQ (convergencia.py). Todos os valores são classificados como MEDIDO. Caso a defasagem entre Data CCM e Data RTCNI exceda 7 dias corridos, exibe o aviso [DEFASADO — Xd].
                     </p>
                 </div>
                 <div style="display: flex; align-items: center; gap: 12px;">

@@ -1,22 +1,22 @@
 ====================================================================================================
 MILHO TRADER — RELATÓRIO TRIX v5 POR CONTRATO (CURVA CCM)
-Gerado em: 2026-09-17 15:16:52 | Fonte Primária: BRAPI | Seed: 2008–2026
+Gerado em: 2026-09-17 15:33:00 | Fonte Primária: BRAPI | Seed: 2008–2026
 ====================================================================================================
 
 ====================================================================================================
 WATCHLIST — CURVA CCM vs FÍSICO (RTCNI) — PROVENIÊNCIA: MEDIDO (Seção 2.6b)
 Último fechamento real de cada contrato CCM contra último preço físico RTCNI (convergencia.py)
-Nota: RTCNI obtido de CSV manual do Profit. Se defasagem > 7 dias corridos, exibe [DEFASADO — Xd].
+Nota: RTCNI obtido online via CEPEA/ESALQ (com fallback local/Profit). Se defasagem > 7 dias corridos, exibe [DEFASADO — Xd].
 ------------------------------------------------------------------------------------------------------------------------
 CONTRATO   VENCIMENTO   CCM REAL           RTCNI FÍSICO                           SPREAD (FUT-FÍS)   DATA CCM     DATA RTCNI  
 ------------------------------------------------------------------------------------------------------------------------
-CCMX26     2026-11-16   R$ 76.25 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +7.46              2026-09-16   2026-08-26  
-CCMF27     2027-01-15   R$ 80.15 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +11.36             2026-09-16   2026-08-26  
-CCMH27     2027-03-15   R$ 81.85 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +13.06             2026-09-16   2026-08-26  
-CCMK27     2027-05-17   R$ 80.39 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +11.60             2026-09-16   2026-08-26  
-CCMN27     2027-07-15   R$ 78.94 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +10.15             2026-09-16   2026-08-26  
-CCMU27     2027-09-15   R$ 79.14 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +10.35             2026-09-16   2026-08-26  
-CCMX27     2027-11-16   R$ 81.79 [MEDIDO]  R$ 68.79 [MEDIDO] [DEFASADO — 21d]     +13.00             2026-09-16   2026-08-26  
+CCMX26     2026-11-16   R$ 76.25 [MEDIDO]  R$ 69.20 [MEDIDO]                      +7.05              2026-09-16   2026-09-16  
+CCMF27     2027-01-15   R$ 80.15 [MEDIDO]  R$ 69.20 [MEDIDO]                      +10.95             2026-09-16   2026-09-16  
+CCMH27     2027-03-15   R$ 81.85 [MEDIDO]  R$ 69.20 [MEDIDO]                      +12.65             2026-09-16   2026-09-16  
+CCMK27     2027-05-17   R$ 80.39 [MEDIDO]  R$ 69.20 [MEDIDO]                      +11.19             2026-09-16   2026-09-16  
+CCMN27     2027-07-15   R$ 78.94 [MEDIDO]  R$ 69.20 [MEDIDO]                      +9.74              2026-09-16   2026-09-16  
+CCMU27     2027-09-15   R$ 79.14 [MEDIDO]  R$ 69.20 [MEDIDO]                      +9.94              2026-09-16   2026-09-16  
+CCMX27     2027-11-16   R$ 81.79 [MEDIDO]  R$ 69.20 [MEDIDO]                      +12.59             2026-09-16   2026-09-16  
 ========================================================================================================================
 
 DETALHAMENTO TÉCNICO E PROVENIÊNCIA POR CONTRATO (Seção 2.6)

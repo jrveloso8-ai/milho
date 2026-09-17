@@ -51,10 +51,32 @@ def _data_vencimento(codigo_vencimento: str):
 
 def obter_rtcni_atual(pasta: str) -> dict:
     """
-    Lê o CSV do RTCNI e retorna apenas o último preço físico medido e sua data
-    de referência, sem exigir preço futuro nem calcular spread/z-score contaminados.
+    Obtém o último preço físico medido do RTCNI (Indicador CEPEA/ESALQ Milho)
+    e sua data de referência. Prioriza busca online direta na fonte oficial
+    (CEPEA/ESALQ ou espelho Notícias Agrícolas) para eliminar a dependência
+    de exportação manual. Em caso de indisponibilidade de rede, recorre
+    ao cache/série local de forma defensiva.
     Atende à Watchlist da curva CCM (Seção 2.6b).
     """
+    # 1. Tenta coleta online via ingestao_cepea
+    try:
+        import ingestao_cepea
+        res_online = ingestao_cepea.obter_ultimo_indicador_cepea()
+        if res_online.get("sucesso") and res_online.get("rtcni_preco") is not None:
+            # Sincroniza defensivamente com a base local
+            try:
+                ingestao_cepea.sincronizar_dados_cepea(pasta)
+            except Exception:
+                pass
+            return {
+                'rtcni_preco': res_online["rtcni_preco"],
+                'rtcni_data': res_online["rtcni_data"],
+                'fonte': res_online.get("fonte", "CEPEA/ESALQ (online)"),
+            }
+    except Exception:
+        pass
+
+    # 2. Fallback defensivo: lê o CSV do RTCNI localmente
     try:
         df_rtcni = ler_arquivo(pasta, 'RTCNI')
     except FileNotFoundError:
@@ -68,6 +90,7 @@ def obter_rtcni_atual(pasta: str) -> dict:
     return {
         'rtcni_preco': round(preco_fisico, 2),
         'rtcni_data': data_rtcni,
+        'fonte': 'Base local (fallback)',
     }
 
 

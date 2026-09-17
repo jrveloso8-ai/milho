@@ -314,3 +314,94 @@ def test_coletar_historico_ccm_erro_rede_ou_token():
     with patch("requests.get", return_value=mock_resp):
         res = ib._get("/v2/futures/historical", params={"symbol": "CCMX26"})
         assert res is None
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# 4. TESTES DE INGESTÃO CEPEA/ESALQ E CONVERGÊNCIA (RTCNI ONLINE)
+# ══════════════════════════════════════════════════════════════════════════
+
+import io
+import ingestao_cepea as ic
+import convergencia
+
+
+def test_coletar_indicador_cepea_mock():
+    """Valida o parsing do HTML oficial da CEPEA/ESALQ com resposta mockada."""
+    html_mock = """
+    <html>
+      <body>
+        <table id="imagenet-indicador1">
+          <tr><th>Data</th><th>Valor R$*</th><th>Var./Dia</th></tr>
+          <tr><td>16/09/2026</td><td>69,20</td><td>-0,27%</td></tr>
+          <tr><td>15/09/2026</td><td>69,39</td><td>-0,17%</td></tr>
+        </table>
+      </body>
+    </html>
+    """
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = html_mock.encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        pontos = ic.coletar_indicador_cepea_online()
+        assert len(pontos) == 2
+        # Ordenado por data crescente
+        assert pontos[0]["Close"] == 69.39
+        assert str(pontos[0]["Data"]) == "2026-09-15"
+        assert pontos[1]["Close"] == 69.20
+        assert str(pontos[1]["Data"]) == "2026-09-16"
+        assert pontos[1]["fonte"] == "CEPEA/ESALQ (oficial)"
+
+
+def test_coletar_noticias_agricolas_fallback_mock():
+    """Valida o fallback para Notícias Agrícolas caso o site oficial da CEPEA falhe."""
+    html_na_mock = """
+    <html>
+      <body>
+        <table class="cot-fisicas">
+          <tr><th>Data</th><th>Valor (R$/sc 60 kg)</th><th>Variação</th></tr>
+          <tr><td>16/09/2026</td><td>69,20</td><td>-0,27%</td></tr>
+        </table>
+      </body>
+    </html>
+    """
+    # 1ª chamada (CEPEA) levanta exceção; 2ª chamada (Notícias Agrícolas) retorna mock
+    mock_resp_na = MagicMock()
+    mock_resp_na.read.return_value = html_na_mock.encode("utf-8")
+    mock_resp_na.__enter__.return_value = mock_resp_na
+
+    def fake_urlopen(req, *args, **kwargs):
+        url = req.full_url if hasattr(req, "full_url") else str(req)
+        if "cepea.esalq.usp.br" in url:
+            raise Exception("403 Forbidden Cloudflare")
+        return mock_resp_na
+
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+        pontos = ic.coletar_indicador_cepea_online()
+        assert len(pontos) == 1
+        assert pontos[0]["Close"] == 69.20
+        assert str(pontos[0]["Data"]) == "2026-09-16"
+        assert "Notícias Agrícolas" in pontos[0]["fonte"]
+
+
+def test_obter_rtcni_atual_online_e_fallback():
+    """Valida obter_rtcni_atual priorizando online com fallback gracioso para local."""
+    # 1. Caminho online com sucesso
+    with patch("ingestao_cepea.obter_ultimo_indicador_cepea", return_value={
+        "sucesso": True, "rtcni_preco": 69.20, "rtcni_data": "2026-09-16", "fonte": "CEPEA/ESALQ (oficial)"
+    }):
+        with patch("ingestao_cepea.sincronizar_dados_cepea", return_value=True):
+            res = convergencia.obter_rtcni_atual(convergencia.os.path.dirname(__file__))
+            assert res["rtcni_preco"] == 69.20
+            assert res["rtcni_data"] == "2026-09-16"
+            assert "CEPEA/ESALQ" in res["fonte"]
+
+    # 2. Caminho offline (queda para fallback local)
+    with patch("ingestao_cepea.obter_ultimo_indicador_cepea", return_value={
+        "sucesso": False, "rtcni_preco": None, "rtcni_data": "N/D", "fonte": "Indisponível", "erro": "Sem rede"
+    }):
+        res_fb = convergencia.obter_rtcni_atual(convergencia.os.path.dirname(__file__))
+        assert res_fb["rtcni_preco"] is not None
+        assert res_fb["rtcni_data"] != "N/D"
+        assert "fallback" in res_fb.get("fonte", "")
+
