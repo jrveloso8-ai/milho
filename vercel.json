@@ -2,18 +2,18 @@
   "version": 2,
   "cleanUrls": true,
   "trailingSlash": false,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/.*\\.(py|bat|sh|ps1|csv|xlsx|md|txt|json|env|log|tmp)",
-      "dest": "/"
+      "source": "/curva",
+      "destination": "/ccm_trix_curva.html"
     },
     {
-      "src": "/curva",
-      "dest": "/ccm_trix_curva.html"
+      "source": "/:path*\\.(py|bat|sh|ps1|csv|xlsx|md|txt|json|env|log|tmp)",
+      "destination": "/index.html"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
