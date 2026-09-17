@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌽 Milho Trader — Relatório de Mercado</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #ffffff;
+  --surface:  #f8fafc;
+  --border:   #e2e8f0;
+  --text:     #1e293b;
+  --text2:    #475569;
+  --text3:    #94a3b8;
+  --corn:     #b45309;
+  --positive: #059669;
+  --negative: #dc2626;
+  --warning:  #b45309;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #eef1f5;
+  color: var(--text);
+  padding: 24px;
+}
+
+.page {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 40px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 3px solid var(--corn);
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+.header-title { font-size: 22px; font-weight: 700; color: var(--corn); }
+.header-sub { font-size: 12px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+.header-meta { text-align: right; font-size: 12px; color: var(--text3); }
+
+.btn-pdf {
+  position: fixed; top: 20px; right: 20px;
+  background: var(--corn); color: #fff; border: none;
+  padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.btn-pdf:hover { opacity: 0.9; }
+
+.section { margin-bottom: 28px; }
+.section-title {
+  font-size: 13px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.06em; color: var(--corn); margin-bottom: 12px;
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+
+.kpi-row { display: flex; gap: 16px; margin-bottom: 8px; flex-wrap: wrap; }
+.kpi-box { flex: 1; min-width: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.kpi-label { font-size: 10px; text-transform: uppercase; color: var(--text3); letter-spacing: 0.05em; margin-bottom: 4px; }
+.kpi-value { font-size: 20px; font-weight: 700; }
+
+.veredito-box {
+  border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;
+  border: 2px solid var(--border);
+}
+.veredito-box.go   { background: #ecfdf5; border-color: var(--positive); }
+.veredito-box.nogo { background: #fef2f2; border-color: var(--negative); }
+.veredito-box.wait { background: #fffbeb; border-color: var(--warning); }
+.veredito-label { font-size: 18px; font-weight: 700; }
+.veredito-sub { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+.publico-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.publico-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.publico-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.publico-text { font-size: 12.5px; color: var(--text2); line-height: 1.5; }
+
+.dim-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.dim-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+.dim-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+.dim-value { font-size: 20px; font-weight: 700; }
+
+.sobre-texto { font-size: 13px; color: var(--text2); line-height: 1.6; }
+
+.disclaimer {
+  background: #f1f5f9; border-left: 4px solid var(--text3);
+  padding: 14px 16px; font-size: 11.5px; color: var(--text2); line-height: 1.6;
+  border-radius: 0 8px 8px 0; margin-top: 24px;
+}
+
+.footer { text-align: center; font-size: 11px; color: var(--text3); margin-top: 24px; }
+
+.loading { text-align: center; color: var(--text3); padding: 60px 0; }
+
+@media print {
+  body { background: #fff; padding: 0; }
+  .page { border: none; border-radius: 0; max-width: 100%; padding: 20px; }
+  .btn-pdf { display: none; }
+  .section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<button class="btn-pdf" onclick="window.print()">📄 Exportar PDF</button>
+
+<div class="page" id="page">
+  <div class="loading">Carregando dados...</div>
+</div>
+
+<script>
+const fmt = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v) + '%';
+
+function vClassFromVeredito(vc) {
+  if (!vc || !vc.veredito) return 'wait';
+  if (vc.veredito === 'NÃO OPERAR') return 'nogo';
+  if (vc.veredito === 'AGUARDAR') return 'wait';
+  if (vc.veredito.startsWith('OPERAR')) return vc.direcao === 'VENDA' ? 'nogo' : 'go';
+  return 'wait';
+}
+
+function render(d) {
+  const ccm = d.ccm || {};
+  const vc = d.veredito_consolidado || {};
+  const bias = d.bias_estrutural || {};
+  const dims = bias.dimensoes || {};
+  const re = d.resumo_executivo || {};
+  const saz = d.sazonalidade || {};
+
+  const dimNomes = { sazonalidade: 'Sazonalidade', fisico: 'Convergência Física', macro: 'Macro', tecnico: 'Técnico' };
+  const dimHtml = Object.keys(dimNomes).map(k => {
+    const v = dims[k];
+    const cor = v == null ? '#94a3b8' : v >= 20 ? 'var(--positive)' : v <= -20 ? 'var(--negative)' : '#475569';
+    return `<div class="dim-box"><div class="dim-label">${dimNomes[k]}</div><div class="dim-value" style="color:${cor}">${v != null ? fmt(v,1) : '—'}</div></div>`;
+  }).join('');
+
+  document.getElementById('page').innerHTML = `
+    <div class="header">
+      <div>
+        <div class="header-title">🌽 Milho Trader</div>
+        <div class="header-sub">Relatório de Mercado — CCM B3 (Educacional)</div>
+      </div>
+      <div class="header-meta">
+        Referência: ${d.data_referencia || '—'}<br>
+        Gerado em: ${new Date().toLocaleString('pt-BR')}
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Contexto de Mercado</div>
+      <div class="kpi-row">
+        <div class="kpi-box"><div class="kpi-label">CCM Último</div><div class="kpi-value">${fmt(ccm.ultimo_preco)}</div></div>
+        <div class="kpi-box"><div class="kpi-label">Variação Semanal</div><div class="kpi-value">${fmtPct(ccm.variacao_semanal_pct)}</div></div>
+        <div class="kpi-box"><div class="kpi-label">Vencimento Ativo</div><div class="kpi-value">${ccm.vencimento_ativo || '—'}</div></div>
+        <div class="kpi-box"><div class="kpi-label">Fase Agrícola</div><div class="kpi-value" style="font-size:14px">${saz.descricao_fase || saz.fase_agricola || '—'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Veredito do Sistema</div>
+      <div class="veredito-box ${vClassFromVeredito(vc)}">
+        <div class="veredito-label">${vc.veredito || 'Indisponível'}</div>
+        <div class="veredito-sub">${(vc.convicao ? 'Convicção ' + vc.convicao + ' — ' : '') + (vc.motivo || '')}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Recomendação por Perfil</div>
+      <div class="publico-grid">
+        <div class="publico-card"><div class="publico-title">📈 Trader (CCM futuro)</div><div class="publico-text">${re.trader || 'Indisponível.'}</div></div>
+        <div class="publico-card"><div class="publico-title">🏭 Comprador de Milho</div><div class="publico-text">${re.comprador || 'Indisponível.'}</div></div>
+        <div class="publico-card"><div class="publico-title">🌾 Vendedor de Milho (Produtor)</div><div class="publico-text">${re.vendedor || 'Indisponível.'}</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Por que essa leitura — Bias Estrutural</div>
+      <div class="dim-grid">${dimHtml}</div>
+      <div class="sobre-texto" style="margin-top:10px">Score de -100 (baixista) a +100 (altista) em cada dimensão. Combinado, o Bias Estrutural desta rodada é ${bias.score_ajustado != null ? fmt(bias.score_ajustado,1) : '—'} (${bias.decisao || '—'}), com ${bias.confianca || 'confiança não informada'}.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Sobre o Sistema</div>
+      <div class="sobre-texto">
+        O Milho Trader combina cinco fontes de análise sobre o milho futuro (CCM) da B3: análise técnica de preço,
+        convergência entre o contrato futuro e o preço físico de referência, sazonalidade histórica da cultura,
+        contexto macroeconômico (câmbio, juros, milho em Chicago) e um calendário de eventos de mercado
+        (USDA/CONAB). Essas cinco leituras são combinadas num único veredito, evitando decisões baseadas
+        em um sinal isolado.
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <strong>Aviso regulatório:</strong> este relatório tem finalidade exclusivamente educacional e informativa.
+      Não constitui recomendação de investimento personalizada, oferta ou solicitação de compra/venda de
+      instrumentos financeiros. Mercados futuros de commodities envolvem risco de perda, inclusive superior ao
+      capital investido. Consulte um profissional habilitado antes de tomar qualquer decisão de investimento
+      ou comercialização.
+    </div>
+
+    <div class="footer">Milho Trader — Gerado automaticamente a partir de dados de mercado. Fonte: Profit/Genial, yfinance, CEPEA/RTCNI, CONAB/WASDE.</div>
+  `;
+}
+
+fetch('dados_milho.json')
+  .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(render)
+  .catch(e => {
+    document.getElementById('page').innerHTML = `<div class="loading">⚠️ Não foi possível carregar dados_milho.json (${e.message}). Rode o pipeline antes de gerar o relatório.</div>`;
+  });
+</script>
+</body>
+</html>

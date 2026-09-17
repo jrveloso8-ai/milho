@@ -1,0 +1,2375 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌽 Milho Trader — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:         #0a0e1a;
+  --surface:    #111827;
+  --surface2:   #1f2937;
+  --border:     #374151;
+  --accent:     #3b82f6;
+  --positive:   #10b981;
+  --negative:   #ef4444;
+  --warning:    #f59e0b;
+  --text:       #f9fafb;
+  --text2:      #9ca3af;
+  --text3:      #6b7280;
+  --corn:       #f59e0b;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-left { display: flex; align-items: center; gap: 12px; }
+.logo { font-size: 20px; }
+.title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: 0.02em; }
+.subtitle { font-size: 11px; color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.last-update { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+.btn-refresh {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-refresh:hover { background: var(--border); color: var(--text); }
+
+/* ── TICKER STRIP ───────────────────────────────────────── */
+.ticker-strip {
+  background: #0d1220;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  display: flex;
+  gap: 32px;
+  overflow-x: auto;
+}
+.ticker-item { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.ticker-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; }
+.ticker-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.ticker-delta { font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.ticker-sep { color: var(--border); }
+
+/* ── TABS ───────────────────────────────────────────────── */
+.tabs-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex;
+  gap: 4px;
+}
+.tab-btn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active { color: var(--corn); border-bottom-color: var(--corn); }
+
+.tab-content { display: none; padding: 24px; }
+.tab-content.active { display: block; }
+
+/* ── LAYOUT GRIDS ───────────────────────────────────────── */
+.kpi-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.kpi-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+.kpi-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+.two-col    { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.three-col  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+/* ── KPI CARD ───────────────────────────────────────────── */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.kpi-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+.kpi-value {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.kpi-sub {
+  font-size: 12px;
+  color: var(--text3);
+}
+.kpi-delta {
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 4px;
+}
+.positive { color: var(--positive); }
+.negative { color: var(--negative); }
+.warning  { color: var(--warning); }
+.neutral  { color: var(--text2); }
+
+/* ── SECTION CARD ───────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── SELETOR DE CONTRATO (aba Opções) ──────────────────── */
+.contrato-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.contrato-toolbar label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text3);
+}
+.select-contrato {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+}
+.select-contrato:hover  { border-color: var(--corn); }
+.select-contrato:focus  { outline: none; border-color: var(--corn); }
+.contrato-info { font-size: 12px; color: var(--text3); }
+
+/* ── RESUMO DE TODOS OS CONTRATOS (aba Decisão) ────────── */
+.resumo-contratos-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.resumo-contratos-table th {
+  text-align: left; padding: 8px 10px; color: var(--text3);
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em;
+  border-bottom: 1px solid var(--border);
+}
+.resumo-contratos-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.resumo-contratos-table tr:last-child td { border-bottom: none; }
+.resumo-contratos-table tr.rc-row { cursor: pointer; transition: background 0.15s; }
+.resumo-contratos-table tr.rc-row:hover { background: var(--surface2); }
+.resumo-contratos-table tr.rc-selecionada { background: rgba(245,158,11,0.08); }
+.rc-badge {
+  display: inline-block; padding: 3px 9px; border-radius: 5px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.rc-badge.go   { background: rgba(16,185,129,0.15); color: var(--positive); }
+.rc-badge.nogo { background: rgba(239,68,68,0.15);  color: var(--negative); }
+.rc-badge.wait { background: rgba(245,158,11,0.15); color: var(--warning); }
+.rc-tag-liquido { font-size: 10px; color: var(--corn); margin-left: 6px; }
+
+/* ── LEGENDA DO GRÁFICO DE CANDLES (fora do Chart.js, estilo referência) ── */
+.legend-candles {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text3);
+}
+.legend-candles .sw { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.legend-candles .sw-dot { width: 9px; height: 9px; border-radius: 50%; }
+.legend-candles .sw-line { width: 16px; height: 0; border-top: 2px dashed currentColor; }
+.legend-candles .sw-dotted { border-top-style: dotted; border-top-width: 3px; }
+
+/* ── VERDICT BANNER ─────────────────────────────────────── */
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+.verdict.go   { background: rgba(16,185,129,0.10); border: 1px solid var(--positive); }
+.verdict.nogo { background: rgba(239,68,68,0.10);  border: 1px solid var(--negative); }
+.verdict.wait { background: rgba(245,158,11,0.10); border: 1px solid var(--warning); }
+.verdict-icon { font-size: 28px; }
+.verdict-label { font-size: 18px; font-weight: 700; }
+.verdict-sub   { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+/* ── SEMÁFORO ───────────────────────────────────────────── */
+.semaphore {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.semaphore.green  { background: var(--positive); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+.semaphore.red    { background: var(--negative); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+.semaphore.amber  { background: var(--warning);  box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+.semaphore.gray   { background: var(--text3); }
+
+.criterion {
+  display: grid;
+  grid-template-columns: 20px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--surface2);
+}
+.criterion:last-child { border-bottom: none; }
+.crit-name  { color: var(--text2); font-size: 13px; }
+.crit-value { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; }
+.crit-rule  { color: var(--text3); font-size: 11px; text-align: right; }
+
+/* ── BADGE ──────────────────────────────────────────────── */
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.badge.green  { background: rgba(16,185,129,0.15); color: var(--positive); }
+.badge.red    { background: rgba(239,68,68,0.15);  color: var(--negative); }
+.badge.amber  { background: rgba(245,158,11,0.15); color: var(--warning); }
+.badge.blue   { background: rgba(59,130,246,0.15); color: var(--accent); }
+
+/* ── ALERTA STRIP ───────────────────────────────────────── */
+.alert {
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+.alert-warning { background: rgba(245,158,11,0.08); border-left: 3px solid var(--warning); color: #fde68a; }
+.alert-danger  { background: rgba(239,68,68,0.08);  border-left: 3px solid var(--negative); color: #fca5a5; }
+.alert-info    { background: rgba(59,130,246,0.08);  border-left: 3px solid var(--accent); color: #93c5fd; }
+.alert-ok      { background: rgba(16,185,129,0.08); border-left: 3px solid var(--positive); color: #6ee7b7; }
+
+/* ── CURVA TABLE ────────────────────────────────────────── */
+.curve-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.curve-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+}
+.curve-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--surface2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+.curve-table tr:last-child td { border-bottom: none; }
+.curve-table tr.active-row td { color: var(--corn); font-weight: 600; }
+
+/* ── POSIÇÃO RANGE ──────────────────────────────────────── */
+.range-track {
+  background: var(--surface2);
+  border-radius: 4px;
+  height: 8px;
+  position: relative;
+  margin: 12px 0;
+}
+.range-fill {
+  position: absolute;
+  left: 0; top: 0; height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--positive), var(--warning));
+}
+.range-marker {
+  position: absolute;
+  top: -4px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--accent);
+  transform: translateX(-50%);
+}
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 8px;
+}
+
+/* ── SIZING TABLE ───────────────────────────────────────── */
+.sizing-table { width: 100%; border-collapse: collapse; }
+.sizing-table th {
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border);
+}
+.sizing-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--surface2);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.sizing-table tr:last-child td { border-bottom: none; }
+.row-conservador td:first-child { color: var(--positive); }
+.row-moderado   td:first-child { color: var(--warning); }
+.row-arrojado   td:first-child { color: var(--negative); }
+
+/* ── CHART WRAPPERS ─────────────────────────────────────── */
+.chart-wrap { position: relative; height: 220px; }
+.chart-wrap-lg { position: relative; height: 280px; }
+
+/* ── ERROR / LOADING ────────────────────────────────────── */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--text3);
+  font-size: 14px;
+  gap: 12px;
+}
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--corn);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error-banner {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid var(--negative);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  color: #fca5a5;
+  font-size: 14px;
+  margin: 24px;
+}
+
+.demo-banner {
+  background: rgba(245,158,11,0.08);
+  border: 1px solid var(--warning);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--warning);
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* ── DIAGNOSTICO TAG ────────────────────────────────────── */
+.diag-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.diag-MILHO { background: rgba(245,158,11,0.15); color: var(--warning); }
+.diag-CAMBIO { background: rgba(59,130,246,0.15); color: var(--accent); }
+.diag-MISTO  { background: rgba(156,163,175,0.15); color: var(--text2); }
+.diag-INDISPONIVEL { background: rgba(107,114,128,0.15); color: var(--text3); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <span class="logo">🌽</span>
+    <div>
+      <div class="title">MILHO TRADER</div>
+      <div class="subtitle">CCM B3 — Dashboard de Inteligência</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="last-update" id="last-update">—</span>
+    <button class="btn-refresh" onclick="window.open('relatorio_cliente.html', '_blank')">📄 Relatório PDF</button>
+    <button class="btn-refresh" onclick="loadData()">↻ Atualizar</button>
+  </div>
+</header>
+
+<!-- TICKER STRIP -->
+<div class="ticker-strip" id="ticker-strip">
+  <div class="loading" style="height:auto;padding:0;"><div class="spinner"></div><span>Carregando...</span></div>
+</div>
+
+<!-- TABS -->
+<nav class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab('decisao')">🎯 Decisão</button>
+  <button class="tab-btn" onclick="switchTab('guia')">🧭 Guia Operador</button>
+  <button class="tab-btn" onclick="switchTab('tecnico')">📊 Técnico</button>
+  <button class="tab-btn" onclick="switchTab('macro')">🌍 Macro</button>
+  <button class="tab-btn" onclick="switchTab('convergencia')">⚖️ Convergência</button>
+  <button class="tab-btn" onclick="switchTab('curva')">📈 Curva</button>
+  <button class="tab-btn" onclick="switchTab('sazonalidade')">🌱 Sazonalidade</button>
+  <button class="tab-btn" onclick="switchTab('opcoes')">🧱 Opções</button>
+  <button class="tab-btn" onclick="switchTab('spread')">↔️ Spread Calendário</button>
+</nav>
+
+<!-- TAB: DECISÃO -->
+<!-- Fundida com Bias Estrutural em 20/07/2026 — um único veredito, não dois
+     banners que o operador precisa reconciliar na cabeça. Ver
+     calcular_veredito_consolidado() em pipeline.py para a regra. -->
+<div id="tab-decisao" class="tab-content active">
+
+  <div class="card">
+    <div class="card-title">Resumo de Todos os Contratos <span style="color:var(--text3);font-size:10px;font-weight:400">(mesmo critério técnico — EMA9/20 + Setup 9.1 + Bias Estrutural — rodado em cada vencimento vivo)</span></div>
+    <div id="resumo-contratos-indisponivel" style="display:none" class="alert alert-warning">Análise por contrato indisponível nesta rodada — verifique <code>contratos_analise</code> em <code>dados_milho.json</code>.</div>
+    <div id="resumo-contratos-table"></div>
+  </div>
+
+  <div id="decisao-toolbar" class="contrato-toolbar" style="display:none">
+    <label for="decisao-select-contrato">Contrato em análise</label>
+    <select id="decisao-select-contrato" class="select-contrato" onchange="onDecisaoContratoChange(this.value)"></select>
+    <span id="decisao-contrato-info" class="contrato-info"></span>
+  </div>
+
+  <div id="verdict-banner"></div>
+
+  <div class="kpi-grid-4" id="kpi-decisao"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Filtros de Entrada</div>
+      <div id="filtros-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Alertas Ativos</div>
+      <div id="alertas-list"></div>
+    </div>
+  </div>
+
+  <div id="bias-indisponivel" style="display:none;" class="alert alert-warning">
+    Bias Estrutural indisponível nesta rodada — verifique <code>bias_estrutural</code> em <code>dados_milho.json</code>.
+  </div>
+  <div id="bias-body">
+    <div class="card">
+      <div class="card-title">Bias Estrutural — como o consenso foi calculado <span style="color:var(--text3);font-size:10px;font-weight:400">(pesos: Sazonalidade 30% · Físico 30% · Macro 20% · Técnico 20%)</span></div>
+      <div class="kpi-grid-4" id="kpi-bias" style="margin-bottom:12px"></div>
+      <div id="bias-detalhes"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Sizing por Perfil <span style="color:var(--text3);font-size:10px;font-weight:400">(referência educacional — 1 contrato = 450 sacas)</span></div>
+    <table class="sizing-table">
+      <thead>
+        <tr><th>Perfil</th><th>Contratos</th><th>Stop Mensal</th><th>Capital Margem Est.</th><th>Risco/Contrato</th></tr>
+      </thead>
+      <tbody id="sizing-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Resumo Executivo <span style="color:var(--text3);font-size:10px;font-weight:400">(mesma leitura de mercado, traduzida por público)</span></div>
+    <div class="three-col" style="margin-bottom:0" id="resumo-executivo"></div>
+    <div class="alert alert-warning" style="margin-top:16px">
+      <strong>Aviso regulatório:</strong> conteúdo educacional gerado automaticamente a partir de dados de mercado, não é recomendação de investimento personalizada. Trader, comprador e vendedor devem avaliar sua própria situação (caixa, estoque, contratos já travados) antes de qualquer decisão.
+    </div>
+  </div>
+</div>
+
+<!-- TAB: GUIA OPERADOR -->
+<div id="tab-guia" class="tab-content">
+  <div id="guia-banner"></div>
+
+  <div class="card">
+    <div class="card-title">Por que esta decisão? <span style="color:var(--text3);font-size:10px;font-weight:400">(calculado automaticamente — nenhuma conta manual)</span></div>
+    <div id="guia-checklist"></div>
+  </div>
+
+  <div class="card" id="guia-execucao-card">
+    <div class="card-title">Execução Recomendada</div>
+    <div id="guia-execucao"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Calendário Econômico — Próximos Eventos <span style="color:var(--text3);font-size:10px;font-weight:400">(WASDE/Estoques USDA · Boletim CONAB)</span></div>
+    <div id="guia-calendario"></div>
+  </div>
+</div>
+
+<!-- TAB: TÉCNICO -->
+<div id="tab-tecnico" class="tab-content">
+  <div class="kpi-grid-4" id="kpi-tecnico"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Sistema Principal — EMA 9/20
+        <span id="badge-ema"></span>
+      </div>
+      <div id="ema-detail"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Setup 9.1 — EMA9 Vira
+        <span id="badge-91"></span>
+      </div>
+      <div id="setup91-detail"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Posição do Preço — Suporte / Resistência</div>
+    <div id="preco-range"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Parâmetros Operacionais</div>
+    <div id="params-operacionais"></div>
+  </div>
+</div>
+
+<!-- TAB: MACRO -->
+<div id="tab-macro" class="tab-content">
+  <div class="kpi-grid-4" id="kpi-macro"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Câmbio — Diagnóstico</div>
+      <div id="cambio-detail"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">ZC Chicago vs CCM — Paridade</div>
+      <div id="paridade-detail"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Custo de Carrego — DI Futuro</div>
+    <div id="carrego-detail"></div>
+  </div>
+</div>
+
+<!-- TAB: CONVERGÊNCIA -->
+<div id="tab-convergencia" class="tab-content">
+  <div id="convergencia-banner"></div>
+
+  <div class="kpi-grid-3" id="kpi-convergencia"></div>
+
+  <div class="card">
+    <div class="card-title">Spread Futuro × Físico (RTCNI) — Posicionamento Histórico</div>
+    <div id="convergencia-range"></div>
+    <div class="chart-wrap" style="margin-top:16px;">
+      <canvas id="chart-convergencia"></canvas>
+    </div>
+  </div>
+
+  <div id="convergencia-alerta"></div>
+</div>
+
+<!-- TAB: CURVA -->
+<div id="tab-curva" class="tab-content">
+  <div id="curva-sazonal-leitura"></div>
+
+  <div class="kpi-grid-2" id="kpi-curva"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Estrutura de Vencimentos</div>
+      <div class="chart-wrap-lg">
+        <canvas id="chart-curva"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Contratos Ativos</div>
+      <table class="curve-table" id="curva-table">
+        <thead>
+          <tr><th>Contrato</th><th>Vencimento</th><th>Preço (R$/sc)</th><th>Spread vs Ant.</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: SAZONALIDADE -->
+<div id="tab-sazonalidade" class="tab-content">
+  <div id="sazonalidade-indisponivel" style="display:none;" class="alert alert-warning">
+    Sazonalidade indisponível nesta rodada — verifique <code>sazonalidade.status</code> em <code>dados_milho.json</code>.
+  </div>
+
+  <div id="sazonalidade-body">
+    <div class="kpi-grid-4" id="kpi-sazonalidade"></div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title">Desvio Sazonal Médio por Mês <span style="color:var(--text3);font-size:10px;font-weight:400">(vs. média anual, base histórica)</span></div>
+        <div class="chart-wrap-lg">
+          <canvas id="chart-sazonalidade"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Contexto Atual</div>
+        <div id="sazonalidade-contexto"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Calendário Agrícola — Fase e Viés por Mês</div>
+      <table class="curve-table" id="sazonalidade-table">
+        <thead>
+          <tr><th>Mês</th><th>Fase</th><th>Viés</th><th>Desvio Médio</th><th>Amplitude (min/max)</th><th>Obs.</th><th>Contrato Afetado</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- TAB: OPÇÕES (OI) -->
+<div id="tab-opcoes" class="tab-content">
+  <div id="opcoes-indisponivel" style="display:none;" class="alert alert-warning">
+    Grade de opções indisponível nesta rodada (arquivo <code>CCM_OP*.xlsx</code> não encontrado ou sem linhas reconhecíveis).
+  </div>
+
+  <div id="opcoes-body">
+    <div id="opcoes-toolbar" class="contrato-toolbar" style="display:none">
+      <label for="opcoes-select-contrato">Contrato</label>
+      <select id="opcoes-select-contrato" class="select-contrato" onchange="onOpcoesContratoChange(this.value)"></select>
+      <span id="opcoes-contrato-info" class="contrato-info"></span>
+    </div>
+
+    <div class="kpi-grid-3" id="kpi-opcoes"></div>
+
+    <div class="card">
+      <div class="card-title"><span id="titulo-chart-candles">Candles do Contrato × Paredes</span> <span style="color:var(--text3);font-size:10px;font-weight:400">(R/S/MP calculados por OI do próprio contrato — nunca estimados visualmente)</span></div>
+      <div class="chart-wrap-lg" style="height:400px">
+        <canvas id="chart-candles"></canvas>
+      </div>
+      <div class="legend-candles">
+        <span><span class="sw sw-dot" style="background:#10b981"></span>Alta (fech. ≥ abert.)</span>
+        <span><span class="sw sw-dot" style="background:#ef4444"></span>Baixa (fech. &lt; abert.)</span>
+        <span><span class="sw sw-line" style="color:#ef4444"></span>R — Call Wall (resistência)</span>
+        <span><span class="sw sw-line" style="color:#10b981"></span>S — Put Wall (suporte)</span>
+        <span><span class="sw sw-line sw-dotted" style="color:#f59e0b"></span>MP — Max Pain</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span id="titulo-chart-opcoes">OI por Strike — Calls × Puts</span> <span style="color:var(--text3);font-size:10px;font-weight:400">(vencimento de opções do contrato selecionado, não agregado)</span></div>
+      <div class="chart-wrap-lg" style="height:340px">
+        <canvas id="chart-opcoes"></canvas>
+      </div>
+      <div class="legend-candles">
+        <span><span class="sw sw-dot" style="background:rgba(16,185,129,0.55)"></span>OI Call</span>
+        <span><span class="sw sw-dot" style="background:rgba(239,68,68,0.55)"></span>OI Put</span>
+        <span><span class="sw sw-dot" style="background:#f59e0b"></span>Strike do Call Wall / Put Wall (barra destacada em âmbar — mesma zona da parede mostrada acima e no gráfico de candles)</span>
+      </div>
+    </div>
+
+    <div class="alert alert-warning" style="margin-top:16px">
+      <strong>Como ler:</strong> Call Wall e Put Wall são zonas de concentração de interesse (resistência/suporte), não sinal de compra ou venda. Max Pain é o strike de menor payout agregado no vencimento — tendência estatística fraca, mais relevante perto do vencimento. Em opções de milho a liquidez costuma ser concentrada em poucos strikes — trate como contexto, nunca como filtro isolado de entrada. Use o seletor de contrato acima para comparar as barreiras de cada vencimento individualmente.
+    </div>
+  </div>
+</div>
+
+<!-- TAB: SPREAD CALENDÁRIO -->
+<div id="tab-spread" class="tab-content">
+  <div id="spread-indisponivel" style="display:none;" class="alert alert-warning">
+    Spread calendário indisponível nesta rodada — menos de 2 contratos vivos elegíveis (fora de vencimento nos próximos 15 dias) com volume suficiente.
+  </div>
+
+  <div id="spread-body">
+    <div class="alert alert-warning" style="margin-bottom:16px">
+      <strong>Como ler:</strong> cobre o caso de comprar um vencimento e vender outro (spread de calendário). Cada par tem sua PRÓPRIA média/desvio/Z-score histórico — não é o mesmo sistema EMA9/20 rodado por contrato (esse só foi validado no CCMFUT contínuo). |Z| > 1,5σ é tese de reversão à média: vender a perna cara, comprar a barata. Contratos a ≤15 dias do próprio vencimento são excluídos do par — perto do vencimento o próprio mecanismo de convergência futuro×físico (aba Convergência) domina o preço, confundindo a leitura.
+    </div>
+    <div id="spread-contratos" style="font-size:12px;color:var(--text3);margin-bottom:16px"></div>
+    <div id="spread-cards"></div>
+  </div>
+</div>
+
+<script>
+// ── ESTADO ────────────────────────────────────────────────
+let DATA = null;
+let charts = {};
+let opcoesContratoAtual = null; // contrato selecionado na aba Opções (ex.: "CCMU26")
+let decisaoContratoAtual = null; // contrato selecionado na aba Decisão (ex.: "CCMU26")
+
+function onOpcoesContratoChange(v) {
+  opcoesContratoAtual = v;
+  renderOpcoes(DATA);
+}
+
+function onDecisaoContratoChange(v) {
+  decisaoContratoAtual = v;
+  renderDecisao(DATA);
+}
+
+// ── DADOS DE DEMONSTRAÇÃO ─────────────────────────────────
+const DEMO = {
+  "data_referencia": "23/06/2026",
+  "ccm": {
+    "ultimo_preco": 67.20, "variacao_semanal_pct": -0.85,
+    "vencimento_ativo": "CCMN26", "ema9": 67.45, "ema20": 68.10,
+    "sinal_ema920": "NEUTRO", "ema9_slope": -0.031,
+    "sinal_91": "COMPRA", "atr14": 0.89,
+    "stop_atr15": 65.87, "alvo_rr2": 70.46,
+    "volume_medio": 4200, "suporte": 65.40, "resistencia": 69.80,
+    "candles": [
+      {"data":"2026-06-15","open":68.10,"high":68.55,"low":67.90,"close":68.30},
+      {"data":"2026-06-16","open":68.30,"high":68.60,"low":67.80,"close":67.95},
+      {"data":"2026-06-17","open":67.95,"high":68.20,"low":67.40,"close":67.55},
+      {"data":"2026-06-18","open":67.55,"high":67.90,"low":67.10,"close":67.75},
+      {"data":"2026-06-19","open":67.75,"high":68.05,"low":67.30,"close":67.40},
+      {"data":"2026-06-22","open":67.40,"high":67.85,"low":67.05,"close":67.60},
+      {"data":"2026-06-23","open":67.60,"high":67.95,"low":67.20,"close":67.20}
+    ]
+  },
+  "curva_vencimentos": [
+    {"contrato":"CCMN26","vencimento":"Jul/2026","preco":67.20,"spread_vs_anterior":0},
+    {"contrato":"CCMU26","vencimento":"Set/2026","preco":66.85,"spread_vs_anterior":-0.35},
+    {"contrato":"CCMX26","vencimento":"Nov/2026","preco":66.40,"spread_vs_anterior":-0.45},
+    {"contrato":"CCMF27","vencimento":"Jan/2027","preco":66.10,"spread_vs_anterior":-0.30},
+    {"contrato":"CCMH27","vencimento":"Mar/2027","preco":65.80,"spread_vs_anterior":-0.30}
+  ],
+  "estrutura_curva": "BACKWARDATION",
+  "curva_leitura_sazonal": {
+    "avaliavel": true, "consistente": true, "esperado": "BACKWARDATION",
+    "leitura": "Curva em BACKWARDATION é consistente com a fase agrícola atual (ENTRESSAFRA, viés ALTISTA) — padrão sazonal normal, sem sinal de distorção adicional."
+  },
+  "convergencia": {
+    "rtcni_preco": 63.04, "rtcni_data": "22/06/2026", "spread_futuro_fisico": 4.16,
+    "spread_media_historica": 6.51, "spread_desvio_padrao": 3.50,
+    "spread_zscore": -0.67, "alerta_convergencia": false, "direcao_alerta": null,
+    "periodo_base": "23/06/2024 a 22/06/2026", "n_obs_historico": 480,
+    "historico_semanal": [6.2, 5.8, 6.9, 4.1, 5.3, 6.6, 3.8, 4.9, 5.5, 6.1, 4.4, 5.0, 6.3, 4.7, 5.9, 4.2, 5.6, 4.8, 5.1, 4.16],
+    "vencimento_proximo_dias": 18, "acionavel": false, "leitura_acionavel": null
+  },
+  "carrego": {
+    "di1f27_taxa": 14.255, "di1f29_taxa": 13.820,
+    "preco_justo_jan27": 71.52, "spread_justo_vs_mercado": 5.42
+  },
+  "cambio": {
+    "wdofut": 5195.0, "wdofut_usdbrl": 5.195,
+    "variacao_semanal_pct": -0.42, "dolindex_dxy": 98.32,
+    "dxy_variacao_pct": 0.18, "ccm_paridade": 65.84,
+    "cambio_implicito": 5.323, "diagnostico": "MILHO"
+  },
+  "zc_cme": {"preco_cents_bu": 437.75, "variacao_semanal_pct": -1.20},
+  "macro": {"brent": 72.97, "brent_variacao_pct": -0.85, "wasde_proximo": "11/07/2026", "conab_proximo": "10/07/2026"},
+  "fundamentos": {"safra_br_estimativa_mt": 127.5, "colheita_safrinha_pct": 62, "estoques_globais_mt": 318.4, "vies_fundamental": "NEUTRO"},
+  "oi_opcoes": {
+    "call_wall": 72.0, "put_wall": 64.0, "max_pain": 68.0,
+    "call_wall_agregado": 70.0, "put_wall_agregado": 65.0,
+    "expiracoes_agregadas": ["F27","H26","H27","K26","K27","N26","N27","U26","U27","X26","X27"],
+    "fonte": "Profit/Genial (grade de opções)", "vencimento_opcoes": "N26",
+    "total_oi_calls": 18400, "total_oi_puts": 15200, "arquivo": "CCM_OP.xlsx",
+    "grade": [
+      {"strike": 62.0, "oi_call": 300, "oi_put": 2100},
+      {"strike": 63.0, "oi_call": 500, "oi_put": 3400},
+      {"strike": 64.0, "oi_call": 900, "oi_put": 4800},
+      {"strike": 65.0, "oi_call": 1600, "oi_put": 2600},
+      {"strike": 66.0, "oi_call": 2400, "oi_put": 1400},
+      {"strike": 67.0, "oi_call": 3100, "oi_put": 700},
+      {"strike": 68.0, "oi_call": 3600, "oi_put": 200},
+      {"strike": 69.0, "oi_call": 2200, "oi_put": 0},
+      {"strike": 70.0, "oi_call": 1800, "oi_put": 0},
+      {"strike": 71.0, "oi_call": 900, "oi_put": 0},
+      {"strike": 72.0, "oi_call": 4200, "oi_put": 0},
+      {"strike": 73.0, "oi_call": 700, "oi_put": 0}
+    ]
+  },
+  "oi_por_contrato": {
+    "CCMN26": {
+      "contrato": "CCMN26", "vencimento_opcoes": "N26", "preco_referencia": 67.20, "preco_estimado": false,
+      "call_wall": 72.0, "put_wall": 64.0, "max_pain": 68.0,
+      "total_oi_calls": 18400, "total_oi_puts": 15200,
+      "grade": [
+        {"strike": 62.0, "oi_call": 300, "oi_put": 2100},
+        {"strike": 63.0, "oi_call": 500, "oi_put": 3400},
+        {"strike": 64.0, "oi_call": 900, "oi_put": 4800},
+        {"strike": 65.0, "oi_call": 1600, "oi_put": 2600},
+        {"strike": 66.0, "oi_call": 2400, "oi_put": 1400},
+        {"strike": 67.0, "oi_call": 3100, "oi_put": 700},
+        {"strike": 68.0, "oi_call": 3600, "oi_put": 200},
+        {"strike": 69.0, "oi_call": 2200, "oi_put": 0},
+        {"strike": 70.0, "oi_call": 1800, "oi_put": 0},
+        {"strike": 71.0, "oi_call": 900, "oi_put": 0},
+        {"strike": 72.0, "oi_call": 4200, "oi_put": 0},
+        {"strike": 73.0, "oi_call": 700, "oi_put": 0}
+      ],
+      "candles": [
+        {"data":"2026-06-15","open":68.10,"high":68.55,"low":67.90,"close":68.30},
+        {"data":"2026-06-16","open":68.30,"high":68.60,"low":67.80,"close":67.95},
+        {"data":"2026-06-17","open":67.95,"high":68.20,"low":67.40,"close":67.55},
+        {"data":"2026-06-18","open":67.55,"high":67.90,"low":67.10,"close":67.75},
+        {"data":"2026-06-19","open":67.75,"high":68.05,"low":67.30,"close":67.40},
+        {"data":"2026-06-22","open":67.40,"high":67.85,"low":67.05,"close":67.60},
+        {"data":"2026-06-23","open":67.60,"high":67.95,"low":67.20,"close":67.20}
+      ]
+    },
+    "CCMU26": {
+      "contrato": "CCMU26", "vencimento_opcoes": "U26", "preco_referencia": 66.85, "preco_estimado": false,
+      "call_wall": 70.0, "put_wall": 62.0, "max_pain": 66.5,
+      "total_oi_calls": 14200, "total_oi_puts": 11800,
+      "grade": [
+        {"strike": 60.0, "oi_call": 200, "oi_put": 1900},
+        {"strike": 62.0, "oi_call": 400, "oi_put": 3200},
+        {"strike": 64.0, "oi_call": 800, "oi_put": 2600},
+        {"strike": 66.0, "oi_call": 1900, "oi_put": 1200},
+        {"strike": 66.5, "oi_call": 2100, "oi_put": 900},
+        {"strike": 68.0, "oi_call": 2600, "oi_put": 300},
+        {"strike": 70.0, "oi_call": 3300, "oi_put": 0},
+        {"strike": 72.0, "oi_call": 1200, "oi_put": 0}
+      ],
+      "candles": [
+        {"data":"2026-06-15","open":67.70,"high":68.10,"low":67.50,"close":67.90},
+        {"data":"2026-06-16","open":67.90,"high":68.15,"low":67.40,"close":67.55},
+        {"data":"2026-06-17","open":67.55,"high":67.80,"low":67.05,"close":67.15},
+        {"data":"2026-06-18","open":67.15,"high":67.55,"low":66.75,"close":67.35},
+        {"data":"2026-06-19","open":67.35,"high":67.60,"low":66.95,"close":67.00},
+        {"data":"2026-06-22","open":67.00,"high":67.40,"low":66.65,"close":67.20},
+        {"data":"2026-06-23","open":67.20,"high":67.50,"low":66.80,"close":66.85}
+      ]
+    },
+    "CCMX26": {
+      "contrato": "CCMX26", "vencimento_opcoes": "X26", "preco_referencia": 66.40, "preco_estimado": false,
+      "call_wall": 71.0, "put_wall": 60.0, "max_pain": 66.0,
+      "total_oi_calls": 9800, "total_oi_puts": 6200,
+      "grade": [
+        {"strike": 58.0, "oi_call": 0, "oi_put": 1400},
+        {"strike": 60.0, "oi_call": 100, "oi_put": 2200},
+        {"strike": 63.0, "oi_call": 500, "oi_put": 1600},
+        {"strike": 66.0, "oi_call": 1600, "oi_put": 1000},
+        {"strike": 69.0, "oi_call": 2400, "oi_put": 0},
+        {"strike": 71.0, "oi_call": 3100, "oi_put": 0},
+        {"strike": 74.0, "oi_call": 900, "oi_put": 0}
+      ],
+      "candles": [
+        {"data":"2026-06-15","open":67.30,"high":67.65,"low":67.05,"close":67.45},
+        {"data":"2026-06-16","open":67.45,"high":67.70,"low":66.95,"close":67.10},
+        {"data":"2026-06-17","open":67.10,"high":67.35,"low":66.60,"close":66.70},
+        {"data":"2026-06-18","open":66.70,"high":67.10,"low":66.30,"close":66.90},
+        {"data":"2026-06-19","open":66.90,"high":67.15,"low":66.50,"close":66.55},
+        {"data":"2026-06-22","open":66.55,"high":66.95,"low":66.20,"close":66.75},
+        {"data":"2026-06-23","open":66.75,"high":67.05,"low":66.35,"close":66.40}
+      ]
+    }
+  },
+  "sizing": {"valor_contrato": 30240, "margem_estimada": 1640,
+    "stop_mensal": {"conservador":2000,"moderado":4000,"arrojado":8000},
+    "contratos": {"conservador":2,"moderado":4,"arrojado":8}
+  },
+  "destaque_semana": "Curva em backwardation reflete pressão de oferta da safrinha",
+  "sazonalidade": {
+    "status": "OK",
+    "periodo_base": "23/06/2023 a 23/06/2026",
+    "aviso_historico": "Base com 3 anos — sazonalidade robusta.",
+    "fase_agricola": "COLHEITA_SAFRINHA",
+    "descricao_fase": "Colheita da safrinha (2ª safra) — pressão máxima de oferta",
+    "vies_sazonal": "BAIXISTA",
+    "quinzena_atual": "Jun-Q2",
+    "desvio_atual_pct": -4.1,
+    "desvio_std_pct": 2.4,
+    "proxima_quinzena": "Jul-Q1",
+    "desvio_proxima_pct": -5.2,
+    "delta_quinzenal_pct": -1.1,
+    "tendencia_sazonal": "BAIXISTA",
+    "virada_sazonal": false,
+    "meses_ate_pico_mar": 9,
+    "calendario_mensal": [
+      {"mes":"Jan","mes_num":1,"avg_pct":-0.89,"std_pct":5.35,"min_pct":-7.76,"max_pct":8.92,"n_obs":43,"fase":"PLANTIO_SAFRINHA","vies":"NEUTRO"},
+      {"mes":"Fev","mes_num":2,"avg_pct":1.55,"std_pct":3.56,"min_pct":-6.64,"max_pct":7.07,"n_obs":38,"fase":"COLHEITA_VERAO","vies":"BAIXISTA"},
+      {"mes":"Mar","mes_num":3,"avg_pct":6.56,"std_pct":2.60,"min_pct":3.42,"max_pct":14.57,"n_obs":41,"fase":"COLHEITA_VERAO","vies":"BAIXISTA"},
+      {"mes":"Abr","mes_num":4,"avg_pct":2.15,"std_pct":3.89,"min_pct":-5.51,"max_pct":9.29,"n_obs":40,"fase":"COLHEITA_VERAO","vies":"BAIXISTA"},
+      {"mes":"Mai","mes_num":5,"avg_pct":-1.76,"std_pct":1.96,"min_pct":-5.31,"max_pct":3.99,"n_obs":41,"fase":"COLHEITA_SAFRINHA","vies":"BAIXISTA"},
+      {"mes":"Jun","mes_num":6,"avg_pct":-4.23,"std_pct":2.49,"min_pct":-7.59,"max_pct":0.29,"n_obs":41,"fase":"COLHEITA_SAFRINHA","vies":"BAIXISTA"},
+      {"mes":"Jul","mes_num":7,"avg_pct":-4.63,"std_pct":3.53,"min_pct":-11.25,"max_pct":2.25,"n_obs":47,"fase":"COLHEITA_SAFRINHA","vies":"BAIXISTA"},
+      {"mes":"Ago","mes_num":8,"avg_pct":-3.21,"std_pct":3.69,"min_pct":-8.09,"max_pct":2.48,"n_obs":43,"fase":"ENTRESSAFRA","vies":"ALTISTA"},
+      {"mes":"Set","mes_num":9,"avg_pct":-1.55,"std_pct":1.52,"min_pct":-4.92,"max_pct":1.37,"n_obs":43,"fase":"PLANTIO_VERAO","vies":"ALTISTA"},
+      {"mes":"Out","mes_num":10,"avg_pct":0.54,"std_pct":3.24,"min_pct":-4.52,"max_pct":7.77,"n_obs":46,"fase":"PLANTIO_VERAO","vies":"ALTISTA"},
+      {"mes":"Nov","mes_num":11,"avg_pct":2.94,"std_pct":3.57,"min_pct":-1.36,"max_pct":9.48,"n_obs":38,"fase":"ALTA_SAZONAL","vies":"ALTISTA"},
+      {"mes":"Dez","mes_num":12,"avg_pct":4.01,"std_pct":3.34,"min_pct":-1.80,"max_pct":10.32,"n_obs":39,"fase":"ALTA_SAZONAL","vies":"ALTISTA"}
+    ]
+  },
+  "spread_calendario": {
+    "contratos_considerados": ["CCMU26", "CCMX26", "CCMF27"],
+    "pares": [
+      {
+        "par": "CCMU26-CCMX26", "contrato_a": "CCMU26", "contrato_b": "CCMX26",
+        "spread_hoje": -3.46, "spread_media_historica": -2.44, "spread_desvio_padrao": 0.54,
+        "spread_zscore": -1.89, "alerta": true, "direcao": "CCMU26_BARATO",
+        "leitura": "CCMU26 está barato em relação a CCMX26 (Z=-1.9σ) — considerar comprar CCMU26 / vender CCMX26 (tese: spread reverte à média).",
+        "periodo_base": "28/07/2025 a 10/07/2026", "n_obs_historico": 207,
+        "historico_semanal": [-2.52,-1.48,-1.70,-1.75,-1.91,-1.80,-2.43,-2.59,-1.72,-2.12,-2.58,-3.04,-3.00,-2.94,-2.76,-3.52,-3.40,-3.04,-3.50,-3.46],
+        "dias_vencimento_perna_a": 66
+      },
+      {
+        "par": "CCMU26-CCMF27", "contrato_a": "CCMU26", "contrato_b": "CCMF27",
+        "spread_hoje": -4.10, "spread_media_historica": -3.35, "spread_desvio_padrao": 0.71,
+        "spread_zscore": -1.06, "alerta": false, "direcao": null, "leitura": null,
+        "periodo_base": "05/08/2025 a 10/07/2026", "n_obs_historico": 195,
+        "historico_semanal": [-3.10,-3.05,-3.22,-3.30,-3.41,-3.38,-3.55,-3.60,-3.44,-3.52,-3.68,-3.90,-3.85,-3.79,-3.95,-4.02,-3.98,-4.05,-4.08,-4.10],
+        "dias_vencimento_perna_a": 66
+      },
+      {
+        "par": "CCMX26-CCMF27", "contrato_a": "CCMX26", "contrato_b": "CCMF27",
+        "spread_hoje": -0.64, "spread_media_historica": -0.91, "spread_desvio_padrao": 0.38,
+        "spread_zscore": 0.71, "alerta": false, "direcao": null, "leitura": null,
+        "periodo_base": "05/08/2025 a 10/07/2026", "n_obs_historico": 195,
+        "historico_semanal": [-0.85,-0.90,-0.88,-0.95,-1.02,-0.99,-1.05,-0.92,-0.88,-0.80,-0.78,-0.75,-0.70,-0.68,-0.72,-0.66,-0.60,-0.62,-0.65,-0.64],
+        "dias_vencimento_perna_a": 128
+      }
+    ]
+  },
+  "calendario_economico": {
+    "bloquear_hoje": false,
+    "eventos_hoje": [],
+    "proximo_evento": {"data": "2026-07-15", "data_br": "15/07/2026", "orgao": "CONAB", "evento": "Boletim da Safra de Grãos (CONAB)", "impacto": "ALTO"},
+    "dias_ate_proximo_evento": 4,
+    "aviso_amanha": false,
+    "usda_desatualizado": false,
+    "proximos_eventos": [
+      {"data": "2026-07-15", "data_br": "15/07/2026", "orgao": "CONAB", "evento": "Boletim da Safra de Grãos (CONAB)", "impacto": "ALTO"},
+      {"data": "2026-08-12", "data_br": "12/08/2026", "orgao": "USDA", "evento": "WASDE", "impacto": "ALTO"},
+      {"data": "2026-08-17", "data_br": "17/08/2026", "orgao": "CONAB", "evento": "Boletim da Safra de Grãos (CONAB)", "impacto": "ALTO"}
+    ]
+  },
+  "bias_estrutural": {
+    "versao": "1.0",
+    "score_bruto": -17.1,
+    "score_ajustado": -17.2,
+    "confianca": "4/4 dimensões validadas",
+    "decisao": "Neutro / No-Go",
+    "dimensoes": { "sazonalidade": -28.0, "fisico": -9.0, "macro": -60.0, "tecnico": 30.0 },
+    "detalhes": {
+      "sazonalidade": "desvio=-2.9% / std=3.4% -> -28",
+      "fisico": "spread_zscore=-0.37 -> -9 | 2 par(es) de spread calendário com alerta",
+      "macro": "fundamentos.vies_fundamental='BAIXISTA' -> -60",
+      "tecnico": "TRIX v5 (posição atual)='COMPRA' -> +60"
+    }
+  },
+  "veredito_consolidado": {
+    "veredito": "AGUARDAR",
+    "direcao": null,
+    "convicao": null,
+    "motivo": "EMA9/20 (NEUTRO) e Setup 9.1 (COMPRA) não alinhados na mesma direção."
+  },
+  "resumo_executivo": {
+    "trader": "AGUARDAR. EMA9/20 (NEUTRO) e Setup 9.1 (COMPRA) não alinhados na mesma direção.",
+    "comprador": "Sem viés estrutural relevante — decisão de compra deve seguir sua necessidade operacional, não timing de mercado.",
+    "vendedor": "Sem viés estrutural relevante — decisão de venda deve seguir seu fluxo de caixa/logística, não timing de mercado."
+  }
+};
+
+// ── UTILITÁRIOS ───────────────────────────────────────────
+const fmt = (v, dec=2) => v == null ? '—' : Number(v).toLocaleString('pt-BR', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+const fmtPct = v => v == null ? '—' : (v >= 0 ? '+' : '') + fmt(v) + '%';
+const fmtR = (v, dec=2) => v == null ? '—' : 'R$ ' + fmt(v, dec);
+
+function colorClass(v, pos='positive', neg='negative') {
+  if (v == null) return 'neutral';
+  return v >= 0 ? pos : neg;
+}
+
+function signalBadge(sinal) {
+  if (!sinal) return '';
+  const map = {COMPRA:'green',VENDA:'red',NEUTRO:'amber',AGUARDANDO:'amber'};
+  return `<span class="badge ${map[sinal]||'blue'}">${sinal}</span>`;
+}
+
+// ── TICKER ────────────────────────────────────────────────
+function renderTicker(d) {
+  const items = [
+    { label: 'CCM Último', value: fmtR(d.ccm.ultimo_preco), delta: fmtPct(d.ccm.variacao_semanal_pct), cls: colorClass(d.ccm.variacao_semanal_pct) },
+    { label: 'WDOFUT', value: 'R$ ' + fmt(d.cambio.wdofut, 0) + '/1000', delta: fmtPct(d.cambio.variacao_semanal_pct), cls: colorClass(d.cambio.variacao_semanal_pct) },
+    { label: 'ZC Chicago', value: fmt(d.zc_cme.preco_cents_bu) + ' c/bu', delta: fmtPct(d.zc_cme.variacao_semanal_pct), cls: colorClass(d.zc_cme.variacao_semanal_pct) },
+    { label: 'Brent', value: 'USD ' + fmt(d.macro.brent), delta: fmtPct(d.macro.brent_variacao_pct), cls: colorClass(d.macro.brent_variacao_pct) },
+    { label: 'RTCNI', value: fmtR(d.convergencia.rtcni_preco), delta: '', cls: '' },
+    { label: 'Spread', value: fmtR(d.convergencia.spread_futuro_fisico), delta: 'Z=' + fmt(d.convergencia.spread_zscore,2) + 'σ', cls: Math.abs(d.convergencia.spread_zscore) > 1.5 ? 'negative' : 'positive' },
+    { label: 'Curva', value: d.estrutura_curva, delta: '', cls: d.estrutura_curva === 'BACKWARDATION' ? 'positive' : d.estrutura_curva === 'CONTANGO' ? 'negative' : 'neutral' },
+    { label: 'DI Jan/27', value: fmt(d.carrego.di1f27_taxa, 3) + '% a.a.', delta: '', cls: 'neutral' },
+  ];
+
+  document.getElementById('ticker-strip').innerHTML = items.map(it =>
+    `<div class="ticker-item">
+      <span class="ticker-label">${it.label}</span>
+      <span class="ticker-value">${it.value}</span>
+      ${it.delta ? `<span class="ticker-delta ${it.cls}">${it.delta}</span>` : ''}
+    </div>`
+  ).join('<span class="ticker-sep">│</span>');
+}
+
+// ── TAB: DECISÃO ─────────────────────────────────────────
+// Resumo comparativo de TODOS os contratos vivos (Fase 4, 31/07/2026) — o
+// operador não fica preso ao contrato mais líquido (CCMFUT usado como
+// proxy); cada linha mostra o veredito do MESMO critério técnico rodado
+// naquele vencimento específico (payload.contratos_analise, gerado em
+// pipeline.py). Clicar numa linha troca o contrato em análise abaixo.
+function renderResumoContratos(d, codigos) {
+  const analise = d.contratos_analise || {};
+  const indisp  = document.getElementById('resumo-contratos-indisponivel');
+  const tableEl = document.getElementById('resumo-contratos-table');
+
+  if (!codigos.length) {
+    indisp.style.display = 'block';
+    tableEl.innerHTML = '';
+    return;
+  }
+  indisp.style.display = 'none';
+
+  const linhas = codigos.map(cod => {
+    const a  = analise[cod] || {};
+    const ccmC = a.ccm || {};
+    const vcC  = a.veredito_consolidado || {};
+    const veredito = vcC.veredito || 'INDISPONÍVEL';
+    let badgeCls = 'wait';
+    if (veredito === 'NÃO OPERAR') badgeCls = 'nogo';
+    else if (veredito.startsWith('ENTRAR') || veredito.startsWith('MANTER')) badgeCls = (vcC.direcao === 'VENDA') ? 'nogo' : 'go';
+    const tagLiquido = (d.ccm && cod === d.ccm.vencimento_ativo) ? '<span class="rc-tag-liquido">● mais líquido</span>' : '';
+    const selecionada = (cod === decisaoContratoAtual) ? ' rc-selecionada' : '';
+    return `
+      <tr class="rc-row${selecionada}" onclick="onDecisaoContratoChange('${cod}')">
+        <td><strong style="font-family:'JetBrains Mono',monospace">${cod}</strong>${tagLiquido}</td>
+        <td>${fmtR(ccmC.ultimo_preco)}</td>
+        <td>${signalBadge(ccmC.sinal_ema920)}</td>
+        <td>${signalBadge(ccmC.sinal_91)}</td>
+        <td>${a.bias_estrutural && a.bias_estrutural.score_ajustado != null ? fmt(a.bias_estrutural.score_ajustado,1) : '—'}</td>
+        <td><span class="rc-badge ${badgeCls}">${veredito}</span>${vcC.convicao ? ` <span style="color:var(--text3);font-size:10px">(${vcC.convicao})</span>` : ''}</td>
+      </tr>`;
+  }).join('');
+
+  tableEl.innerHTML = `
+    <table class="resumo-contratos-table">
+      <thead>
+        <tr><th>Contrato</th><th>Preço</th><th>EMA 9/20</th><th>Setup 9.1</th><th>Bias</th><th>Veredito</th></tr>
+      </thead>
+      <tbody>${linhas}</tbody>
+    </table>`;
+}
+
+function renderDecisao(d) {
+  const contratosAnalise = d.contratos_analise || {};
+  const codigos = ordenarContratosCronologicamente(Object.keys(contratosAnalise), d);
+
+  renderResumoContratos(d, codigos);
+
+  // ── Seletor de contrato em análise ────────────────────────
+  const toolbar  = document.getElementById('decisao-toolbar');
+  const selectEl = document.getElementById('decisao-select-contrato');
+  if (codigos.length > 0) {
+    if (!decisaoContratoAtual || !codigos.includes(decisaoContratoAtual)) {
+      decisaoContratoAtual = (d.ccm && codigos.includes(d.ccm.vencimento_ativo)) ? d.ccm.vencimento_ativo : codigos[0];
+    }
+    const optsAtuais = Array.from(selectEl.options).map(o => o.value).join('|');
+    const optsNovas  = codigos.join('|');
+    if (optsAtuais !== optsNovas) {
+      selectEl.innerHTML = codigos.map(c => {
+        const tagAtivo = (d.ccm && c === d.ccm.vencimento_ativo) ? ' (mais líquido)' : '';
+        return `<option value="${c}">${c}${tagAtivo}</option>`;
+      }).join('');
+    }
+    selectEl.value = decisaoContratoAtual;
+    toolbar.style.display = 'flex';
+  } else {
+    toolbar.style.display = 'none';
+    decisaoContratoAtual = null;
+  }
+
+  // Dados do contrato selecionado — fallback para o agregado antigo
+  // (CCMFUT contínuo) se esta rodada não tiver contratos_analise.
+  const selecao = decisaoContratoAtual && contratosAnalise[decisaoContratoAtual];
+  const ccm = selecao ? selecao.ccm : d.ccm;
+  const sinal = ccm.sinal_ema920;
+  const sinal91 = ccm.sinal_91;
+
+  const infoEl = document.getElementById('decisao-contrato-info');
+  if (infoEl) {
+    infoEl.textContent = selecao
+      ? `Análise técnica própria do contrato ${decisaoContratoAtual} — não é mais o CCMFUT contínuo usado como proxy.`
+      : '';
+  }
+
+  // Verdict — vem do veredito_consolidado do CONTRATO SELECIONADO (já funde
+  // técnico + Bias Estrutural num único consenso — ver
+  // calcular_veredito_consolidado() em pipeline.py).
+  const vc = selecao ? (selecao.veredito_consolidado || {}) : (d.veredito_consolidado || {});
+  let vClass = 'wait', vIcon = '⏳';
+  if (vc.veredito === 'NÃO OPERAR') { vClass = 'nogo'; vIcon = '🚫'; }
+  else if (vc.veredito === 'AGUARDAR') { vClass = 'wait'; vIcon = '⏳'; }
+  else if (vc.veredito && vc.veredito.startsWith('ENTRAR')) {
+    vClass = vc.direcao === 'VENDA' ? 'nogo' : 'go';
+    vIcon = vc.convicao === 'ALTA' ? '✅' : '⚠️';
+  } else if (vc.veredito && vc.veredito.startsWith('MANTER')) {
+    vClass = vc.direcao === 'VENDA' ? 'nogo' : 'go';
+    vIcon = '📌';
+  }
+  const vLabel = vc.veredito || 'INDISPONÍVEL';
+  const vSub = (vc.convicao ? `Convicção ${vc.convicao} — ` : '') + (vc.motivo || 'veredito_consolidado ausente em dados_milho.json');
+
+  document.getElementById('verdict-banner').innerHTML = `
+    <div class="verdict ${vClass}">
+      <span class="verdict-icon">${vIcon}</span>
+      <div>
+        <div class="verdict-label">${vLabel}</div>
+        <div class="verdict-sub">${vSub}</div>
+      </div>
+    </div>`;
+
+  // KPIs
+  document.getElementById('kpi-decisao').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">CCM Último</div>
+      <div class="kpi-value">${fmt(ccm.ultimo_preco)}</div>
+      <div class="kpi-sub">R$/sc · ${d.data_referencia}</div>
+      <div class="kpi-delta ${colorClass(ccm.variacao_semanal_pct)}">${fmtPct(ccm.variacao_semanal_pct)} semana</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">TRIX v5 — Posição</div>
+      <div class="kpi-value" style="font-size:22px;margin-top:4px;">${signalBadge(sinal)}</div>
+      <div class="kpi-sub">TRIX-Sinal: ${ccm.ema9_slope >= 0 ? '+' : ''}${fmt(ccm.ema9_slope,4)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Entrada Hoje</div>
+      <div class="kpi-value" style="font-size:22px;margin-top:4px;">${signalBadge(sinal91)}</div>
+      <div class="kpi-sub">ATR14: ${fmt(ccm.atr14,4)} R$/sc</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Contrato em Análise</div>
+      <div class="kpi-value" style="font-size:22px;margin-top:4px;color:var(--corn)">${ccm.vencimento_ativo}</div>
+      <div class="kpi-sub">${d.estrutura_curva} · ${d.curva_vencimentos.length} contratos vivos${selecao && ccm.vencimento_ativo !== d.ccm.vencimento_ativo ? ` · mais líquido: ${d.ccm.vencimento_ativo}` : ''}</div>
+    </div>`;
+
+  // Filtros
+  const filtros = [
+    { name: 'TRIX v5 (posição)', value: sinal, pass: sinal === 'COMPRA' || sinal === 'VENDA', rule: 'COMPRA ou VENDA (não-FLAT)' },
+    { name: 'Entrada Hoje', value: sinal91, pass: sinal91 === 'COMPRA' || sinal91 === 'VENDA', rule: 'cruzamento novo hoje' },
+    { name: 'Convergência', value: `Z=${fmt(d.convergencia.spread_zscore,2)}σ`, pass: !d.convergencia.alerta_convergencia, rule: '|Z| < 1,5' },
+    { name: 'Diagnóstico Câmbio', value: d.cambio.diagnostico, pass: d.cambio.diagnostico !== 'INDISPONIVEL', rule: 'dado disponível' },
+    { name: 'ZC Disponível', value: d.zc_cme.preco_cents_bu ? fmt(d.zc_cme.preco_cents_bu) + ' c/bu' : 'N/D', pass: !!d.zc_cme.preco_cents_bu, rule: 'yfinance OK' },
+  ];
+
+  document.getElementById('filtros-list').innerHTML = filtros.map(f => `
+    <div class="criterion">
+      <span class="semaphore ${f.pass ? 'green' : 'amber'}"></span>
+      <span class="crit-name">${f.name}</span>
+      <span class="crit-value">${f.value}</span>
+      <span class="crit-rule">${f.rule}</span>
+    </div>`).join('');
+
+  // Alertas
+  const alertas = [];
+  // Divergência EMA9/20 x Setup 9.1 não é mais alerta à parte — já entra
+  // como atrito no motivo do veredito consolidado acima (evita duas
+  // mensagens diferentes dizendo a mesma coisa).
+  if (d.convergencia.alerta_convergencia) alertas.push({cls:'alert-danger', msg:`<strong>⚠️ Alerta Convergência:</strong> Spread Z-Score ${fmt(d.convergencia.spread_zscore,2)}σ — distorção acima de 1,5 desvios.`});
+  if (d.convergencia.vencimento_proximo_dias <= 20) alertas.push({cls:'alert-warning', msg:`<strong>📅 Vencimento Próximo:</strong> ${d.ccm.vencimento_ativo} em ${d.convergencia.vencimento_proximo_dias} dias — monitorar rollover.`});
+  // Calendário econômico (WASDE/Estoques USDA + Boletim CONAB) — substitui os
+  // antigos d.macro.wasde_proximo/conab_proximo, que eram sempre 'N/A' na
+  // saída real do pipeline (só funcionavam nos dados de demonstração —
+  // mesmo padrão de "alerta morto" já corrigido em Convergência). Corrigido
+  // em 11/07/2026.
+  const cal = d.calendario_economico;
+  if (cal && cal.bloquear_hoje) {
+    const nomes = (cal.eventos_hoje || []).map(e => `${e.orgao} — ${e.evento}`).join(' · ');
+    alertas.push({cls:'alert-danger', msg:`<strong>🚫 Divulgação hoje:</strong> ${nomes}. Não operar — volatilidade de divulgação pode passar por cima de qualquer stop técnico.`});
+  } else if (cal && cal.aviso_amanha && cal.proximo_evento) {
+    alertas.push({cls:'alert-warning', msg:`<strong>📅 Divulgação amanhã:</strong> ${cal.proximo_evento.orgao} — ${cal.proximo_evento.evento} (${cal.proximo_evento.data_br}). Considere reduzir posição ou zerar antes do fechamento de hoje.`});
+  } else if (cal && cal.proximo_evento) {
+    alertas.push({cls:'alert-info', msg:`<strong>📊 Próxima divulgação:</strong> ${cal.proximo_evento.orgao} — ${cal.proximo_evento.evento} em ${cal.dias_ate_proximo_evento} dias (${cal.proximo_evento.data_br}).`});
+  }
+  if (alertas.length === 0) alertas.push({cls:'alert-ok', msg:'✅ Nenhum alerta ativo no momento.'});
+
+  document.getElementById('alertas-list').innerHTML = alertas.map(a => `<div class="alert ${a.cls}">${a.msg}</div>`).join('');
+
+  // Sizing
+  const sz = d.sizing;
+  const risco1 = ((ccm.ultimo_preco - ccm.stop_atr15) * 450).toFixed(0);
+  document.getElementById('sizing-tbody').innerHTML = `
+    <tr class="row-conservador"><td>🟢 Conservador</td><td>${sz.contratos.conservador}</td><td>${fmtR(sz.stop_mensal.conservador, 0)}</td><td>${fmtR(sz.contratos.conservador * sz.margem_estimada, 0)}</td><td>${fmtR(risco1, 0)}</td></tr>
+    <tr class="row-moderado"><td>🟡 Moderado</td><td>${sz.contratos.moderado}</td><td>${fmtR(sz.stop_mensal.moderado, 0)}</td><td>${fmtR(sz.contratos.moderado * sz.margem_estimada, 0)}</td><td>${fmtR(risco1, 0)}</td></tr>
+    <tr class="row-arrojado"><td>🔴 Arrojado</td><td>${sz.contratos.arrojado}</td><td>${fmtR(sz.stop_mensal.arrojado, 0)}</td><td>${fmtR(sz.contratos.arrojado * sz.margem_estimada, 0)}</td><td>${fmtR(risco1, 0)}</td></tr>`;
+
+  renderBiasBreakdown(d, selecao ? selecao.bias_estrutural : null);
+  renderResumoExecutivo(d, decisaoContratoAtual, vc);
+}
+
+// ── RESUMO EXECUTIVO POR PÚBLICO (dentro da aba Decisão) ──
+// Mesma leitura de mercado, traduzida em 3 recomendações diferentes —
+// calculado em pipeline.py (gerar_resumo_executivo), não recalculado aqui.
+// O texto do trader é reconstruído aqui a partir do veredito do CONTRATO
+// SELECIONADO (vcSel) para não contradizer o resto da aba; comprador/
+// vendedor seguem o Bias Estrutural médio prazo do contrato mais líquido
+// (contexto estrutural, não timing de um vencimento específico).
+function renderResumoExecutivo(d, contratoLabel, vcSel) {
+  const re = d.resumo_executivo || {};
+  const traderTxt = vcSel
+    ? `${vcSel.veredito || '—'}${vcSel.convicao ? ` (convicção ${vcSel.convicao})` : ''}. ${vcSel.motivo || ''}` +
+      (contratoLabel ? ` <span style="color:var(--text3)">[${contratoLabel}]</span>` : '')
+    : (re.trader || 'Indisponível nesta rodada.');
+  const publicos = [
+    { key: 'trader',    label: '📈 Trader (CCM futuro)', override: traderTxt },
+    { key: 'comprador', label: '🏭 Comprador de milho físico' },
+    { key: 'vendedor',  label: '🌾 Vendedor de milho físico (produtor)' },
+  ];
+  document.getElementById('resumo-executivo').innerHTML = publicos.map(p => `
+    <div class="card" style="margin-bottom:0;background:var(--surface2)">
+      <div class="card-title">${p.label}</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.5">${p.override || re[p.key] || 'Indisponível nesta rodada.'}</div>
+    </div>`).join('');
+}
+
+// ── TAB: GUIA OPERADOR ────────────────────────────────────
+// MIGRAÇÃO 17/09/2026 — reescrito na migração para TRIX v5. O sistema
+// validado (ver trix_v5.py / calcular_veredito_consolidado em pipeline.py)
+// é stop-and-reverse SEM stop técnico e SEM alvo fixo: fica na posição até
+// o cruzamento oposto. Por isso NÃO existe mais um "força do sinal" (o gap
+// EMA9-EMA20/ATR do modelo antigo não tem equivalente no TRIX v5 — inventar
+// um aqui seria adicionar uma regra nunca testada no backtest). O veredito
+// vem PRONTO de calcular_veredito_consolidado() em dados_milho.json — esta
+// função só traduz esse veredito e cruza com os filtros de contexto
+// (câmbio, convergência, sazonalidade, calendário) para o checklist visual.
+function renderGuiaOperador(d) {
+  const ccm = d.ccm;
+  const sinal   = ccm.sinal_ema920;   // direção da posição ATUAL do TRIX v5
+  const sinal91 = ccm.sinal_91;       // 'COMPRA'/'VENDA' só se cruzou hoje
+
+  const vcFonte = d.veredito_consolidado || {};
+  const direcao = vcFonte.direcao || null;
+  const entrouHoje = sinal91 === 'COMPRA' || sinal91 === 'VENDA';
+
+  // Filtros de contexto
+  const cam = d.cambio.diagnostico;
+  const camOk = cam === 'MILHO', camWarn = cam === 'MISTO', camFail = cam === 'CAMBIO';
+
+  // Convergência: só conta como falha quando é acionável (|Z|>1,5 E
+  // vencimento ≤15 dias — ver aba Convergência) E contradiz a direção
+  // técnica. Distorção real mas distante do vencimento fica neutra
+  // (amber) — ainda não é o mecanismo de liquidação forçando o ajuste.
+  const conv = d.convergencia;
+  const zAbs = conv.spread_zscore != null ? Math.abs(conv.spread_zscore) : 0;
+  let convStatus = 'normal';
+  if (conv.alerta_convergencia) {
+    if (conv.acionavel && direcao) {
+      const favoreceVenda  = conv.direcao_alerta === 'FUTURO_CARO';
+      const favoreceCompra = conv.direcao_alerta === 'FUTURO_BARATO';
+      convStatus = ((direcao === 'VENDA' && favoreceVenda) || (direcao === 'COMPRA' && favoreceCompra)) ? 'confirma' : 'contradiz';
+    } else {
+      convStatus = 'distante';
+    }
+  }
+
+  const saz = d.sazonalidade;
+  let sazStatus = 'sem_dado';
+  if (saz && saz.status === 'OK' && direcao) {
+    if (direcao === 'COMPRA') sazStatus = saz.tendencia_sazonal === 'ALTISTA' ? 'concorda' : saz.tendencia_sazonal === 'BAIXISTA' ? 'contradiz' : 'neutro';
+    else sazStatus = saz.tendencia_sazonal === 'BAIXISTA' ? 'concorda' : saz.tendencia_sazonal === 'ALTISTA' ? 'contradiz' : 'neutro';
+  }
+
+  let falhas = 0;
+  if (camFail) falhas++;
+  if (convStatus === 'contradiz') falhas++;
+  if (sazStatus === 'contradiz') falhas++;
+
+  // 4. Veredito único — vem PRONTO de calcular_veredito_consolidado() em
+  // pipeline.py (calendário econômico + TRIX v5 + Bias Estrutural já
+  // fundidos lá). Aqui só traduz para o banner e soma os filtros de
+  // contexto (câmbio/convergência/sazonalidade) como sinalização adicional
+  // — eles NÃO reabrem o veto: o veto duro já foi aplicado no backend.
+  const cal = d.calendario_economico;
+  let veredito = vcFonte.veredito || 'INDISPONÍVEL';
+  let vClass = 'wait', vIcon = '⏳';
+  let vMotivo = vcFonte.motivo || 'veredito_consolidado ausente em dados_milho.json';
+
+  if (veredito === 'NÃO OPERAR') { vClass = 'nogo'; vIcon = '🚫'; }
+  else if (veredito === 'AGUARDAR') { vClass = 'wait'; vIcon = '⏳'; }
+  else if (veredito.startsWith('ENTRAR')) {
+    vClass = 'go'; vIcon = vcFonte.convicao === 'ALTA' ? '✅' : '⚠️';
+    if (falhas >= 1) vMotivo += ` Além disso, ${falhas} filtro(s) de contexto (câmbio/convergência/sazonalidade) contra — considere reduzir o tamanho mesmo com a entrada confirmada.`;
+  } else if (veredito.startsWith('MANTER')) {
+    vClass = 'go'; vIcon = '📌';
+    if (falhas >= 2) vMotivo += ` ${falhas} filtros de contexto contra a posição aberta — reforça o alerta acima para considerar redução manual.`;
+  }
+
+  document.getElementById('guia-banner').innerHTML = `
+    <div class="verdict ${vClass}">
+      <span class="verdict-icon">${vIcon}</span>
+      <div>
+        <div class="verdict-label">${veredito}</div>
+        <div class="verdict-sub">${vMotivo}</div>
+      </div>
+    </div>`;
+
+  // Checklist explicativo (mesmos 5 pontos que geraram o veredito acima)
+  const linhas = [
+    { nome: 'Direção (TRIX v5)', valor: direcao || 'FLAT (sem posição)', sem: direcao ? 'green' : 'amber', regra: 'posição atual do TRIX v5' },
+    { nome: 'Entrada Hoje', valor: entrouHoje ? sinal91 : 'mantendo posição', sem: entrouHoje ? 'green' : 'amber', regra: 'cruzamento novo no pregão de hoje?' },
+    { nome: 'Câmbio', valor: cam, sem: camOk ? 'green' : camWarn ? 'amber' : 'red', regra: 'reprova se CAMBIO' },
+    { nome: 'Convergência', valor: `Z=${zAbs.toFixed(2)}σ${conv.acionavel ? ' · acionável' : ''}`, sem: (convStatus === 'normal' || convStatus === 'confirma') ? 'green' : convStatus === 'distante' ? 'amber' : 'red', regra: convStatus === 'confirma' ? 'confirma a direção' : convStatus === 'contradiz' ? 'contradiz a direção' : 'sem distorção acionável' },
+    { nome: 'Sazonalidade', valor: saz && saz.status === 'OK' ? saz.tendencia_sazonal : 'sem dado', sem: sazStatus === 'concorda' ? 'green' : sazStatus === 'contradiz' ? 'red' : 'amber', regra: 'concorda com a direção?' },
+    { nome: 'Calendário Econômico', valor: (cal && cal.bloquear_hoje) ? 'DIVULGAÇÃO HOJE' : (cal && cal.proximo_evento ? `próx. em ${cal.dias_ate_proximo_evento}d` : 'sem dado'), sem: (cal && cal.bloquear_hoje) ? 'red' : (cal && cal.aviso_amanha) ? 'amber' : 'green', regra: 'reprova (bloqueia tudo) se WASDE/Estoques/CONAB hoje' },
+  ];
+  document.getElementById('guia-checklist').innerHTML = linhas.map(l => `
+    <div class="criterion">
+      <span class="semaphore ${l.sem}"></span>
+      <span class="crit-name">${l.nome}</span>
+      <span class="crit-value">${l.valor}</span>
+      <span class="crit-rule">${l.regra}</span>
+    </div>`).join('');
+
+  // Execução — só mostra se há posição/entrada de fato (ENTRAR ou MANTER);
+  // NÃO OPERAR (veto) e AGUARDAR (FLAT, sem cruzamento) não têm o que exibir.
+  const card = document.getElementById('guia-execucao-card');
+  if (!(veredito.startsWith('ENTRAR') || veredito.startsWith('MANTER'))) {
+    card.style.display = 'none';
+  } else {
+    card.style.display = 'block';
+    // Sem "força do sinal" no TRIX v5 (ver nota no topo da função) — o
+    // critério de perfil agora é só: entrada nova + zero filtros de
+    // contexto contra -> moderado; qualquer atrito -> conservador.
+    const perfilRec = (entrouHoje && vcFonte.convicao === 'ALTA' && falhas === 0) ? 'moderado' : 'conservador';
+    const contratosRec = d.sizing.contratos[perfilRec];
+
+    // Aviso informativo (não afeta o veredito) — alvo R:R passando de uma
+    // parede de OI. Só aparece se houver dado de opções para o lado relevante.
+    const oi = d.oi_opcoes;
+    let avisoParede = '';
+    if (oi && oi.call_wall != null && direcao === 'COMPRA' && ccm.alvo_rr2 > oi.call_wall) {
+      avisoParede = `<div class="alert alert-warning" style="margin-top:12px">⚠️ <strong>Alvo além do Call Wall:</strong> seu alvo (${fmtR(ccm.alvo_rr2)}) passa do strike ${fmtR(oi.call_wall)}, onde há concentração de OI de call — possível resistência antes do alvo. Não invalida a operação, ajuste a expectativa de realização.</div>`;
+    } else if (oi && oi.put_wall != null && direcao === 'VENDA' && ccm.alvo_rr2 < oi.put_wall) {
+      avisoParede = `<div class="alert alert-warning" style="margin-top:12px">⚠️ <strong>Alvo além do Put Wall:</strong> seu alvo (${fmtR(ccm.alvo_rr2)}) passa do strike ${fmtR(oi.put_wall)}, onde há concentração de OI de put — possível suporte antes do alvo. Não invalida a operação, ajuste a expectativa de realização.</div>`;
+    }
+
+    document.getElementById('guia-execucao').innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+        <div style="background:var(--surface2);border-radius:8px;padding:14px">
+          <div class="kpi-label">Stop de Referência (ATR×1,5)</div>
+          <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--negative)">${fmtR(ccm.stop_atr15)}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:14px">
+          <div class="kpi-label">Alvo de Referência (R:R 2:1)</div>
+          <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--positive)">${fmtR(ccm.alvo_rr2)}</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:14px">
+          <div class="kpi-label">Contratos Sugeridos</div>
+          <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--corn)">${contratosRec}</div>
+          <div style="font-size:11px;color:var(--text3)">perfil ${perfilRec}</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3)">
+        Vencimento a operar: <strong style="color:var(--text2)">${d.ccm.vencimento_ativo}</strong> (não o CCMFUT contínuo, usado só para o cálculo).
+        Perfil arrojado (${d.sizing.contratos.arrojado} contratos) disponível para maior tolerância a risco, mas não é o recomendado por padrão.
+        <strong style="color:var(--text2)">Stop/Alvo acima são só referência de gestão de risco</strong> — o TRIX v5 validado não usa stop técnico nem alvo fixo, sai apenas no cruzamento oposto (ver aba Técnico).
+      </div>
+      ${avisoParede}`;
+  }
+
+  // Calendário econômico — sempre visível, independente do veredito, para o
+  // operador se planejar mesmo em dias "normais" (ex.: "amanhã tem WASDE,
+  // não vale abrir posição nova hoje à tarde").
+  const calEl = document.getElementById('guia-calendario');
+  if (!cal || (!cal.eventos_hoje?.length && !cal.proximos_eventos?.length)) {
+    calEl.innerHTML = `<div class="alert alert-warning">Calendário econômico indisponível nesta rodada.</div>`;
+  } else {
+    const linhasHoje = (cal.eventos_hoje || []).map(e => `
+      <div class="criterion">
+        <span class="semaphore red"></span>
+        <span class="crit-name">HOJE</span>
+        <span class="crit-value">${e.orgao} — ${e.evento}</span>
+        <span class="crit-rule">não operar</span>
+      </div>`).join('');
+    const linhasProximas = (cal.proximos_eventos || []).map((e, i) => `
+      <div class="criterion">
+        <span class="semaphore ${i === 0 && cal.aviso_amanha ? 'amber' : 'blue'}"></span>
+        <span class="crit-name">${e.data_br}</span>
+        <span class="crit-value">${e.orgao} — ${e.evento}</span>
+        <span class="crit-rule">${e.impacto}</span>
+      </div>`).join('');
+    // WASDE/Estoques (USDA) não têm regra de data fixa — a lista precisa de
+    // atualização manual todo ano. Quando esgota, o gate de "hoje" pode
+    // reportar falso-negativo (achar que não tem evento porque a lista
+    // simplesmente acabou, não porque não existe). Aviso visível em vez de
+    // ficar em silêncio. Adicionado em 11/07/2026.
+    const avisoDesatualizado = cal.usda_desatualizado
+      ? `<div class="alert alert-danger" style="margin-top:12px">⚠️ <strong>Calendário USDA desatualizado:</strong> não há mais datas de WASDE/Estoques Trimestrais cadastradas para o restante do ano corrente em <code>calendario_economico.py</code>. O gate "não operar" pode estar dando falso-negativo para o lado USDA a partir daqui — CONAB continua confiável (gerado por regra). Atualize as datas manualmente (busca do calendário USDA do próximo ano).</div>`
+      : '';
+    calEl.innerHTML = linhasHoje + linhasProximas + avisoDesatualizado;
+  }
+}
+
+// ── TAB: TÉCNICO ──────────────────────────────────────────
+function renderTecnico(d) {
+  const ccm = d.ccm;
+  const oi = d.oi_opcoes;
+
+  document.getElementById('kpi-tecnico').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">EMA 9</div>
+      <div class="kpi-value">${fmt(ccm.ema9)}</div>
+      <div class="kpi-sub">slope: ${ccm.ema9_slope >= 0 ? '+' : ''}${fmt(ccm.ema9_slope,4)}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">EMA 20</div>
+      <div class="kpi-value">${fmt(ccm.ema20)}</div>
+      <div class="kpi-sub">${ccm.ema9 > ccm.ema20 ? '↑ acima da EMA20' : '↓ abaixo da EMA20'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ATR 14</div>
+      <div class="kpi-value">${fmt(ccm.atr14,4)}</div>
+      <div class="kpi-sub">R$/sc volatilidade diária</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Max Pain</div>
+      <div class="kpi-value">${fmt(oi.max_pain)}</div>
+      <div class="kpi-sub">Call Wall ${fmt(oi.call_wall)} · Put Wall ${fmt(oi.put_wall)}</div>
+    </div>`;
+
+  document.getElementById('badge-ema').outerHTML = `<span id="badge-ema">${signalBadge(ccm.sinal_ema920)}</span>`;
+  document.getElementById('badge-91').outerHTML  = `<span id="badge-91">${signalBadge(ccm.sinal_91)}</span>`;
+
+  document.getElementById('ema-detail').innerHTML = `
+    <div class="criterion"><span class="semaphore ${ccm.ema9 > ccm.ema20 ? 'green':'red'}"></span><span class="crit-name">TRIX vs Sinal (SMA3)</span><span class="crit-value">${ccm.ema9 > ccm.ema20 ? 'TRIX acima ↑' : 'TRIX abaixo ↓'}</span><span class="crit-rule">compra se TRIX acima do sinal + filtro de tendência</span></div>
+    <div class="criterion"><span class="semaphore ${ccm.ema9_slope > 0 ? 'green':'red'}"></span><span class="crit-name">Distância TRIX-Sinal</span><span class="crit-value">${ccm.ema9_slope >= 0 ? '+' : ''}${fmt(ccm.ema9_slope,4)}</span><span class="crit-rule">informativo — não é um piso de força validado</span></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text3)">TRIX v5 (TRIX(7)/SMA(3) + filtro SMA(100)) — WR 51,09% · PF 2,84 · Monte Carlo p=0,012 · walk-forward 5/5 folds <span style="color:var(--text3)">(validação 2008–2026, migrado 17/09/2026 — ver README do projeto de backtest)</span></div>`;
+
+  document.getElementById('setup91-detail').innerHTML = `
+    <div class="criterion"><span class="semaphore ${ccm.sinal_91==='COMPRA'?'green':ccm.sinal_91==='VENDA'?'red':'amber'}"></span><span class="crit-name">Entrada Hoje</span><span class="crit-value">${ccm.sinal_91}</span><span class="crit-rule">cruzamento TRIX/Sinal no pregão de hoje</span></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text3)">NEUTRO aqui não significa sinal fraco — significa que a posição já aberta continua sendo mantida sem uma ordem nova hoje (ver aba Decisão/Guia Operador).</div>`;
+
+  // Range suporte/resistência
+  const sup = ccm.suporte, res = ccm.resistencia, preco = ccm.ultimo_preco;
+  const pct = Math.max(0, Math.min(100, ((preco - sup) / (res - sup)) * 100));
+  document.getElementById('preco-range').innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">
+      Preço atual <strong style="color:var(--corn)">${fmtR(preco)}</strong> posicionado entre suporte e resistência
+    </div>
+    <div class="range-track">
+      <div class="range-fill" style="width:${pct}%"></div>
+      <div class="range-marker" style="left:${pct}%"></div>
+    </div>
+    <div class="range-labels">
+      <span>Suporte ${fmtR(sup)}</span>
+      <span>Preço ${fmtR(preco)}</span>
+      <span>Resistência ${fmtR(res)}</span>
+    </div>`;
+
+  document.getElementById('params-operacionais').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div class="kpi-label">Stop ATR×1,5</div>
+        <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--negative)">${fmtR(ccm.stop_atr15)}</div>
+        <div style="font-size:11px;color:var(--text3)">-${fmtR(preco - ccm.stop_atr15)} por saca</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div class="kpi-label">Alvo R:R 2:1</div>
+        <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--positive)">${fmtR(ccm.alvo_rr2)}</div>
+        <div style="font-size:11px;color:var(--text3)">+${fmtR(ccm.alvo_rr2 - preco)} por saca</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div class="kpi-label">Risco / Contrato</div>
+        <div style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--warning)">${fmtR((preco - ccm.stop_atr15) * 450, 0)}</div>
+        <div style="font-size:11px;color:var(--text3)">450 sacas × risco/sc</div>
+      </div>
+    </div>`;
+}
+
+// ── TAB: MACRO ────────────────────────────────────────────
+function renderMacro(d) {
+  const cam = d.cambio, zc = d.zc_cme, mac = d.macro, car = d.carrego;
+
+  document.getElementById('kpi-macro').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">USD/BRL (WDOFUT)</div>
+      <div class="kpi-value">${fmt(cam.wdofut_usdbrl, 4)}</div>
+      <div class="kpi-delta ${colorClass(cam.variacao_semanal_pct)}">${fmtPct(cam.variacao_semanal_pct)} semana</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">DXY (DOLINDEX)</div>
+      <div class="kpi-value">${fmt(cam.dolindex_dxy)}</div>
+      <div class="kpi-delta ${colorClass(cam.dxy_variacao_pct)}">${fmtPct(cam.dxy_variacao_pct)} semana</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">ZC Chicago</div>
+      <div class="kpi-value">${fmt(zc.preco_cents_bu)}</div>
+      <div class="kpi-sub">cents/bu</div>
+      <div class="kpi-delta ${colorClass(zc.variacao_semanal_pct)}">${fmtPct(zc.variacao_semanal_pct)} semana</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Brent (BBR)</div>
+      <div class="kpi-value">${fmt(mac.brent)}</div>
+      <div class="kpi-sub">USD/barril</div>
+      <div class="kpi-delta ${colorClass(mac.brent_variacao_pct)}">${fmtPct(mac.brent_variacao_pct)} semana</div>
+    </div>`;
+
+  document.getElementById('cambio-detail').innerHTML = `
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:13px;color:var(--text2)">Diagnóstico do movimento:</span>
+      <span class="diag-tag diag-${cam.diagnostico}">${cam.diagnostico}</span>
+    </div>
+    <div class="criterion"><span class="semaphore blue"></span><span class="crit-name">WDOFUT</span><span class="crit-value">R$ ${fmt(cam.wdofut, 0)}/1000</span><span class="crit-rule">R$ ${fmt(cam.wdofut_usdbrl,4)}/USD</span></div>
+    <div class="criterion"><span class="semaphore blue"></span><span class="crit-name">Câmbio Implícito</span><span class="crit-value">R$ ${fmt(cam.cambio_implicito, 4)}</span><span class="crit-rule">vs WDOFUT ${fmt(cam.wdofut_usdbrl,4)}</span></div>
+    <div class="criterion"><span class="semaphore ${cam.cambio_implicito > cam.wdofut_usdbrl ? 'green':'red'}"></span><span class="crit-name">Prêmio/Desconto CCM</span><span class="crit-value">${cam.cambio_implicito > cam.wdofut_usdbrl ? 'Prêmio':'Desconto'}</span><span class="crit-rule">câmbio implícito vs mercado</span></div>`;
+
+  document.getElementById('paridade-detail').innerHTML = `
+    <div class="criterion"><span class="semaphore blue"></span><span class="crit-name">Paridade Int'l</span><span class="crit-value">${fmtR(cam.ccm_paridade)}</span><span class="crit-rule">ZC×0,3937×USDBRL/100</span></div>
+    <div class="criterion"><span class="semaphore ${d.ccm.ultimo_preco > cam.ccm_paridade ? 'amber':'green'}"></span><span class="crit-name">CCM vs Paridade</span><span class="crit-value">${fmtR(d.ccm.ultimo_preco - cam.ccm_paridade)}</span><span class="crit-rule">${d.ccm.ultimo_preco > cam.ccm_paridade ? 'Prêmio sobre paridade':'Desconto vs paridade'}</span></div>`;
+
+  document.getElementById('carrego-detail').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div class="kpi-label">DI Jan/27</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace">${fmt(car.di1f27_taxa, 3)}%</div>
+        <div style="font-size:11px;color:var(--text3)">a.a.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div class="kpi-label">DI Jan/29</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace">${fmt(car.di1f29_taxa, 3)}%</div>
+        <div style="font-size:11px;color:var(--text3)">a.a.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:8px;padding:14px">
+        <div class="kpi-label">Preço Justo Jan/27</div>
+        <div style="font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--warning)">${fmtR(car.preco_justo_jan27)}</div>
+        <div style="font-size:11px;color:var(--text3)">spread: ${fmtR(car.spread_justo_vs_mercado)}</div>
+      </div>
+    </div>`;
+}
+
+// ── TAB: CONVERGÊNCIA ─────────────────────────────────────
+// Média/desvio-padrão vêm do histórico real (todas as datas onde CCMFUT e
+// RTCNI têm pregão em comum — cresce a cada rodada do pipeline), calculados
+// em convergencia.py. O veredito "acionável" só é true quando |Z|>1,5 E o
+// vencimento do contrato ativo está a ≤15 dias — fora disso é uma
+// distorção real, mas sem o mecanismo de liquidação financeira do CCM
+// forçando o ajuste ainda, então fica só como "monitorar".
+function renderConvergencia(d) {
+  const cv = d.convergencia;
+  const zAbs = cv.spread_zscore != null ? Math.abs(cv.spread_zscore) : 0;
+
+  // Banner de veredito
+  let vClass = 'wait', vIcon = '➖', vLabel = 'SEM TESE DE CONVERGÊNCIA', vSub = 'Spread dentro do normal — nada a operar por este sinal.';
+  if (cv.acionavel && cv.leitura_acionavel) {
+    vClass = cv.direcao_alerta === 'FUTURO_CARO' ? 'nogo' : 'go';
+    vIcon = cv.direcao_alerta === 'FUTURO_CARO' ? '🔻' : '🔺';
+    vLabel = cv.direcao_alerta === 'FUTURO_CARO' ? 'TESE: PRESSÃO DE QUEDA (convergência)' : 'TESE: PRESSÃO DE ALTA (convergência)';
+    vSub = cv.leitura_acionavel;
+  } else if (cv.alerta_convergencia) {
+    vClass = 'wait'; vIcon = '👁️'; vLabel = 'DISTORÇÃO — MONITORAR (ainda não é tese)';
+    vSub = cv.leitura_acionavel || 'Spread fora do normal, mas vencimento longe demais para convergência forçada.';
+  }
+  document.getElementById('convergencia-banner').innerHTML = `
+    <div class="verdict ${vClass}">
+      <span class="verdict-icon">${vIcon}</span>
+      <div>
+        <div class="verdict-label">${vLabel}</div>
+        <div class="verdict-sub">${vSub}</div>
+      </div>
+    </div>`;
+
+  document.getElementById('kpi-convergencia').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">RTCNI (Físico)</div>
+      <div class="kpi-value">${fmt(cv.rtcni_preco)}</div>
+      <div class="kpi-sub">R$/sc à vista · ${cv.rtcni_data || '—'}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Spread Futuro × Físico</div>
+      <div class="kpi-value ${zAbs > 1.5 ? 'warning' : ''}">${fmt(cv.spread_futuro_fisico)}</div>
+      <div class="kpi-sub">R$/sc · média real ${fmt(cv.spread_media_historica)} (${cv.n_obs_historico || 0} preg.)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Z-Score do Spread</div>
+      <div class="kpi-value ${zAbs > 1.5 ? 'negative' : 'positive'}">${fmt(cv.spread_zscore, 2)}σ</div>
+      <div class="kpi-sub">${zAbs <= 1.5 ? '✅ Normal' : '⚠️ Distorção'} · DP real ${fmt(cv.spread_desvio_padrao)} · venc. em ${cv.vencimento_proximo_dias ?? '—'}d</div>
+    </div>`;
+
+  // Range spread — min/max dinâmicos (média ± 3 desvios reais, cobre ~99,7%)
+  const minSpread = cv.spread_media_historica - 3 * cv.spread_desvio_padrao;
+  const maxSpread = cv.spread_media_historica + 3 * cv.spread_desvio_padrao;
+  const pctSpread = Math.max(0, Math.min(100, ((cv.spread_futuro_fisico - minSpread) / (maxSpread - minSpread)) * 100));
+  const pctMedia = Math.max(0, Math.min(100, ((cv.spread_media_historica - minSpread) / (maxSpread - minSpread)) * 100));
+
+  document.getElementById('convergencia-range').innerHTML = `
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">
+      Spread atual <strong style="color:var(--corn)">${fmtR(cv.spread_futuro_fisico)}/sc</strong> · Z-Score <strong class="${zAbs > 1.5 ? 'negative':'positive'}">${fmt(cv.spread_zscore,2)}σ</strong>
+      · base: ${cv.periodo_base || 'histórico insuficiente'}
+    </div>
+    <div class="range-track" style="height:10px">
+      <div style="position:absolute;left:${pctMedia}%;top:-6px;width:2px;height:22px;background:var(--text3);opacity:0.5"></div>
+      <div class="range-marker" style="left:${pctSpread}%;background:var(--corn);border-color:var(--corn)"></div>
+    </div>
+    <div class="range-labels">
+      <span>Mín ${fmtR(minSpread)}</span>
+      <span>Média ${fmtR(cv.spread_media_historica)}</span>
+      <span>Máx ${fmtR(maxSpread)}</span>
+    </div>`;
+
+  // Chart convergência — histórico semanal REAL (não mais ruído aleatório)
+  destroyChart('chart-convergencia');
+  const semanal = (cv.historico_semanal && cv.historico_semanal.length > 0) ? cv.historico_semanal : [cv.spread_futuro_fisico];
+  const n = semanal.length;
+
+  charts['chart-convergencia'] = new Chart(document.getElementById('chart-convergencia'), {
+    type: 'line',
+    data: {
+      labels: semanal.map((_, i) => `S-${n - 1 - i}`),
+      datasets: [
+        { label: 'Spread R$/sc (real, semanal)', data: semanal, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.3, pointRadius: 3, pointBackgroundColor: '#f59e0b', fill: true },
+        { label: 'Média Hist.', data: Array(n).fill(cv.spread_media_historica), borderColor: '#6b7280', borderDash: [4,4], pointRadius: 0 },
+        { label: '+1,5σ', data: Array(n).fill(cv.spread_media_historica + 1.5*cv.spread_desvio_padrao), borderColor: 'rgba(239,68,68,0.4)', borderDash: [2,4], pointRadius: 0 },
+        { label: '-1,5σ', data: Array(n).fill(cv.spread_media_historica - 1.5*cv.spread_desvio_padrao), borderColor: 'rgba(16,185,129,0.4)', borderDash: [2,4], pointRadius: 0 },
+      ]
+    },
+    options: chartDefaults('R$/sc')
+  });
+
+  // Alerta de contexto (complementa o banner, não repete)
+  document.getElementById('convergencia-alerta').innerHTML = (!cv.historico_semanal || cv.historico_semanal.length === 0)
+    ? `<div class="alert alert-warning">⚠️ Histórico pareado (CCMFUT × RTCNI) insuficiente — média/desvio usando fallback fixo, gráfico indisponível.</div>`
+    : '';
+}
+
+// ── TAB: CURVA ────────────────────────────────────────────
+function renderCurva(d) {
+  const curva = d.curva_vencimentos;
+  const estrutura = d.estrutura_curva;
+  const cls = d.curva_leitura_sazonal;
+
+  // Leitura de consistência vs Sazonalidade — não é veredito de operação,
+  // é um alerta de "isso é normal pra época do ano, ou não é".
+  if (cls && cls.avaliavel) {
+    document.getElementById('curva-sazonal-leitura').innerHTML = `
+      <div class="alert ${cls.consistente ? 'alert-ok' : 'alert-warning'}">
+        ${cls.consistente ? '✅' : '⚠️'} <strong>${cls.consistente ? 'Consistente com a sazonalidade:' : 'Destoa da sazonalidade:'}</strong> ${cls.leitura}
+      </div>`;
+  } else {
+    document.getElementById('curva-sazonal-leitura').innerHTML = `
+      <div class="alert alert-warning">➖ ${cls ? cls.leitura : 'Cruzamento com sazonalidade indisponível.'}</div>`;
+  }
+
+  document.getElementById('kpi-curva').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Estrutura da Curva</div>
+      <div class="kpi-value" style="font-size:22px;margin-top:4px;">
+        <span class="badge ${estrutura==='BACKWARDATION'?'green':estrutura==='CONTANGO'?'red':'amber'}">${estrutura}</span>
+      </div>
+      <div class="kpi-sub">${curva.length} contratos ativos</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Spread Ponta a Ponta</div>
+      <div class="kpi-value">${fmt(curva[curva.length-1].preco - curva[0].preco)}</div>
+      <div class="kpi-sub">R$/sc · ${curva[0].contrato} vs ${curva[curva.length-1].contrato}</div>
+    </div>`;
+
+  // Chart curva
+  destroyChart('chart-curva');
+  charts['chart-curva'] = new Chart(document.getElementById('chart-curva'), {
+    type: 'line',
+    data: {
+      labels: curva.map(c => c.vencimento),
+      datasets: [{
+        label: 'Preço R$/sc',
+        data: curva.map(c => c.preco),
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.08)',
+        tension: 0.2,
+        pointRadius: 5,
+        pointBackgroundColor: curva.map((c,i) => i===0 ? '#f9fafb' : '#f59e0b'),
+        pointBorderColor: '#f59e0b',
+        fill: true,
+      }]
+    },
+    options: chartDefaults('R$/sc')
+  });
+
+  // Tabela
+  const tbody = document.querySelector('#curva-table tbody');
+  tbody.innerHTML = curva.map((c, i) => `
+    <tr ${i===0?'class="active-row"':''}>
+      <td>${c.contrato}</td>
+      <td>${c.vencimento}</td>
+      <td>${fmt(c.preco)}</td>
+      <td class="${c.spread_vs_anterior < 0 ? 'negative' : c.spread_vs_anterior > 0 ? 'positive' : 'neutral'}">${c.spread_vs_anterior === 0 ? '—' : (c.spread_vs_anterior > 0 ? '+' : '') + fmt(c.spread_vs_anterior)}</td>
+    </tr>`).join('');
+}
+
+function renderSazonalidade(d) {
+  const saz = d.sazonalidade;
+  const indisp = document.getElementById('sazonalidade-indisponivel');
+  const body   = document.getElementById('sazonalidade-body');
+
+  if (!saz || saz.status !== 'OK') {
+    indisp.style.display = 'block';
+    body.style.display = 'none';
+    return;
+  }
+  indisp.style.display = 'none';
+  body.style.display = 'block';
+
+  const viesCls = v => v === 'ALTISTA' ? 'green' : v === 'BAIXISTA' ? 'red' : 'amber';
+  const tendCls = saz.tendencia_sazonal === 'ALTISTA' ? 'positive' : saz.tendencia_sazonal === 'BAIXISTA' ? 'negative' : 'neutral';
+
+  document.getElementById('kpi-sazonalidade').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Fase Agrícola</div>
+      <div class="kpi-value" style="font-size:18px;margin-top:4px;color:var(--corn)">${saz.fase_agricola.replaceAll('_',' ')}</div>
+      <div class="kpi-sub">${saz.descricao_fase}</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Desvio Atual (${saz.quinzena_atual})</div>
+      <div class="kpi-value ${saz.desvio_atual_pct < 0 ? 'negative' : 'positive'}">${fmtPct(saz.desvio_atual_pct)}</div>
+      <div class="kpi-sub">±${fmt(saz.desvio_std_pct)}% (1σ histórico) · <span class="badge ${viesCls(saz.vies_sazonal)}">${saz.vies_sazonal}</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Próxima Quinzena (${saz.proxima_quinzena})</div>
+      <div class="kpi-value ${saz.desvio_proxima_pct < 0 ? 'negative' : 'positive'}">${fmtPct(saz.desvio_proxima_pct)}</div>
+      <div class="kpi-sub">Δ quinzenal: <span class="${tendCls}">${saz.delta_quinzenal_pct >= 0 ? '+' : ''}${fmt(saz.delta_quinzenal_pct)} p.p.</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Tendência Sazonal</div>
+      <div class="kpi-value" style="font-size:22px;margin-top:4px;"><span class="badge ${viesCls(saz.tendencia_sazonal)}">${saz.tendencia_sazonal}</span></div>
+      <div class="kpi-sub">${saz.virada_sazonal ? '⚠️ Ponto de virada sazonal' : 'Sem virada de fase nesta quinzena'}</div>
+    </div>`;
+
+  // Chart calendário mensal
+  const cal = saz.calendario_mensal;
+  const mesAtual = new Date().getMonth() + 1;
+  destroyChart('chart-sazonalidade');
+  charts['chart-sazonalidade'] = new Chart(document.getElementById('chart-sazonalidade'), {
+    type: 'bar',
+    data: {
+      labels: cal.map(c => c.mes),
+      datasets: [{
+        label: 'Desvio médio vs. média anual (%)',
+        data: cal.map(c => c.avg_pct),
+        backgroundColor: cal.map(c => c.mes_num === mesAtual ? '#f59e0b' : (c.avg_pct >= 0 ? 'rgba(16,185,129,0.55)' : 'rgba(239,68,68,0.55)')),
+        borderRadius: 3,
+      }]
+    },
+    options: chartDefaults('%')
+  });
+
+  // Contexto atual
+  document.getElementById('sazonalidade-contexto').innerHTML = `
+    <div style="font-size:13px;line-height:1.8;color:var(--text2)">
+      <div><strong>Período-base:</strong> ${saz.periodo_base}</div>
+      <div><strong>Aviso:</strong> ${saz.aviso_historico}</div>
+      <div><strong>Meses até pico sazonal (Mar):</strong> ${saz.meses_ate_pico_mar}</div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        Este sinal <strong>não substitui</strong> o técnico (aba Técnico) — use como camada de contexto:
+        se a tendência sazonal contradiz o sinal EMA/9.1, trate o sinal técnico com convicção reduzida.
+      </div>
+    </div>`;
+
+  // Tabela calendário
+  // Contrato Afetado (Fase 4, 31/07/2026): liga o viés sazonal do mês ao
+  // vencimento CCM que efetivamente cai nele — F/H/K/N/Q/U/X (Jan/Mar/Mai/
+  // Jul/Ago/Set/Nov). Os outros 5 meses não têm vencimento próprio no
+  // produto (não é lacuna de dado); e mesmo nos 7 meses que têm, o contrato
+  // pode estar faltando na pasta (CSV não exportado) — os três casos
+  // (sem vencimento / sem dado / contrato identificado) são visualmente
+  // distintos para não confundir um com o outro.
+  const tbody = document.querySelector('#sazonalidade-table tbody');
+  tbody.innerHTML = cal.map(c => {
+    let contratoCell;
+    if (!c.tem_vencimento_ccm) {
+      contratoCell = `<span style="color:var(--text3)" title="CCM não lista vencimento neste mês — grade real do produto é Jan/Mar/Mai/Jul/Ago/Set/Nov (F/H/K/N/Q/U/X).">— sem vencimento CCM</span>`;
+    } else if (c.contrato_afetado) {
+      contratoCell = `<strong style="font-family:'JetBrains Mono',monospace;color:var(--corn)">${c.contrato_afetado}</strong>`;
+    } else {
+      contratoCell = `<span style="color:var(--warning)" title="${c.contrato_letra} deveria existir (vencimento oficial CCM), mas não há CSV desse contrato na pasta agora.">⚠️ ${c.contrato_letra || ''} sem dado</span>`;
+    }
+    return `
+    <tr ${c.mes_num === mesAtual ? 'class="active-row"' : ''}>
+      <td>${c.mes}</td>
+      <td>${c.fase.replaceAll('_',' ')}</td>
+      <td><span class="badge ${viesCls(c.vies)}">${c.vies}</span></td>
+      <td class="${c.avg_pct < 0 ? 'negative' : 'positive'}">${c.avg_pct >= 0 ? '+' : ''}${fmt(c.avg_pct)}%</td>
+      <td>${fmt(c.min_pct)}% / +${fmt(c.max_pct)}%</td>
+      <td>${c.n_obs}</td>
+      <td>${contratoCell}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── TAB: OPÇÕES (OI) ──────────────────────────────────────
+// Só exibição — nenhum destes números entra em cálculo de sinal ou veredito
+// em outra aba. Ver aviso fixo no HTML da aba sobre como interpretar.
+// Candle "artesanal" com barras flutuantes nativas do Chart.js (par
+// [mín,máx] por barra) — evita depender de um plugin externo de gráfico
+// financeiro (chartjs-chart-financial), que exigiria mais uma dependência
+// de CDN sem forma de testar a renderização neste ambiente. `grouped:
+// false` faz o pavio (fino) e o corpo (largo) ficarem centralizados na
+// mesma posição X em vez de lado a lado.
+function renderCandlesOpcoes(d, oi, selecionado) {
+  const oiGlobal = d.oi_opcoes;
+  oi = oi || oiGlobal;
+
+  // Para o contrato ativo (vencimento_ativo), a série de candles do CCMFUT contínuo
+  // (d.ccm.candles) é mais longa/confiável; para outros contratos usa-se o histórico
+  // próprio salvo em oi_por_contrato[contrato].candles.
+  const isAtivo = !selecionado || (d.ccm && selecionado === d.ccm.vencimento_ativo);
+  const candlesAtivo = (d.ccm && d.ccm.candles) || [];
+  const candlesContrato = (oi && oi.candles) || [];
+  const candles = (isAtivo && candlesAtivo.length) ? candlesAtivo : candlesContrato;
+
+  destroyChart('chart-candles');
+  if (!candles.length) return;
+
+  const labels = candles.map(c => c.data.slice(5));
+  const wickData = candles.map(c => [c.low, c.high]);
+  const bodyData = candles.map(c => [Math.min(c.open, c.close), Math.max(c.open, c.close)]);
+  const bodyColor = candles.map(c => c.close >= c.open ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)');
+
+  const datasets = [
+    // categoryPercentage baixo = mais respiro entre candles vizinhos;
+    // barPercentage baixo dentro disso = corpo/pavio mais finos. Proporção
+    // mantida entre os dois (pavio ~30% da largura do corpo), só a escala
+    // geral reduzida — a versão anterior (0.9 / 0.55) deixava os candles
+    // ocupando quase toda a largura do slot, sem gap visível entre eles.
+    { type: 'bar', label: 'Faixa (mín–máx)', data: wickData, backgroundColor: 'rgba(156,163,175,0.5)', barPercentage: 0.12, categoryPercentage: 0.55, grouped: false },
+    { type: 'bar', label: 'Corpo (abertura–fechamento)', data: bodyData, backgroundColor: bodyColor, barPercentage: 0.4, categoryPercentage: 0.55, grouped: false },
+  ];
+
+  // ── Escala do eixo Y ──────────────────────────────────────
+  // Antes começava em 0 (padrão do Chart.js pra barras), o que espremia o
+  // candle inteiro (ex.: R$65–80) numa faixinha de ~15% da altura do gráfico.
+  // A escala é o range do candle UNIDO a Call Wall / Put Wall / Max Pain do
+  // próprio contrato — essas paredes são o motivo de existir esse gráfico,
+  // então SEMPRE entram no cálculo e SEMPRE aparecem.
+  const valoresBase = [...candles.map(c => c.low), ...candles.map(c => c.high)];
+  if (oi && oi.call_wall != null) valoresBase.push(oi.call_wall);
+  if (oi && oi.put_wall  != null) valoresBase.push(oi.put_wall);
+  if (oi && oi.max_pain  != null) valoresBase.push(oi.max_pain);
+  const minPreco = Math.min(...valoresBase);
+  const maxPreco = Math.max(...valoresBase);
+  const margem = (maxPreco - minPreco) * 0.08 || 1;
+  const yMin = Math.floor((minPreco - margem) * 4) / 4; // arredonda pra baixo em passos de 0,25
+  const yMax = Math.ceil((maxPreco + margem) * 4) / 4;
+
+  // ── Altura mínima visível do corpo (doji) ─────────────────
+  // Candle com corpo muito pequeno em relação ao pavio (abertura ≈ fechamento,
+  // mas mínima/máxima do dia bem afastadas — um doji real, não erro de dado;
+  // conferido contra dados_milho.json: dias como 07/07, 15-16/06 e 24/07 têm
+  // corpo de ~R$0,05-0,14 num pavio de R$0,6-1,3) rendia uma barra colorida
+  // quase invisível — sobrava só o pavio cinza atravessando, parecendo uma
+  // cruz sem cor nenhuma. Aqui garantimos uma altura mínima visível pro
+  // corpo (1,2% da faixa de preço do gráfico, ~4-5px), mantendo o range real
+  // (mín/máx do dia) intocado — só o desenho do corpo é esticado, sempre
+  // dentro dos limites do próprio candle, nunca ultrapassando o pavio.
+  const alturaMinCorpo = (yMax - yMin) * 0.012;
+  bodyData.forEach((b, i) => {
+    const altura = b[1] - b[0];
+    if (altura >= alturaMinCorpo) return;
+    const centro = (b[0] + b[1]) / 2;
+    let novoMin = centro - alturaMinCorpo / 2;
+    let novoMax = centro + alturaMinCorpo / 2;
+    const { low: cLow, high: cHigh } = candles[i];
+    if (novoMin < cLow) { novoMax += (cLow - novoMin); novoMin = cLow; }
+    if (novoMax > cHigh) { novoMin -= (novoMax - cHigh); novoMax = cHigh; }
+    bodyData[i] = [Math.max(novoMin, cLow), Math.min(novoMax, cHigh)];
+  });
+
+  // Paredes do contrato selecionado — linha horizontal tracejada, com rótulo
+  // desenhado direto em cima da linha pelo plugin `wallLabelPlugin` abaixo
+  // (estilo "R 9,49 / S 6,82 / MP 7,80", igual à referência anexada — nada de
+  // depender da legenda do Chart.js, que ficava poluída e ilegível).
+  if (oi && oi.call_wall != null) {
+    datasets.push({
+      type: 'line', label: `Call Wall (R) ${fmtR(oi.call_wall)}`, data: Array(labels.length).fill(oi.call_wall),
+      borderColor: '#ef4444', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false, tension: 0,
+      _wallLabel: { tag: 'R', color: '#ef4444' },
+    });
+  }
+  if (oi && oi.put_wall != null) {
+    datasets.push({
+      type: 'line', label: `Put Wall (S) ${fmtR(oi.put_wall)}`, data: Array(labels.length).fill(oi.put_wall),
+      borderColor: '#10b981', borderDash: [5, 4], pointRadius: 0, borderWidth: 1.5, fill: false, tension: 0,
+      _wallLabel: { tag: 'S', color: '#10b981' },
+    });
+  }
+  if (oi && oi.max_pain != null) {
+    datasets.push({
+      type: 'line', label: `Max Pain (MP) ${fmtR(oi.max_pain)}`, data: Array(labels.length).fill(oi.max_pain),
+      borderColor: '#f59e0b', borderDash: [2, 3], pointRadius: 0, borderWidth: 1.25, fill: false, tension: 0,
+      _wallLabel: { tag: 'MP', color: '#f59e0b' },
+    });
+  }
+
+  // ── Plugin local: desenha o rótulo (R/S/MP + valor) direto sobre a linha,
+  // rente à borda direita da área do gráfico — mesma técnica visual do
+  // exemplo de referência (que desenhava tudo via canvas puro). Só entra em
+  // datasets marcados com `_wallLabel`; Faixa/Corpo/candles não são afetados.
+  const wallLabelPlugin = {
+    id: 'wallLabelPlugin',
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea, scales } = chart;
+      chart.data.datasets.forEach((ds, i) => {
+        if (!ds._wallLabel) return;
+        const meta = chart.getDatasetMeta(i);
+        if (!meta || meta.hidden) return;
+        const valor = ds.data[0];
+        if (valor == null) return;
+        const y = scales.y.getPixelForValue(valor);
+        if (y < chartArea.top - 1 || y > chartArea.bottom + 1) return; // fora da área visível (não deveria acontecer, já que a escala inclui as paredes)
+        ctx.save();
+        ctx.font = '600 11px "JetBrains Mono", monospace';
+        ctx.fillStyle = ds._wallLabel.color;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`${ds._wallLabel.tag} ${fmt(valor, 2)}`, chartArea.right - 4, y - 3);
+        ctx.restore();
+      });
+    }
+  };
+
+  charts['chart-candles'] = new Chart(document.getElementById('chart-candles'), {
+    type: 'bar',
+    data: { labels, datasets },
+    plugins: [wallLabelPlugin],
+    options: {
+      ...chartDefaults('R$/sc'),
+      layout: { padding: { top: 4, bottom: 4, right: 4 } },
+      scales: {
+        x: {
+          grid: { color: '#1f2937' },
+          ticks: { color: '#6b7280', font: { size: 9 }, maxRotation: 60, minRotation: 45, autoSkip: true, maxTicksLimit: 16 },
+        },
+        y: {
+          min: yMin, max: yMax,
+          grid: { color: '#1f2937' },
+          ticks: { color: '#6b7280', font: { size: 11 }, callback: v => fmt(v, 1) },
+        },
+      },
+      plugins: {
+        ...chartDefaults('R$/sc').plugins,
+        // Legenda do Chart.js desligada de propósito — R/S/MP já ficam rotulados
+        // direto na linha (plugin acima); um legend-box tradicional só repetiria
+        // a informação e voltaria a poluir o gráfico (era o "algo no meio dos
+        // candles que não estava bom" — a legenda cortando a leitura visual).
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+          titleColor: '#f9fafb', bodyColor: '#9ca3af',
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label.startsWith('Corpo')) {
+                const c = candles[ctx.dataIndex];
+                return ` A:${fmt(c.open)} M:${fmt(c.high)} m:${fmt(c.low)} F:${fmt(c.close)}`;
+              }
+              return ctx.dataset.label.startsWith('Faixa') ? '' : ` ${ctx.dataset.label}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Ordem cronológica de vencimentos (mesma lógica da aba Curva) para o seletor
+// não ficar em ordem alfabética misturando anos — usa curva_vencimentos como
+// referência de ordem quando disponível, senão cai para ordem alfabética simples.
+function ordenarContratosCronologicamente(contratos, d) {
+  const ordemCurva = ((d.curva_vencimentos) || []).map(c => c.contrato);
+  if (ordemCurva.length) {
+    const emOrdem = ordemCurva.filter(c => contratos.includes(c));
+    const restantes = contratos.filter(c => !emOrdem.includes(c)).sort();
+    return [...emOrdem, ...restantes];
+  }
+  return [...contratos].sort();
+}
+
+function renderOpcoes(d) {
+  const oiGlobal = d.oi_opcoes;
+  const porContrato = d.oi_por_contrato || {};
+  const contratos = ordenarContratosCronologicamente(Object.keys(porContrato), d);
+  const indisp = document.getElementById('opcoes-indisponivel');
+  const body   = document.getElementById('opcoes-body');
+  const toolbar = document.getElementById('opcoes-toolbar');
+  const selectEl = document.getElementById('opcoes-select-contrato');
+
+  const temAlgumDado = (oiGlobal && oiGlobal.grade && oiGlobal.grade.length) || contratos.length > 0;
+  if (!temAlgumDado) {
+    indisp.style.display = 'block';
+    body.style.display = 'none';
+    return;
+  }
+  indisp.style.display = 'none';
+  body.style.display = 'block';
+
+  // ── Seletor de contrato ──────────────────────────────────
+  if (contratos.length > 0) {
+    // Mantém a seleção atual se ainda existir na lista; senão usa o vencimento ativo; senão o primeiro.
+    if (!opcoesContratoAtual || !contratos.includes(opcoesContratoAtual)) {
+      opcoesContratoAtual = (d.ccm && contratos.includes(d.ccm.vencimento_ativo)) ? d.ccm.vencimento_ativo : contratos[0];
+    }
+    const optsAtuais = Array.from(selectEl.options).map(o => o.value).join('|');
+    const optsNovas  = contratos.join('|');
+    if (optsAtuais !== optsNovas) {
+      selectEl.innerHTML = contratos.map(c => {
+        const tagAtivo = (d.ccm && c === d.ccm.vencimento_ativo) ? ' (ativo)' : '';
+        return `<option value="${c}">${c}${tagAtivo}</option>`;
+      }).join('');
+    }
+    selectEl.value = opcoesContratoAtual;
+    toolbar.style.display = 'flex';
+  } else {
+    toolbar.style.display = 'none';
+    opcoesContratoAtual = null;
+  }
+
+  // Dados do contrato selecionado — fallback para o agregado antigo (oi_opcoes)
+  // se o pipeline não tiver exportado o detalhamento por contrato nesta rodada.
+  const oi = (opcoesContratoAtual && porContrato[opcoesContratoAtual]) ? porContrato[opcoesContratoAtual] : oiGlobal;
+
+  if (!oi || !oi.grade || oi.grade.length === 0) {
+    document.getElementById('kpi-opcoes').innerHTML = `<div class="alert alert-warning">Sem grade de opções disponível para ${opcoesContratoAtual || 'este contrato'}.</div>`;
+    destroyChart('chart-candles');
+    destroyChart('chart-opcoes');
+    return;
+  }
+
+  const rotulo = opcoesContratoAtual || oi.vencimento_opcoes || '';
+  document.getElementById('titulo-chart-candles').textContent = `Candles de ${rotulo} × Paredes`;
+  document.getElementById('titulo-chart-opcoes').textContent = `OI por Strike — ${rotulo} — Calls × Puts`;
+
+  const infoEl = document.getElementById('opcoes-contrato-info');
+  if (infoEl) {
+    infoEl.textContent = oi.preco_referencia != null
+      ? `Preço de referência ${fmtR(oi.preco_referencia)}${oi.preco_estimado ? ' (estimado)' : ''}`
+      : '';
+  }
+
+  const oiCallsTotal = oi.total_oi_calls || 0;
+  const oiPutsTotal  = oi.total_oi_puts || 0;
+  const nExpiracoes  = oiGlobal ? (oiGlobal.expiracoes_agregadas || []).length : 0;
+
+  document.getElementById('kpi-opcoes').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Call Wall — ${rotulo}</div>
+      <div class="kpi-value negative">${fmtR(oi.call_wall)}</div>
+      <div class="kpi-sub">agregado (todas expirações): <strong style="color:var(--corn)">${fmtR(oiGlobal ? oiGlobal.call_wall_agregado : null)}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Put Wall — ${rotulo}</div>
+      <div class="kpi-value positive">${fmtR(oi.put_wall)}</div>
+      <div class="kpi-sub">agregado (todas expirações): <strong style="color:var(--corn)">${fmtR(oiGlobal ? oiGlobal.put_wall_agregado : null)}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Max Pain — ${rotulo}</div>
+      <div class="kpi-value" style="color:var(--corn)">${fmtR(oi.max_pain)}</div>
+      <div class="kpi-sub">
+        OI = Contratos em Aberto, filtrado só pelo vencimento ${rotulo} (mês+ano do ticker, ex.: ${rotulo} ≠ outro ano com a mesma letra de mês):<br>
+        ${fmt(oiCallsTotal + oiPutsTotal, 0)} contratos (${fmt(oiCallsTotal,0)} calls / ${fmt(oiPutsTotal,0)} puts)<br>
+        <span style="color:var(--text3)">Arquivo de opções (CCM_OP.xlsx) cobre ${nExpiracoes} vencimentos no total (todos os meses/anos somados) — número à parte, não soma com o OI acima</span>
+      </div>
+    </div>`;
+
+  renderCandlesOpcoes(d, oi, opcoesContratoAtual);
+
+  const strikes = oi.grade.map(g => g.strike);
+  destroyChart('chart-opcoes');
+  charts['chart-opcoes'] = new Chart(document.getElementById('chart-opcoes'), {
+    type: 'bar',
+    data: {
+      labels: strikes.map(s => fmt(s, 2)),
+      datasets: [
+        {
+          label: 'OI Call',
+          data: oi.grade.map(g => g.oi_call),
+          backgroundColor: oi.grade.map(g => g.strike === oi.call_wall ? '#f59e0b' : 'rgba(16,185,129,0.55)'),
+          borderRadius: 2,
+          barPercentage: 0.6,
+          categoryPercentage: 0.7,
+        },
+        {
+          label: 'OI Put',
+          data: oi.grade.map(g => -g.oi_put),
+          backgroundColor: oi.grade.map(g => g.strike === oi.put_wall ? '#f59e0b' : 'rgba(239,68,68,0.55)'),
+          borderRadius: 2,
+          barPercentage: 0.6,
+          categoryPercentage: 0.7,
+        },
+      ]
+    },
+    options: {
+      ...chartDefaults('contratos'),
+      scales: {
+        x: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', font: { size: 9 }, maxRotation: 90, minRotation: 90 } },
+        y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', font: { size: 11 }, callback: v => Math.abs(v) } },
+      },
+      plugins: {
+        ...chartDefaults('contratos').plugins,
+        tooltip: {
+          backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+          titleColor: '#f9fafb', bodyColor: '#9ca3af',
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${Math.abs(ctx.parsed.y).toLocaleString('pt-BR')} contratos` }
+        }
+      }
+    }
+  });
+}
+
+// ── TAB: SPREAD CALENDÁRIO ────────────────────────────────
+// Cada par (ex.: CCMU26-CCMX26) tem sua própria média/desvio/Z-score real —
+// mesma técnica estatística da Convergência, aplicada ao spread entre duas
+// pernas negociáveis em vez de futuro×físico. Sem gate de "dias até o
+// vencimento" no nível do par (isso já foi resolvido no pipeline: contratos
+// a ≤15 dias do próprio vencimento nem entram como candidatos — ver
+// spread_calendario.py). |Z|>1,5σ é a mesma régua usada em Convergência.
+function renderSpreadCalendario(d) {
+  const sc = d.spread_calendario;
+  const indisp = document.getElementById('spread-indisponivel');
+  const body   = document.getElementById('spread-body');
+
+  if (!sc || !sc.pares || sc.pares.length === 0) {
+    indisp.style.display = 'block';
+    body.style.display = 'none';
+    return;
+  }
+  indisp.style.display = 'none';
+  body.style.display = 'block';
+
+  document.getElementById('spread-contratos').innerHTML =
+    `Contratos considerados (top-3 líquidos, fora da janela de 15 dias pré-vencimento): <strong style="color:var(--corn)">${(sc.contratos_considerados || []).join(' · ')}</strong>`;
+
+  const cardsHtml = sc.pares.map((p, i) => {
+    if (p.erro) {
+      return `
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-title">${p.par}</div>
+          <div class="alert alert-warning">⚠️ ${p.erro}</div>
+        </div>`;
+    }
+
+    const zAbs = p.spread_zscore != null ? Math.abs(p.spread_zscore) : 0;
+    const vClass = !p.alerta ? 'wait' : (p.direcao && p.direcao.endsWith('_CARO') ? 'nogo' : 'go');
+    const vIcon  = !p.alerta ? '➖' : (p.direcao && p.direcao.endsWith('_CARO') ? '🔻' : '🔺');
+    const vLabel = !p.alerta ? 'SEM TESE — spread dentro do normal' : (p.direcao && p.direcao.endsWith('_CARO') ? `TESE: VENDER ${p.contrato_a} / COMPRAR ${p.contrato_b}` : `TESE: COMPRAR ${p.contrato_a} / VENDER ${p.contrato_b}`);
+    const vSub   = p.leitura || 'Z-score dentro de ±1,5σ — sem distorção de calendário a explorar.';
+
+    return `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">${p.par} <span style="color:var(--text3);font-size:10px;font-weight:400">venc. perna próxima (${p.contrato_a}) em ${p.dias_vencimento_perna_a ?? '—'} dias</span></div>
+        <div class="verdict ${vClass}" style="margin-bottom:16px">
+          <span class="verdict-icon">${vIcon}</span>
+          <div>
+            <div class="verdict-label">${vLabel}</div>
+            <div class="verdict-sub">${vSub}</div>
+          </div>
+        </div>
+        <div class="kpi-grid-3" style="margin-bottom:16px">
+          <div class="kpi-card">
+            <div class="kpi-label">Spread Hoje (${p.contrato_a} − ${p.contrato_b})</div>
+            <div class="kpi-value">${fmtR(p.spread_hoje)}</div>
+            <div class="kpi-sub">média real ${fmtR(p.spread_media_historica)} (${p.n_obs_historico} preg.)</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Z-Score do Spread</div>
+            <div class="kpi-value ${zAbs > 1.5 ? 'negative' : 'positive'}">${fmt(p.spread_zscore, 2)}σ</div>
+            <div class="kpi-sub">${zAbs <= 1.5 ? '✅ Normal' : '⚠️ Distorção'} · DP real ${fmtR(p.spread_desvio_padrao)}</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Período-Base</div>
+            <div class="kpi-value" style="font-size:13px;margin-top:6px;color:var(--text2)">${p.periodo_base || '—'}</div>
+            <div class="kpi-sub">histórico pareado real, janela expansível</div>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart-spread-${i}"></canvas>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('spread-cards').innerHTML = cardsHtml;
+
+  // Um chart por par, com as mesmas faixas ±1,5σ do padrão de Convergência
+  sc.pares.forEach((p, i) => {
+    if (p.erro) return;
+    destroyChart(`chart-spread-${i}`);
+    const semanal = (p.historico_semanal && p.historico_semanal.length > 0) ? p.historico_semanal : [p.spread_hoje];
+    const n = semanal.length;
+    charts[`chart-spread-${i}`] = new Chart(document.getElementById(`chart-spread-${i}`), {
+      type: 'line',
+      data: {
+        labels: semanal.map((_, j) => `S-${n - 1 - j}`),
+        datasets: [
+          { label: `Spread ${p.par} (real, semanal)`, data: semanal, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.08)', tension: 0.3, pointRadius: 3, pointBackgroundColor: '#f59e0b', fill: true },
+          { label: 'Média Hist.', data: Array(n).fill(p.spread_media_historica), borderColor: '#6b7280', borderDash: [4,4], pointRadius: 0 },
+          { label: '+1,5σ', data: Array(n).fill(p.spread_media_historica + 1.5*p.spread_desvio_padrao), borderColor: 'rgba(239,68,68,0.4)', borderDash: [2,4], pointRadius: 0 },
+          { label: '-1,5σ', data: Array(n).fill(p.spread_media_historica - 1.5*p.spread_desvio_padrao), borderColor: 'rgba(16,185,129,0.4)', borderDash: [2,4], pointRadius: 0 },
+        ]
+      },
+      options: chartDefaults('R$/sc')
+    });
+  });
+}
+
+// ── BIAS ESTRUTURAL — BREAKDOWN (dentro da aba Decisão) ───
+// Fundido com a aba Decisão em 20/07/2026: o veredito único já vem em
+// d.veredito_consolidado (renderDecisao acima). Esta função só mostra o
+// detalhamento das 4 dimensões que alimentaram esse consenso — não é mais
+// um veredito à parte, é o "porquê" do veredito único.
+function renderBiasBreakdown(d, biasOverride) {
+  const b = biasOverride || d.bias_estrutural;
+  const indisp = document.getElementById('bias-indisponivel');
+  const body   = document.getElementById('bias-body');
+
+  if (!b || !b.decisao) {
+    indisp.style.display = 'block';
+    body.style.display = 'none';
+    return;
+  }
+  indisp.style.display = 'none';
+  body.style.display = 'block';
+
+  const dims = b.dimensoes || {};
+  const nomes = { sazonalidade: 'Sazonalidade (30%)', fisico: 'Físico (30%)', macro: 'Macro (20%)', tecnico: 'Técnico (20%)' };
+  document.getElementById('kpi-bias').innerHTML = Object.keys(nomes).map(k => {
+    const v = dims[k];
+    const cls = v == null ? 'neutral' : v >= 20 ? 'positive' : v <= -20 ? 'negative' : 'neutral';
+    return `
+    <div class="kpi-card">
+      <div class="kpi-label">${nomes[k]}</div>
+      <div class="kpi-value ${cls}" style="font-size:26px">${v != null ? fmt(v, 1) : '—'}</div>
+      <div class="kpi-sub">-100 a +100</div>
+    </div>`;
+  }).join('');
+
+  const det = b.detalhes || {};
+  document.getElementById('bias-detalhes').innerHTML = Object.keys(nomes).map(k => `
+    <div class="criterion" style="grid-template-columns:20px 1fr;">
+      <span class="semaphore ${dims[k] == null ? 'gray' : dims[k] >= 20 ? 'green' : dims[k] <= -20 ? 'red' : 'amber'}"></span>
+      <span class="crit-name" style="font-size:12px">${det[k] || 'sem dado'}</span>
+    </div>`).join('');
+}
+
+// ── CHART DEFAULTS ────────────────────────────────────────
+function chartDefaults(unit) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#9ca3af', font: { size: 11 }, boxWidth: 12 } },
+      tooltip: {
+        backgroundColor: '#1f2937', borderColor: '#374151', borderWidth: 1,
+        titleColor: '#f9fafb', bodyColor: '#9ca3af',
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} ${unit}` }
+      }
+    },
+    scales: {
+      x: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', font: { size: 11 } } },
+      y: { grid: { color: '#1f2937' }, ticks: { color: '#6b7280', font: { size: 11 }, callback: v => v.toFixed(2) } }
+    }
+  };
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ── LOAD DATA ─────────────────────────────────────────────
+async function loadData() {
+  try {
+    const r = await fetch('dados_milho.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    DATA = await r.json();
+    document.getElementById('last-update').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-BR');
+    // Remover banner demo se existir
+    const demo = document.getElementById('demo-banner');
+    if (demo) demo.remove();
+    renderAll(DATA);
+  } catch(e) {
+    console.warn('dados_milho.json não encontrado — usando dados de demonstração:', e.message);
+    DATA = DEMO;
+    // Adicionar banner demo
+    if (!document.getElementById('demo-banner')) {
+      const banner = document.createElement('div');
+      banner.id = 'demo-banner';
+      banner.className = 'demo-banner';
+      banner.style.margin = '12px 24px 0';
+      banner.textContent = '⚠️  MODO DEMONSTRAÇÃO — Execute rodar_pipeline.bat para carregar dados reais';
+      document.querySelector('.tabs-bar').after(banner);
+    }
+    document.getElementById('last-update').textContent = 'Demo · ' + new Date().toLocaleTimeString('pt-BR');
+    renderAll(DATA);
+  }
+}
+
+function renderAll(d) {
+  renderTicker(d);
+  renderDecisao(d);
+  renderGuiaOperador(d);
+  renderTecnico(d);
+  renderMacro(d);
+  renderConvergencia(d);
+  renderCurva(d);
+  renderSazonalidade(d);
+  renderOpcoes(d);
+  renderSpreadCalendario(d);
+  // renderBiasBreakdown(d) já é chamado dentro de renderDecisao(d) —
+  // o Bias virou parte da aba Decisão, não uma aba própria.
+}
+
+// ── TAB NAVIGATION ────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── INIT ──────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+PROMPT PARA PROGRAMADOR — Módulo novo e isolado: TRIX v5 por contrato (curva CCM)
+==========================================================================================
+Projeto: Milho Trader (CCM futuro, B3) — pasta C:\Projetos Phyton\Milho
+Contexto: sistema de apoio à decisão para operar milho futuro (CCM) na B3, uso pessoal.
+
+Este é um MÓDULO NOVO E ISOLADO. NÃO altere nenhum arquivo já existente do projeto:
+ccm_dados.py, pipeline.py, milho_dashboard.html, sazonalidade_milho.py, trix_v5.py e
+GUIA_OPERADOR.md ficam exatamente como estão. Este módulo roda em paralelo, sem tocar
+no que já está em produção. Só depois de validado (com o Duda) é que se discute integrar
+qualquer parte dele ao sistema principal.
+
+------------------------------------------------------------------------------------------
+1. CONTEXTO — LEIA ANTES DE CODAR
+------------------------------------------------------------------------------------------
+
+1.1. O indicador técnico (trix_v5.py) já é validado e NÃO deve ser reimplementado nem
+   ajustado. É réplica literal do indicador NTSL TRIX_REVERSAL_v5 (anexo ao final deste
+   prompt, seção 7), com paridade testada (229 vs 233 trades, WR 51,09% vs 51,07%,
+   PF 2,84 vs 2,86 — ver cabeçalho de trix_v5.py). Parâmetros ativos e fixos:
+   PTrix=7, TipoTrix=1, PSinal=3, UsarFiltroTendencia=1, PTrend=100, UsarStopTecnico=0,
+   PATR=14, ATRMult=2.50. Este módulo só CHAMA calc_sinais_trix_v5() — não reimplementa
+   TRIX, SMA de sinal, SMA de tendência ou a máquina de estado de entrada/saída.
+
+1.2. Motivação real e já comprovada (não é hipótese): o TRIX v5 usa filtro de tendência
+   SMA(100), que precisa de pelo menos 100 pregões COM NEGÓCIO REAL. Testamos isso em
+   17/09/2026 com dado real da BRAPI (últimos ~12 meses) para 3 contratos vivos:
+
+     CCMX26 (venc. 16/11/2026): 235 pregões com negócio de 249 dias de calendário —
+       SMA(100) fica válida a partir de 27/02/2026. Sistema funciona normalmente.
+     CCMF27 (venc. 15/01/2027): 168 pregões com negócio — SMA(100) válida a partir de
+       11/06/2026. Funciona, mas com menos margem.
+     CCMK27 (venc. 17/05/2027): SÓ 80 pregões com negócio real em 249 dias de
+       calendário (169 dias sem nenhum negócio) — SMA(100) NUNCA fica válida usando só
+       o histórico próprio do contrato. Resultado prático: o contrato fica travado em
+       FLAT o tempo inteiro, mesmo que o preço dele esteja claramente em tendência,
+       porque o filtro de entrada nunca tem dado suficiente para avaliar tendência.
+
+   Ou seja: sem ajuste de histórico, contratos recém-listados (o que inclui,
+   estruturalmente, todo contrato daqui a alguns meses) nunca entram no radar do
+   TRIX v5. É isso que este módulo resolve.
+
+1.3. Fonte de dado: BRAPI, não CSV do Profit (decisão do Duda — já prepara o sistema
+   para a fase seguinte de automação). Dois problemas já confirmados na prática com o
+   endpoint de histórico de futuros da BRAPI, que este módulo PRECISA tratar:
+
+     a) O campo "open" da BRAPI vem sempre nulo para contratos CCM. Regra já usada no
+        projeto: Open = Close do pregão anterior (proxy documentado no código, não é
+        o valor real de abertura).
+     b) A BRAPI retorna uma linha de calendário mesmo em dias sem nenhum negócio real
+        (close também nulo nesses casos). Essas linhas têm que ser DESCARTADAS antes
+        de qualquer cálculo — se não forem, a SMA(100)/TRIX quebra (janela rolante
+        nunca fica sem NaN). Não faça fillna nem interpolação — descarte a linha,
+        tratando como pregão que não existiu, igual a como o CSV do Profit nunca
+        teria uma linha para um dia sem negócio.
+
+1.4. O CCMFUT seed (histórico contínuo do Profit, 19/09/2008 a 17/09/2026, arquivo
+   CCM_HIST.xlsx já fornecido na pasta do projeto) é a fonte de profundidade histórica
+   para resolver 1.2. A BRAPI não tem dado nenhum antes de fev/2024 (catálogo da BRAPI
+   verificado: 15 contratos CCM no total, do mais antigo com primeiro pregão em
+   21/02/2024 até o mais distante vencendo em nov/2027) — não adianta pedir mais
+   histórico à BRAPI, ele não existe lá. O seed é insubstituível para essa
+   profundidade.
+
+1.5. Credencial da BRAPI — como o programador testa sem receber meu token real.
+   O projeto já resolve isso hoje: ingestao_brapi.py lê o token de uma variável de
+   ambiente do sistema (os.environ.get("BRAPI_TOKEN")), nunca de um valor no código
+   nem de um arquivo versionado. A nova função coletar_historico_ccm() (item 2.1)
+   DEVE reaproveitar o mesmo _headers()/_get() já existentes no arquivo — não criar
+   um segundo mecanismo de autenticação nem pedir para eu colar o token em lugar
+   nenhum do código ou do prompt. Eu já tenho BRAPI_TOKEN configurado como variável
+   de ambiente na minha máquina (é o mesmo token que já alimenta a ingestão de
+   câmbio/DI/curva em produção) — não vou compartilhar esse valor com o programador.
+   Se ele precisar validar o comportamento fim-a-fim antes de me entregar, use uma
+   conta/token de teste próprio da BRAPI (o plano gratuito cobre os endpoints de
+   consulta usados aqui) só para conferir formato de resposta e tratamento de erro;
+   a validação final com dado real de produção é feita por mim, rodando localmente
+   com meu próprio token já configurado — não é etapa do programador.
+
+1.6. Suporte a arquivo .env.local (chave paga da BRAPI virá por aqui em breve).
+   Hoje o token só vem de variável de ambiente do sistema operacional
+   (os.environ.get("BRAPI_TOKEN")). Vou trocar para a chave paga guardada num
+   arquivo chamado EXATAMENTE ".env.local" (C:\Projetos Phyton\Milho\.env.local —
+   não ".env" puro) — esse arquivo NUNCA é entregue ao programador nem
+   versionado em nenhum repositório. É uma mudança pequena, mas em arquivo já
+   usado em produção (ingestao_brapi.py alimenta câmbio/DI/curva hoje) — trate
+   com o mesmo cuidado de qualquer mudança em arquivo compartilhado:
+     - Usar python-dotenv (ou leitura manual simples do arquivo, se preferir não
+       adicionar dependência nova — documentar a escolha), apontando
+       explicitamente para o nome ".env.local" (o load_dotenv() padrão procura
+       ".env" — precisa passar dotenv_path=".env.local" ou equivalente,
+       não é o default da biblioteca).
+     - Carregar o .env.local ANTES de qualquer chamada a
+       os.environ.get("BRAPI_TOKEN"), SEM sobrescrever a variável se ela já
+       estiver definida no ambiente (override=False) — não inverta essa
+       prioridade.
+     - Não alterar nenhuma outra lógica de ingestao_brapi.py além dessa leitura
+       de config.
+     - Adicionar ".env.local" a um .gitignore do projeto (criar o arquivo mesmo
+       que ainda não exista repositório git, para o dia em que houver).
+     - O programador nunca recebe o conteúdo do .env.local nem qualquer token
+       real — só o código que sabe ler o arquivo, se ele existir.
+
+1.7. PRÉ-REQUISITO ANTES DE ESCREVER QUALQUER LINHA DE CÓDIGO: repositório git.
+   A pasta C:\Projetos Phyton\Milho ainda não tem repositório git. A auditoria
+   deste trabalho (seção 6) depende de hash de commit e diff — sem repositório,
+   não existe nem um nem outro. Antes de começar: `git init` na pasta do projeto
+   e um primeiro commit de BASELINE com o estado atual (antes de qualquer arquivo
+   novo deste módulo). Só depois disso o trabalho do módulo começa, em commits
+   próprios, separados dessa baseline. Não pule esta etapa nem a faça depois —
+   sem baseline, o "diff" da entrega final seria o arquivo inteiro do zero, não
+   uma mudança isolada e revisável.
+
+------------------------------------------------------------------------------------------
+2. ESCOPO — O QUE CONSTRUIR
+------------------------------------------------------------------------------------------
+
+Um módulo novo (sugestão de nome: ccm_trix_curva.py), mais uma função nova em
+ingestao_brapi.py, mais um arquivo de dado fixo (seed convertido). Fluxo, por CADA
+contrato vivo retornado por ingestao_brapi.coletar_curva_ccm():
+
+2.1. Nova função em ingestao_brapi.py: coletar_historico_ccm(codigo_contrato).
+   Usa o endpoint de histórico de futuros da BRAPI (mesmo padrão de coletar_cambio()/
+   coletar_di() já existentes no arquivo — siga o mesmo cliente HTTP e tratamento de
+   erro). Retorna DataFrame com Data/Open/High/Low/Close (schema igual ao que
+   leitor_csv.ler_csv() já produz, para poder reaproveitar trix_v5.py sem adaptação).
+   Aplica os dois tratamentos do item 1.3 (Open proxy, descarte de linha sem negócio)
+   DENTRO desta função — quem consome coletar_historico_ccm() já recebe dado limpo.
+   Erro de rede/token ausente: retorna None, nunca lança exceção que derrube o script
+   (mesmo padrão das outras coletar_*() do arquivo).
+
+2.2. Conversão do seed: converta CCM_HIST.xlsx para um arquivo fixo em disco (ex.:
+   ccmfut_seed_2008_2026.csv), gerado UMA VEZ, tratado como entrada read-only pelo
+   resto do módulo — não é para ser regenerado a cada execução nem editado por código.
+   Documente no próprio arquivo (comentário/cabeçalho) a data de corte (17/09/2026) e
+   a origem (export manual do Profit, CCMFUT contínuo).
+
+2.3. Função de ajuste (ex.: montar_serie_ajustada(codigo_contrato, df_contrato,
+   df_seed)): trunca o seed até a véspera da data do primeiro registro em
+   df_contrato; calcula offset aditivo = (primeiro Close real do contrato) − (último
+   Close do seed truncado); soma esse offset a TODO o trecho truncado do seed;
+   concatena [seed ajustado] + [dado real do contrato], ordenado por data. Marque
+   explicitamente, no DataFrame resultante, uma coluna booleana (ex. 'is_sintetico')
+   True para os dias que vieram do seed ajustado e False para os dias reais do
+   contrato — essa marcação é usada nos itens 3 e 2.5, não é opcional.
+
+2.4. Rodar trix_v5.calc_sinais_trix_v5() SEM ALTERAR essa função, sobre a série
+   ajustada de 2.3.
+
+2.5. Gráfico por contrato (mesmo padrão validado no mockup já aprovado pelo Duda —
+   replique fielmente, não invente variação):
+     - Candle ÚNICO no painel de preço, mas SÓ para os dias com is_sintetico=False
+       (o trecho sintético nunca aparece desenhado como candle real — ele existe só
+       para alimentar o cálculo do indicador, é ESTIMADO, não MEDIDO, ver seção 3).
+     - Cor do candle = ESTADO do sistema (coluna posicao_trix_v5), replicando o
+       PaintBar do NTSL anexado na seção 7: COMPRADO = verde, VENDIDO = vermelho,
+       FLAT = cinza/branco neutro. NÃO pinte pela relação Close vs Open do próprio
+       candle (isso é convenção comum de candle, mas NÃO é o que o indicador
+       validado faz).
+     - UMA ÚNICA linha sobreposta no painel de preço: a SMA(100)/VTend
+       (trend_sma100). NÃO plote TRIX nem o Sinal (trix/trix_sinal) como linha,
+       em nenhum painel, em nenhuma escala — o indicador validado não expõe essas
+       duas séries como linha visível, só como número (na barra de status, no NTSL)
+       e como INSUMO da cor do candle. Isso já foi testado errado numa versão
+       anterior do mockup e corrigido — não reintroduza.
+     - Marcadores nos dias de entrada_hoje ('COMPRA' = triângulo verde para cima,
+       'VENDA' = triângulo vermelho para baixo).
+     - Barreiras de Call Wall e Put Wall: linhas horizontais BEM destacadas
+       (espessura maior, cor contrastante, ex. vermelho tracejado para Call Wall,
+       verde tracejado para Put Wall — mesma paleta do mockup aprovado) — e cada uma
+       tem que exibir, junto ao preço da barreira, o NÚMERO DE CONTRATOS EM ABERTO
+       (open interest) daquele strike, não só o preço. Ex. de rótulo: "Call Wall
+       R$ 80,00 — 12.340 contratos". Busque o dado de OI por strike via BRAPI (mesma
+       fonte que oi_opcoes.py já usa — reaproveite a função existente ou a mesma
+       chamada de API, não duplique lógica nem invente um novo cliente). Se não
+       houver opções líquidas o suficiente para aquele vencimento, NÃO desenhe uma
+       barreira inventada — mostre explicitamente "Call Wall: N/D" e "Put Wall: N/D"
+       no lugar (ver classificação INDISPONIVEL na seção 3).
+     - Max Pain: mesma régua acima (linha mais discreta, pontilhada), também com
+       N/D explícito quando não houver dado.
+     - Seletor de contrato (dropdown ou equivalente) no topo, trocando entre todos
+       os vencimentos vivos da curva — não gerar um arquivo separado por contrato
+       sem seletor.
+
+2.6. Resumo em texto simples (console ou .txt), por contrato: código, posição atual
+   (posicao_trix_v5), se houve entrada/saída hoje, se a SMA(100) está com histórico
+   suficiente (ou seja, se algum trecho da janela de 100 pregões usada no valor mais
+   recente de trend_sma100 toca dia sintético — ver regra de contágio na seção 3) e
+   se há barreiras de opções disponíveis ou N/D.
+
+------------------------------------------------------------------------------------------
+3. CONTRATO DE PROVENIÊNCIA — OBRIGATÓRIO, NÃO É OPCIONAL
+------------------------------------------------------------------------------------------
+
+Este é um sistema que informa decisão real de operar dinheiro real. Aplique as 5
+classificações abaixo a TODO valor que aparece no gráfico ou no resumo de texto —
+sem exceção, e sem confiar no nome da variável ou no rótulo já escrito no código como
+prova; a classificação certa é a que bate com de onde o valor REALMENTE vem, rastreada
+até a chamada de API, o arquivo de seed, ou o cálculo.
+
+  MEDIDO      — OHLC vindo direto da BRAPI para o trecho real do contrato
+                (is_sintetico=False).
+  DERIVADO    — trix, trix_sinal, trend_sma100, posicao_trix_v5, entrada_hoje,
+                saida_hoje, calculados por trix_v5.py — MAS ver regra de contágio
+                abaixo, porque nem todo ponto da série é DERIVADO puro.
+  ESTIMADO    — qualquer dia do trecho sintético (is_sintetico=True, vindo do seed
+                ajustado por offset aditivo) — é aproximação, não preço realmente
+                negociado naquele contrato. Também é ESTIMADO qualquer valor de
+                trend_sma100 (ou trix/sinal, por extensão) cuja janela de cálculo
+                (últimos 100/7/3 pregões, respectivamente) toca pelo menos um dia
+                com is_sintetico=True.
+  INDISPONIVEL— Call Wall, Put Wall, Max Pain ou o número de contratos em aberto,
+                quando a fonte real (BRAPI/opções) não retornar dado suficiente para
+                aquele vencimento. Nunca preencher com um valor aproximado ou com o
+                dado de outro vencimento "só para não ficar vazio" — mostrar N/D.
+  SIMULADO    — não deve existir dado deste tipo neste módulo; se em algum ponto da
+                implementação for necessário inventar/simular um valor "só para o
+                gráfico não ficar vazio", PARE e pergunte antes de codar — não é
+                decisão para tomar sozinho.
+
+Regra de contágio: quando um valor combina insumos de mais de uma classificação, o
+resultado herda a PIOR classificação entre elas (ESTIMADO contamina DERIVADO;
+INDISPONIVEL não se combina com nada, é ausência). Isso na prática significa: o
+trend_sma100 (e portanto posicao_trix_v5) dos primeiros ~100 pregões reais após a
+costura do seed é ESTIMADO, não DERIVADO — o código precisa conseguir responder essa
+pergunta para qualquer data da série, não só "sim/não tem seed".
+
+Construa uma função central única (ex.: classificar_proveniencia(df, coluna, data))
+por onde passa qualquer número antes de ser exibido no gráfico ou no resumo — nenhum
+valor chega à tela sem essa classificação disponível para quem for auditar depois.
+Não precisa de badge visual em cada candle (poluiria o gráfico), mas o resumo em
+texto (item 2.6) tem que declarar, por contrato, a partir de que data os valores
+deixam de ser ESTIMADO e passam a ser DERIVADO puro.
+
+------------------------------------------------------------------------------------------
+4. NÃO FAZER
+------------------------------------------------------------------------------------------
+  - Não alterar trix_v5.py, ccm_dados.py, pipeline.py, milho_dashboard.html,
+    sazonalidade_milho.py, leitor_csv.py. Este módulo é isolado.
+  - Não plotar TRIX nem Sinal (trix/trix_sinal) como linha em nenhum gráfico — só a
+    cor do candle (estado) e a linha única de SMA(100)/VTend.
+  - Não pintar o candle por Close vs Open — pintar pelo ESTADO (posicao_trix_v5).
+  - Não desenhar candle para o trecho sintético (is_sintetico=True) — ele só
+    alimenta cálculo.
+  - Não inventar Call Wall/Put Wall/Max Pain/contratos em aberto quando não houver
+    dado real — mostrar N/D explícito.
+  - Não decidir sozinho nenhum parâmetro do TRIX v5 (PTrix, PSinal, PTrend, etc.) —
+    são fixos, vêm de trix_v5.py, não deste módulo.
+  - Não regenerar o arquivo seed (ccmfut_seed_2008_2026.csv) automaticamente — é
+    entrada fixa, read-only.
+  - Se em algum ponto faltar dado real e a única saída parecer "estimar algo novo
+    não previsto aqui" — parar e perguntar, não decidir sozinho (mesma regra do
+    prompt anterior deste projeto).
+
+------------------------------------------------------------------------------------------
+5. ENTREGÁVEIS
+------------------------------------------------------------------------------------------
+  - ccm_trix_curva.py (ou nome equivalente) com todo o fluxo da seção 2.
+  - Nova função coletar_historico_ccm() em ingestao_brapi.py.
+  - ccmfut_seed_2008_2026.csv (seed convertido, read-only) + script/one-off usado
+    para gerar essa conversão a partir de CCM_HIST.xlsx (documentar, não precisa
+    ficar reexecutável em produção).
+  - Gráfico interativo com seletor de contrato, replicando fielmente as cores e a
+    linha única do mockup já validado.
+  - Resumo em texto simples por contrato (item 2.6).
+  - Tabela de proveniência preenchida (pode ser comentário no PR ou um .txt à
+    parte): para cada campo exibido, qual classificação carrega e por quê. Isto é
+    entregável obrigatório, não nota de rodapé.
+
+------------------------------------------------------------------------------------------
+6. CRITÉRIO DE FECHAMENTO E COMO ISSO VAI SER AUDITADO
+------------------------------------------------------------------------------------------
+  - A entrega vem com hash de commit e diff. Um relatório do tipo "rodei e funcionou"
+    não é aceito como prova — o diff é lido linha por linha antes de qualquer
+    aprovação, e o script é executado de forma independente antes de aceitar.
+  - Cada achado encontrado nesta auditoria (se houver) vira uma correção específica
+    mais um teste de regressão daquele padrão exato — nunca agrupados em uma
+    correção genérica.
+  - Fechamento = o script roda do início ao fim, sem erro, para todos os vencimentos
+    vivos da curva no momento do teste; a tabela de proveniência do item 5 bate com
+    o código real (não com o texto que a descreve); nenhum valor de Call
+    Wall/Put Wall/contratos em aberto aparece fabricado quando a fonte real não
+    respondeu.
+  - Qualquer dúvida sobre o comportamento do TRIX v5, sobre a régua de cores do
+    NTSL, ou sobre o que conta como "dado suficiente" para uma barreira de opções:
+    não adivinhar, perguntar antes de codar.
+
+------------------------------------------------------------------------------------------
+7. ANEXO — INDICADOR VALIDADO (NTSL, referência de comportamento, NÃO É PARA PORTAR
+   DE NOVO — trix_v5.py já é a réplica testada; isto é só para conferir a régua de
+   cor/plot que a seção 2.5 exige)
+------------------------------------------------------------------------------------------
+// ESTRATEGIA: TRIX Reversal + Filtro de Tendencia de Preco (v5)
+// Reversal TRIX x linha de sinal. Filtro de entrada: so compra se o preco
+// estiver acima da media de longo prazo (VTend), so vende se estiver abaixo.
+// Parametros de partida recomendados: PTrix=7, PSinal=3, PTrend=100.
+
+input
+PTrix(7);
+TipoTrix(1);
+PSinal(3);
+UsarFiltroTendencia(1);
+PTrend(100);
+UsarStopTecnico(0);
+PATR(14);
+ATRMult(2.5);
+
+VAR
+sinalC, sinalV : booleano;
+saidaC, saidaV : booleano;
+StopTecC, StopTecV : booleano;
+tendAltaOk, tendBaixaOk : booleano;
+cor : inteiro;
+VTrix, VSinal, VTend, VATRVal : float;
+
+BEGIN
+VTrix   := TRIX(PTrix, TipoTrix);
+VSinal  := Media(PSinal, VTrix);
+VTend   := Media(PTrend, Fechamento);
+VATRVal := AvgTrueRange(PATR, kaWelles) * ATRMult;
+
+tendAltaOk  := (UsarFiltroTendencia = 0) ou (Fechamento > VTend);
+tendBaixaOk := (UsarFiltroTendencia = 0) ou (Fechamento < VTend);
+
+sinalC := (VTrix[1] <= VSinal[1]) e (VTrix > VSinal) e tendAltaOk;
+sinalV := (VTrix[1] >= VSinal[1]) e (VTrix < VSinal) e tendBaixaOk;
+
+saidaC := (VTrix[1] >= VSinal[1]) e (VTrix < VSinal);
+saidaV := (VTrix[1] <= VSinal[1]) e (VTrix > VSinal);
+
+StopTecC := (UsarStopTecnico = 1) e IsBought e (Fechamento < (BuyPrice - VATRVal));
+StopTecV := (UsarStopTecnico = 1) e IsSold e (Fechamento > (SellPrice + VATRVal));
+
+se (sinalC) e (not IsBought) e (not IsSold) entao BuyAtMarket;
+se (sinalV) e (not IsBought) e (not IsSold) entao SellShortAtMarket;
+
+se (IsBought) e (saidaC ou StopTecC) entao SellToCoverAtMarket;
+se (IsSold) e (saidaV ou StopTecV) entao BuyToCoverAtMarket;
+
+se sinalC entao cor := cllime
+senao se sinalV entao cor := clred
+senao cor := clwhite;
+
+se (cor[1] = cllime) e (not saidaC) e (not StopTecC) entao cor := cllime;
+se (cor[1] = clred) e (not saidaV) e (not StopTecV) entao cor := clred;
+
+PaintBar(cor);
+
+Plot2(VTrix);
+Plot3(VSinal);
+Plot4(VTend);
+
+end;

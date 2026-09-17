@@ -1,0 +1,148 @@
+PROMPT PARA PROGRAMADOR — Fase 2 do projeto Milho Trader: ingestão automática via BRAPI
+==========================================================================================
+Projeto: Milho Trader (CCM futuro, B3) — pasta C:\Projetos Phyton\Milho
+Contexto: sistema de apoio à decisão para operar milho futuro (CCM) na B3, uso pessoal.
+Este prompt é só a Fase 2 (ingestão de dados). A Fase 1 (migração do sinal técnico para
+TRIX v5) já foi concluída e NÃO deve ser alterada por esta tarefa.
+
+------------------------------------------------------------------------------------------
+1. CONTEXTO — LEIA ANTES DE CODAR
+------------------------------------------------------------------------------------------
+
+O pipeline (pipeline.py) hoje depende de CSVs exportados manualmente do Profit/Genial para
+vários insumos (leitor_csv.py, formato: separador=;, encoding=latin1, decimal=,). Isso já
+causou dois problemas reais:
+
+  a) O CSV do contrato CCM mais líquido (usado para o sinal técnico) não está sendo
+     atualizado com a frequência necessária — em 17/09/2026 constatamos que ele nem
+     existia mais na pasta, e o contrato de referência anterior (CCMU26) já tinha
+     vencido em 15/09/2026.
+  b) Os CSVs de WDOFUT, DI1F27, DI1F29 e DOLINDEX estavam parados havia ~3 semanas.
+
+Já existe uma integração parcial com a BRAPI (ingestao_brapi.py), criada em 01/09/2026,
+que roda em "modo sombra" para câmbio/DI/curva de vencimentos: ela busca o mesmo dado via
+API e GRAVA A DIVERGÊNCIA contra o valor do CSV legado, SEM substituir o legado ainda
+(ver ETAPA 5B em pipeline.py, variável ingestao_brapi_sombra). Essa mesma disciplina de
+"sombra antes de substituir" deve ser seguida aqui — decisão de cortar o CSV é do Duda,
+não do programador.
+
+Verificação feita em 17/09/2026 (sessão de auditoria) sobre o que a BRAPI cobre:
+  - CCM (milho futuro B3): CONFIRMADO — mcp BRAPI get_futures_historical(symbol="CCMU26",
+    range="3mo", interval="1d") retornou 248 dias de histórico diário com high/low/close/
+    average/settlement/volume/trades. O campo "open" vem sempre null (confirmado também
+    em diag_brapi_output.txt, 27/08/2026) — não é falha de configuração, é como a B3/BRAPI
+    publica esse contrato. TRIX v5 usa só Close, então isso não afeta o indicador, mas
+    afeta a renderização de candles (ver seção 3.3 abaixo).
+  - WDO (câmbio futuro) e DI1 (DI futuro, ex.: DI1F27/DI1F29): CONFIRMADO, já implementado
+    em ingestao_brapi.coletar_cambio() / coletar_di() — nada a fazer aqui além de revisar
+    se o modo sombra já está estável o suficiente para virar fonte primária (fora do
+    escopo desta tarefa: é decisão do Duda, não implementação nova).
+  - Curva de vencimentos CCM (todos os contratos vivos): CONFIRMADO, já implementado em
+    ingestao_brapi.coletar_curva_ccm().
+  - Open Interest de opções (Call Wall/Put Wall/Max Pain): CONFIRMADO, já implementado
+    e já é a fonte PRIMÁRIA desde 01/09/2026 (oi_opcoes.py ficou como fallback).
+  - RTCNI (preço físico de referência do milho, usado em convergencia.py): NÃO
+    disponível na BRAPI (mcp__BRAPI__get_ticker_coverage confirmou historical=false,
+    ticker=false — a BRAPI não cobre esse índice). CONTINUA MANUAL. Não tente resolver
+    isso nesta tarefa — não existe fonte de API para trocar.
+  - Fundamentos WASDE/CONAB (FUNDAMENTOS_DEFAULT em pipeline.py): NÃO disponível na
+    BRAPI (são relatórios de USDA/CONAB, não dado de mercado). CONTINUA MANUAL.
+
+Ou seja: o único insumo do pipeline técnico que ainda depende 100% de CSV manual e TEM
+alternativa de API pronta é o preço diário do contrato CCM mais líquido (o que alimenta
+ccm_dados.py e, por consequência, o TRIX v5). É esse o escopo desta tarefa.
+
+------------------------------------------------------------------------------------------
+2. ESCOPO DESTA TAREFA
+------------------------------------------------------------------------------------------
+
+Adicionar ingestão automática do histórico diário do contrato CCM via BRAPI, rodando em
+MODO SOMBRA (não substitui o CSV ainda), seguindo o mesmo padrão já usado para câmbio/DI
+em pipeline.py (ETAPA 5B). NÃO alterar o critério técnico (TRIX v5, ccm_dados.py,
+trix_v5.py) nem o Veredito Consolidado — este pipeline já foi migrado e validado
+separadamente e está fora do escopo.
+
+------------------------------------------------------------------------------------------
+3. TAREFAS
+------------------------------------------------------------------------------------------
+
+3.1. Nova função em ingestao_brapi.py: coletar_historico_ccm(codigo_contrato, dias=300)
+  - Usa o endpoint de histórico de futuros da BRAPI (mcp BRAPI get_futures_historical,
+    ou o endpoint REST equivalente /api/v2/futures/historical — confirme qual client
+    HTTP este arquivo já usa e siga o mesmo padrão de _get()/_headers() já existente).
+  - Parâmetro codigo_contrato: código B3 (ex.: "CCMX26") — NÃO hardcodar um contrato
+    específico. Deve aceitar qualquer contrato vivo retornado por coletar_curva_ccm().
+  - Retornar um DataFrame pandas com o MESMO layout de colunas que leitor_csv.ler_csv()
+    já produz (Data, Open, High, Low, Close, Volume, Qtd), ordenado por Data crescente,
+    para poder ser passado direto para ccm_dados._analisar_serie_ohlc() em testes A/B
+    (isso é só para comparação/teste — não estamos plugando isso no pipeline ao vivo
+    nesta tarefa, ver 3.2).
+  - Campo Open: como a BRAPI retorna null, preencha Open = Close do pregão anterior
+    (prática padrão quando não há abertura reportada — deixa claro no código/comentário
+    que é um proxy, não o valor real de abertura). Não invente um valor diferente disso
+    sem checar com o Duda antes.
+  - Campo Qtd: usar o campo "trades" da BRAPI (número de negócios) — Volume da BRAPI é
+    quantidade de contratos, que é o mesmo conceito de Volume no CSV do Profit; confirme
+    isso comparando alguns pregões sobrepostos antes de fechar o mapeamento (ver 3.4).
+  - Tratar ausência de dado/erro de rede retornando None (mesmo padrão dos outros
+    coletar_*() em ingestao_brapi.py) — nunca lançar exceção que derrube o pipeline.
+
+3.2. Nova etapa em pipeline.py, "ETAPA 1B: CCM EM MODO SOMBRA (BRAPI)", logo após a
+   ETAPA 1 (CCM FUTURO) existente:
+  - Chama coletar_historico_ccm() para o MESMO contrato que dados_ccm['vencimento_ativo']
+    já identificou como mais líquido pela via legada (CSV).
+  - Roda ccm_dados._analisar_serie_ohlc() sobre o histórico vindo da BRAPI (é a mesma
+    função já usada para o CSV — não duplicar lógica).
+  - Compara os campos que resultam da via legada com os da via BRAPI e grava no payload
+    a divergência (mesmo espírito de _divergencia_pct() já existente em pipeline.py):
+      - último preço de fechamento (%)
+      - posicao_trix_v5 (COMPRADO/VENDIDO/FLAT) — bateram ou não?
+      - entrada_hoje (COMPRA/VENDA/None) — bateram ou não?
+    Grava tudo em payload['ingestao_brapi_sombra']['ccm'] (mesmo dicionário-guarda-chuva
+    já usado para câmbio/DI/curva — não criar uma chave de topo nova).
+  - NÃO substitui dados_ccm nem afeta veredito_consolidado, bias_estrutural, ou qualquer
+    decisão em nenhum cenário. É só coleta + comparação + log, como o padrão existente.
+  - Se BRAPI_TOKEN não estiver configurado, seguir o padrão já usado (log informativo,
+    não é erro).
+
+3.3. NÃO renderizar candles a partir do histórico BRAPI nesta tarefa. obter_candles()
+   hoje descarta silenciosamente linhas sem Open válido (bloco try/except em ccm_dados.py)
+   — com Open sintético (proxy) isso deixaria de acontecer, o que é uma mudança de
+   comportamento visual que precisa ser decidida separadamente com o Duda, não decidida
+   silenciosamente aqui.
+
+3.4. Antes de considerar a tarefa pronta, rodar um teste manual comparando pelo menos
+   20 pregões sobrepostos entre o CSV mais recente disponível (se houver) e o retorno de
+   coletar_historico_ccm() para o mesmo contrato e mesmo intervalo de datas — registrar
+   em texto simples (pode ser um comentário no PR ou um .txt à parte) se High/Low/Close/
+   Volume batem exatamente, batem com pequena diferença de arredondamento, ou divergem
+   de verdade. Isso é o que vai embasar a decisão de cortar o CSV depois.
+
+------------------------------------------------------------------------------------------
+4. NÃO FAZER (fora de escopo, não decidir por conta própria)
+------------------------------------------------------------------------------------------
+  - Não cortar o CSV como fonte do sinal técnico. Isso é decisão do Duda, depois de ver
+    algumas rodadas de divergência medida (mesmo critério já usado para câmbio/DI/curva).
+  - Não mexer em trix_v5.py, ccm_dados.py (além de reaproveitar _analisar_serie_ohlc() já
+    existente, sem alterá-la), nem em calcular_veredito_consolidado()/
+    calcular_bias_estrutural() em pipeline.py — foi tudo migrado e validado na Fase 1.
+  - Não tentar automatizar RTCNI nem WASDE/CONAB — confirmado que não há fonte de API
+    para nenhum dos dois (ver seção 1). Continuam manuais.
+  - Não alterar milho_dashboard.html nesta tarefa — o modo sombra do CCM não precisa
+    aparecer na UI ainda, só no JSON, do mesmo jeito que câmbio/DI/curva hoje.
+  - Não decidir sozinho o mapeamento Qtd/Volume/trades sem checar contra dado real
+    sobreposto (ver 3.4) — se os números não baterem de forma óbvia, parar e perguntar
+    em vez de adivinhar.
+
+------------------------------------------------------------------------------------------
+5. ENTREGÁVEIS
+------------------------------------------------------------------------------------------
+  - ingestao_brapi.py com a nova função coletar_historico_ccm().
+  - pipeline.py com a nova ETAPA 1B (modo sombra do CCM).
+  - Registro do teste de 20+ pregões sobrepostos (seção 3.4) — texto simples, sem
+    necessidade de formatação especial.
+  - Log de execução do pipeline (rodar_pipeline.bat) mostrando a nova etapa rodando sem
+    quebrar nada que já existia.
+
+Qualquer dúvida sobre o comportamento do sistema técnico (TRIX v5) ou sobre por que o
+modo sombra existe: não adivinhar, perguntar antes de codar.

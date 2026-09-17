@@ -1,0 +1,1639 @@
+{
+  "meta": {
+    "exportado_em": "2026-09-17T10:47:21",
+    "fonte": "dados_milho.json",
+    "versao_export": "1.0"
+  },
+  "resumo_consolidado": {
+    "data_referencia": "N/A",
+    "vencimento_ativo": "N/A",
+    "ultimo_preco": 0.0,
+    "sinal_ema920": "N/A",
+    "sinal_91": "N/A",
+    "estrutura_curva": "N/A",
+    "spread_zscore_convergencia": null,
+    "diagnostico_cambio": "N/A",
+    "vies_fundamental": "BAIXISTA",
+    "destaque_semana": "Preencher manualmente: tema de destaque desta semana."
+  },
+  "diagnostico_qualidade": {
+    "status_geral": "CRITICO",
+    "score_completude_pct": 77.3,
+    "campos_faltantes": [
+      "ccm.variacao_semanal_pct",
+      "convergencia.rtcni_preco",
+      "convergencia.spread_futuro_fisico",
+      "convergencia.spread_zscore",
+      "carrego.spread_justo_vs_mercado"
+    ],
+    "alertas": [
+      {
+        "nivel": "ERRO",
+        "regra": "enum_invalido",
+        "campo": "ccm.sinal_ema920",
+        "detalhe": "Valor 'N/A' fora do conjunto esperado ['COMPRA', 'NEUTRO', 'VENDA']"
+      },
+      {
+        "nivel": "ERRO",
+        "regra": "enum_invalido",
+        "campo": "ccm.sinal_91",
+        "detalhe": "Valor 'N/A' fora do conjunto esperado ['AGUARDANDO', 'COMPRA', 'NEUTRO', 'VENDA']"
+      },
+      {
+        "nivel": "ERRO",
+        "regra": "enum_invalido",
+        "campo": "estrutura_curva",
+        "detalhe": "Valor 'N/A' fora do conjunto esperado ['BACKWARDATION', 'CONTANGO', 'FLAT']"
+      },
+      {
+        "nivel": "ERRO",
+        "regra": "enum_invalido",
+        "campo": "cambio.diagnostico",
+        "detalhe": "Valor 'N/A' fora do conjunto esperado ['CAMBIO', 'MILHO', 'MISTO']"
+      },
+      {
+        "nivel": "ERRO",
+        "regra": "staleness",
+        "campo": "data_referencia",
+        "detalhe": "Nao foi possivel interpretar data_referencia (esperado DD/MM/AAAA)"
+      }
+    ]
+  },
+  "dados_originais": {
+    "meta": {
+      "versao": "1.0",
+      "gerado_em": "17/09/2026 10:47:21",
+      "pasta_dados": "C:\\Projetos Phyton\\Milho",
+      "erros": [
+        "❌ CCMFUT falhou: Arquivo com prefixo \"CCMFUT\" não encontrado em: C:\\Projetos Phyton\\Milho",
+        "❌ Sazonalidade falhou: Arquivo não encontrado: C:\\Projetos Phyton\\Milho\\CCMFUT_F_0_Diário.csv"
+      ],
+      "log": [
+        "✅ Curva | 0 contratos | N/A",
+        "✅ OI Opções (BRAPI) | sem posições retornadas para o vencimento ativo",
+        "✅ OI por Contrato (BRAPI) | 7 expirações disponíveis para seleção",
+        "✅ RTCNI | Físico: R$ None/sc | Spread: R$ None/sc | Z=Noneσ | normal",
+        "✅ Câmbio | USDBRL: 5.15 | Diagnóstico: N/A",
+        "✅ ZC CME | 533.0 c/bu | Fonte: yfinance",
+        "✅ Ingestão BRAPI (sombra) | câmbio div. 0.49% | DI div. -0.86% | contrato ativo concorda: False",
+        "✅ Contrato Afetado por mês | calendário sazonal ligado aos vencimentos CCM",
+        "✅ Spread Calendário | 0 pares () | 0 com alerta",
+        "✅ Calendário Econômico | próximo: Estoques Trimestrais em 13d (30/09/2026)",
+        "✅ Bias Estrutural | Neutro / No-Go | score=-15.0 | 1/4 dimensões validadas",
+        "✅ Veredito Consolidado | AGUARDAR | convicção: None | TRIX v5 sem posição aberta (FLAT) e sem cruzamento hoje.",
+        "✅ Resumo Executivo | gerado para trader / comprador / vendedor",
+        "✅ Análise por Contrato | 0 vencimento(s) vivo(s) analisados | 0 com veredito OPERAR"
+      ]
+    },
+    "data_referencia": "N/A",
+    "ccm": {
+      "ultimo_preco": 0.0,
+      "variacao_semanal_pct": null,
+      "vencimento_ativo": "N/A",
+      "ema9": 0.0,
+      "ema20": 0.0,
+      "sinal_ema920": "N/A",
+      "ema9_slope": 0.0,
+      "sinal_91": "N/A",
+      "atr14": 0.0,
+      "stop_atr15": 0.0,
+      "stop_atr15_dist": 0.0,
+      "alvo_rr2_dist": 0.0,
+      "alvo_rr2": 0.0,
+      "risco_por_contrato": 0.0,
+      "volume_medio": 0,
+      "suporte": 0.0,
+      "resistencia": 0.0,
+      "candles": []
+    },
+    "curva_vencimentos": [],
+    "estrutura_curva": "N/A",
+    "curva_leitura_sazonal": {
+      "avaliavel": false,
+      "consistente": null,
+      "esperado": null,
+      "leitura": "Sazonalidade indisponível — sem cruzamento possível."
+    },
+    "convergencia": {
+      "rtcni_preco": null,
+      "rtcni_data": null,
+      "spread_futuro_fisico": null,
+      "spread_media_historica": 6.51,
+      "spread_desvio_padrao": 3.5,
+      "spread_zscore": null,
+      "alerta_convergencia": false,
+      "direcao_alerta": null,
+      "interpretacao": "DADOS AUSENTES — RTCNI não encontrado",
+      "periodo_base": null,
+      "n_obs_historico": 0,
+      "historico_semanal": [],
+      "vencimento_proximo_dias": null,
+      "acionavel": false,
+      "leitura_acionavel": null
+    },
+    "carrego": {
+      "di1f27_taxa": 13.71,
+      "di1f29_taxa": 14.17,
+      "preco_justo_jan27": null,
+      "spread_justo_vs_mercado": null
+    },
+    "cambio": {
+      "wdofut": 5150.0,
+      "wdofut_usdbrl": 5.15,
+      "variacao_semanal_pct": -1.6,
+      "ccm_paridade": 64.84,
+      "cambio_implicito": null,
+      "diagnostico": "N/A",
+      "data_ultimo": "2026-08-21",
+      "dolindex_dxy": 99.0,
+      "dxy_variacao_pct": 0.17
+    },
+    "zc_cme": {
+      "preco_cents_bu": 533.0,
+      "variacao_semanal_pct": 3.7
+    },
+    "macro": {
+      "brent": 103.01,
+      "brent_variacao_pct": -4.29,
+      "wasde_proximo": "N/A",
+      "conab_proximo": "N/A"
+    },
+    "fundamentos": {
+      "safra_br_estimativa_mt": 140.5,
+      "colheita_safrinha_pct": null,
+      "estoques_globais_mt": 281.2,
+      "vies_fundamental": "BAIXISTA",
+      "fonte": "CONAB/WASDE Jun-2026"
+    },
+    "oi_opcoes": {
+      "call_wall": null,
+      "put_wall": null,
+      "max_pain": null,
+      "call_wall_agregado": null,
+      "put_wall_agregado": null,
+      "grade_agregada": [],
+      "expiracoes_agregadas": [],
+      "fonte": "BRAPI (vencimento ativo indisponível)",
+      "vencimento_opcoes": null,
+      "total_oi_calls": 0,
+      "total_oi_puts": 0,
+      "arquivo": null,
+      "grade": []
+    },
+    "oi_por_contrato": {
+      "CCMX26": {
+        "contrato": "CCMX26",
+        "vencimento_opcoes": "2026-11-16",
+        "preco_referencia": 76.25,
+        "preco_estimado": false,
+        "call_wall": 80,
+        "put_wall": 65,
+        "max_pain": 70,
+        "total_oi_calls": 47424,
+        "total_oi_puts": 13020,
+        "grade": [
+          {
+            "strike": 55,
+            "oi_call": 0,
+            "oi_put": 52
+          },
+          {
+            "strike": 65,
+            "oi_call": 0,
+            "oi_put": 3082
+          },
+          {
+            "strike": 65.5,
+            "oi_call": 0,
+            "oi_put": 300
+          },
+          {
+            "strike": 66,
+            "oi_call": 0,
+            "oi_put": 170
+          },
+          {
+            "strike": 67,
+            "oi_call": 0,
+            "oi_put": 400
+          },
+          {
+            "strike": 67.25,
+            "oi_call": 0,
+            "oi_put": 100
+          },
+          {
+            "strike": 67.5,
+            "oi_call": 0,
+            "oi_put": 470
+          },
+          {
+            "strike": 68,
+            "oi_call": 0,
+            "oi_put": 1178
+          },
+          {
+            "strike": 68.5,
+            "oi_call": 0,
+            "oi_put": 1200
+          },
+          {
+            "strike": 69,
+            "oi_call": 0,
+            "oi_put": 1050
+          },
+          {
+            "strike": 69.5,
+            "oi_call": 0,
+            "oi_put": 740
+          },
+          {
+            "strike": 69.75,
+            "oi_call": 0,
+            "oi_put": 250
+          },
+          {
+            "strike": 70,
+            "oi_call": 4114,
+            "oi_put": 157
+          },
+          {
+            "strike": 70.5,
+            "oi_call": 104,
+            "oi_put": 106
+          },
+          {
+            "strike": 71,
+            "oi_call": 850,
+            "oi_put": 0
+          },
+          {
+            "strike": 71.5,
+            "oi_call": 1367,
+            "oi_put": 150
+          },
+          {
+            "strike": 72,
+            "oi_call": 231,
+            "oi_put": 22
+          },
+          {
+            "strike": 72.25,
+            "oi_call": 2,
+            "oi_put": 2
+          },
+          {
+            "strike": 72.5,
+            "oi_call": 135,
+            "oi_put": 0
+          },
+          {
+            "strike": 73,
+            "oi_call": 6032,
+            "oi_put": 606
+          },
+          {
+            "strike": 73.25,
+            "oi_call": 200,
+            "oi_put": 0
+          },
+          {
+            "strike": 73.5,
+            "oi_call": 678,
+            "oi_put": 0
+          },
+          {
+            "strike": 73.75,
+            "oi_call": 200,
+            "oi_put": 0
+          },
+          {
+            "strike": 74,
+            "oi_call": 411,
+            "oi_put": 29
+          },
+          {
+            "strike": 74.25,
+            "oi_call": 20,
+            "oi_put": 20
+          },
+          {
+            "strike": 74.5,
+            "oi_call": 922,
+            "oi_put": 0
+          },
+          {
+            "strike": 74.75,
+            "oi_call": 20,
+            "oi_put": 0
+          },
+          {
+            "strike": 75,
+            "oi_call": 1361,
+            "oi_put": 2104
+          },
+          {
+            "strike": 75.25,
+            "oi_call": 300,
+            "oi_put": 0
+          },
+          {
+            "strike": 75.5,
+            "oi_call": 964,
+            "oi_put": 0
+          },
+          {
+            "strike": 76,
+            "oi_call": 3096,
+            "oi_put": 0
+          },
+          {
+            "strike": 76.25,
+            "oi_call": 6,
+            "oi_put": 0
+          },
+          {
+            "strike": 76.5,
+            "oi_call": 1194,
+            "oi_put": 650
+          },
+          {
+            "strike": 76.75,
+            "oi_call": 400,
+            "oi_put": 0
+          },
+          {
+            "strike": 77,
+            "oi_call": 1336,
+            "oi_put": 0
+          },
+          {
+            "strike": 77.25,
+            "oi_call": 400,
+            "oi_put": 100
+          },
+          {
+            "strike": 77.5,
+            "oi_call": 35,
+            "oi_put": 27
+          },
+          {
+            "strike": 77.75,
+            "oi_call": 55,
+            "oi_put": 55
+          },
+          {
+            "strike": 78,
+            "oi_call": 4168,
+            "oi_put": 0
+          },
+          {
+            "strike": 78.5,
+            "oi_call": 522,
+            "oi_put": 0
+          },
+          {
+            "strike": 78.75,
+            "oi_call": 50,
+            "oi_put": 0
+          },
+          {
+            "strike": 79,
+            "oi_call": 2967,
+            "oi_put": 0
+          },
+          {
+            "strike": 79.5,
+            "oi_call": 444,
+            "oi_put": 0
+          },
+          {
+            "strike": 80,
+            "oi_call": 7642,
+            "oi_put": 0
+          },
+          {
+            "strike": 81,
+            "oi_call": 2953,
+            "oi_put": 0
+          },
+          {
+            "strike": 81.5,
+            "oi_call": 300,
+            "oi_put": 0
+          },
+          {
+            "strike": 81.75,
+            "oi_call": 50,
+            "oi_put": 0
+          },
+          {
+            "strike": 82,
+            "oi_call": 152,
+            "oi_put": 0
+          },
+          {
+            "strike": 82.5,
+            "oi_call": 537,
+            "oi_put": 0
+          },
+          {
+            "strike": 83,
+            "oi_call": 348,
+            "oi_put": 0
+          },
+          {
+            "strike": 83.25,
+            "oi_call": 22,
+            "oi_put": 0
+          },
+          {
+            "strike": 83.5,
+            "oi_call": 67,
+            "oi_put": 0
+          },
+          {
+            "strike": 84,
+            "oi_call": 167,
+            "oi_put": 0
+          },
+          {
+            "strike": 85,
+            "oi_call": 55,
+            "oi_put": 0
+          },
+          {
+            "strike": 86,
+            "oi_call": 243,
+            "oi_put": 0
+          },
+          {
+            "strike": 87,
+            "oi_call": 2222,
+            "oi_put": 0
+          },
+          {
+            "strike": 89,
+            "oi_call": 82,
+            "oi_put": 0
+          }
+        ],
+        "candles": []
+      },
+      "CCMF27": {
+        "contrato": "CCMF27",
+        "vencimento_opcoes": "2027-01-15",
+        "preco_referencia": 80.15,
+        "preco_estimado": false,
+        "call_wall": 90,
+        "put_wall": 70,
+        "max_pain": 76,
+        "total_oi_calls": 23463,
+        "total_oi_puts": 10399,
+        "grade": [
+          {
+            "strike": 68,
+            "oi_call": 0,
+            "oi_put": 2
+          },
+          {
+            "strike": 68.5,
+            "oi_call": 0,
+            "oi_put": 200
+          },
+          {
+            "strike": 69,
+            "oi_call": 0,
+            "oi_put": 50
+          },
+          {
+            "strike": 69.5,
+            "oi_call": 0,
+            "oi_put": 1300
+          },
+          {
+            "strike": 70,
+            "oi_call": 0,
+            "oi_put": 3430
+          },
+          {
+            "strike": 71,
+            "oi_call": 0,
+            "oi_put": 1103
+          },
+          {
+            "strike": 72,
+            "oi_call": 102,
+            "oi_put": 163
+          },
+          {
+            "strike": 72.75,
+            "oi_call": 0,
+            "oi_put": 6
+          },
+          {
+            "strike": 73,
+            "oi_call": 60,
+            "oi_put": 261
+          },
+          {
+            "strike": 73.25,
+            "oi_call": 4,
+            "oi_put": 0
+          },
+          {
+            "strike": 73.5,
+            "oi_call": 255,
+            "oi_put": 285
+          },
+          {
+            "strike": 73.75,
+            "oi_call": 12,
+            "oi_put": 0
+          },
+          {
+            "strike": 74,
+            "oi_call": 18,
+            "oi_put": 740
+          },
+          {
+            "strike": 74.5,
+            "oi_call": 4,
+            "oi_put": 100
+          },
+          {
+            "strike": 75,
+            "oi_call": 803,
+            "oi_put": 145
+          },
+          {
+            "strike": 76,
+            "oi_call": 50,
+            "oi_put": 1467
+          },
+          {
+            "strike": 76.5,
+            "oi_call": 155,
+            "oi_put": 235
+          },
+          {
+            "strike": 76.75,
+            "oi_call": 110,
+            "oi_put": 0
+          },
+          {
+            "strike": 77,
+            "oi_call": 762,
+            "oi_put": 201
+          },
+          {
+            "strike": 77.25,
+            "oi_call": 1,
+            "oi_put": 0
+          },
+          {
+            "strike": 77.5,
+            "oi_call": 55,
+            "oi_put": 0
+          },
+          {
+            "strike": 78,
+            "oi_call": 1207,
+            "oi_put": 2
+          },
+          {
+            "strike": 78.25,
+            "oi_call": 100,
+            "oi_put": 0
+          },
+          {
+            "strike": 78.5,
+            "oi_call": 711,
+            "oi_put": 300
+          },
+          {
+            "strike": 79,
+            "oi_call": 408,
+            "oi_put": 0
+          },
+          {
+            "strike": 79.25,
+            "oi_call": 400,
+            "oi_put": 0
+          },
+          {
+            "strike": 79.5,
+            "oi_call": 100,
+            "oi_put": 0
+          },
+          {
+            "strike": 79.75,
+            "oi_call": 5,
+            "oi_put": 0
+          },
+          {
+            "strike": 80,
+            "oi_call": 1029,
+            "oi_put": 398
+          },
+          {
+            "strike": 80.25,
+            "oi_call": 330,
+            "oi_put": 0
+          },
+          {
+            "strike": 80.5,
+            "oi_call": 200,
+            "oi_put": 3
+          },
+          {
+            "strike": 81,
+            "oi_call": 1200,
+            "oi_put": 0
+          },
+          {
+            "strike": 81.25,
+            "oi_call": 12,
+            "oi_put": 0
+          },
+          {
+            "strike": 81.5,
+            "oi_call": 483,
+            "oi_put": 0
+          },
+          {
+            "strike": 82,
+            "oi_call": 1023,
+            "oi_put": 0
+          },
+          {
+            "strike": 82.5,
+            "oi_call": 126,
+            "oi_put": 8
+          },
+          {
+            "strike": 83,
+            "oi_call": 2250,
+            "oi_put": 0
+          },
+          {
+            "strike": 83.5,
+            "oi_call": 667,
+            "oi_put": 0
+          },
+          {
+            "strike": 84,
+            "oi_call": 2015,
+            "oi_put": 0
+          },
+          {
+            "strike": 84.5,
+            "oi_call": 135,
+            "oi_put": 0
+          },
+          {
+            "strike": 85.25,
+            "oi_call": 110,
+            "oi_put": 0
+          },
+          {
+            "strike": 88,
+            "oi_call": 350,
+            "oi_put": 0
+          },
+          {
+            "strike": 88.5,
+            "oi_call": 100,
+            "oi_put": 0
+          },
+          {
+            "strike": 89,
+            "oi_call": 111,
+            "oi_put": 0
+          },
+          {
+            "strike": 90,
+            "oi_call": 4000,
+            "oi_put": 0
+          },
+          {
+            "strike": 95,
+            "oi_call": 4000,
+            "oi_put": 0
+          }
+        ],
+        "candles": []
+      },
+      "CCMH27": {
+        "contrato": "CCMH27",
+        "vencimento_opcoes": "2027-03-15",
+        "preco_referencia": 81.85,
+        "preco_estimado": false,
+        "call_wall": 84,
+        "put_wall": 75,
+        "max_pain": 75.25,
+        "total_oi_calls": 11700,
+        "total_oi_puts": 2910,
+        "grade": [
+          {
+            "strike": 69,
+            "oi_call": 0,
+            "oi_put": 480
+          },
+          {
+            "strike": 70,
+            "oi_call": 0,
+            "oi_put": 259
+          },
+          {
+            "strike": 71,
+            "oi_call": 0,
+            "oi_put": 500
+          },
+          {
+            "strike": 71.5,
+            "oi_call": 0,
+            "oi_put": 5
+          },
+          {
+            "strike": 72,
+            "oi_call": 0,
+            "oi_put": 23
+          },
+          {
+            "strike": 72.5,
+            "oi_call": 0,
+            "oi_put": 63
+          },
+          {
+            "strike": 73,
+            "oi_call": 0,
+            "oi_put": 8
+          },
+          {
+            "strike": 74,
+            "oi_call": 0,
+            "oi_put": 130
+          },
+          {
+            "strike": 75,
+            "oi_call": 578,
+            "oi_put": 629
+          },
+          {
+            "strike": 75.25,
+            "oi_call": 300,
+            "oi_put": 0
+          },
+          {
+            "strike": 75.5,
+            "oi_call": 821,
+            "oi_put": 0
+          },
+          {
+            "strike": 75.75,
+            "oi_call": 45,
+            "oi_put": 0
+          },
+          {
+            "strike": 76,
+            "oi_call": 365,
+            "oi_put": 263
+          },
+          {
+            "strike": 76.5,
+            "oi_call": 5,
+            "oi_put": 0
+          },
+          {
+            "strike": 77,
+            "oi_call": 203,
+            "oi_put": 107
+          },
+          {
+            "strike": 77.5,
+            "oi_call": 403,
+            "oi_put": 0
+          },
+          {
+            "strike": 78,
+            "oi_call": 1129,
+            "oi_put": 10
+          },
+          {
+            "strike": 78.5,
+            "oi_call": 56,
+            "oi_put": 0
+          },
+          {
+            "strike": 79,
+            "oi_call": 155,
+            "oi_put": 100
+          },
+          {
+            "strike": 80,
+            "oi_call": 700,
+            "oi_put": 301
+          },
+          {
+            "strike": 80.5,
+            "oi_call": 11,
+            "oi_put": 0
+          },
+          {
+            "strike": 81,
+            "oi_call": 40,
+            "oi_put": 0
+          },
+          {
+            "strike": 82,
+            "oi_call": 134,
+            "oi_put": 26
+          },
+          {
+            "strike": 82.25,
+            "oi_call": 7,
+            "oi_put": 0
+          },
+          {
+            "strike": 82.5,
+            "oi_call": 8,
+            "oi_put": 0
+          },
+          {
+            "strike": 83,
+            "oi_call": 345,
+            "oi_put": 0
+          },
+          {
+            "strike": 83.5,
+            "oi_call": 618,
+            "oi_put": 0
+          },
+          {
+            "strike": 84,
+            "oi_call": 1273,
+            "oi_put": 6
+          },
+          {
+            "strike": 85,
+            "oi_call": 378,
+            "oi_put": 0
+          },
+          {
+            "strike": 85.5,
+            "oi_call": 132,
+            "oi_put": 0
+          },
+          {
+            "strike": 86,
+            "oi_call": 316,
+            "oi_put": 0
+          },
+          {
+            "strike": 86.5,
+            "oi_call": 3,
+            "oi_put": 0
+          },
+          {
+            "strike": 87,
+            "oi_call": 179,
+            "oi_put": 0
+          },
+          {
+            "strike": 88,
+            "oi_call": 624,
+            "oi_put": 0
+          },
+          {
+            "strike": 88.25,
+            "oi_call": 555,
+            "oi_put": 0
+          },
+          {
+            "strike": 88.5,
+            "oi_call": 1240,
+            "oi_put": 0
+          },
+          {
+            "strike": 90,
+            "oi_call": 461,
+            "oi_put": 0
+          },
+          {
+            "strike": 92,
+            "oi_call": 14,
+            "oi_put": 0
+          },
+          {
+            "strike": 94,
+            "oi_call": 26,
+            "oi_put": 0
+          },
+          {
+            "strike": 95,
+            "oi_call": 140,
+            "oi_put": 0
+          },
+          {
+            "strike": 100,
+            "oi_call": 286,
+            "oi_put": 0
+          },
+          {
+            "strike": 105,
+            "oi_call": 5,
+            "oi_put": 0
+          },
+          {
+            "strike": 115,
+            "oi_call": 143,
+            "oi_put": 0
+          },
+          {
+            "strike": 120,
+            "oi_call": 2,
+            "oi_put": 0
+          }
+        ],
+        "candles": []
+      },
+      "CCMK27": {
+        "contrato": "CCMK27",
+        "vencimento_opcoes": "2027-05-17",
+        "preco_referencia": 80.39,
+        "preco_estimado": false,
+        "call_wall": 85,
+        "put_wall": 73,
+        "max_pain": 78,
+        "total_oi_calls": 2926,
+        "total_oi_puts": 3338,
+        "grade": [
+          {
+            "strike": 65,
+            "oi_call": 0,
+            "oi_put": 12
+          },
+          {
+            "strike": 65.5,
+            "oi_call": 0,
+            "oi_put": 42
+          },
+          {
+            "strike": 66,
+            "oi_call": 0,
+            "oi_put": 60
+          },
+          {
+            "strike": 68,
+            "oi_call": 0,
+            "oi_put": 505
+          },
+          {
+            "strike": 69,
+            "oi_call": 0,
+            "oi_put": 22
+          },
+          {
+            "strike": 70,
+            "oi_call": 38,
+            "oi_put": 396
+          },
+          {
+            "strike": 70.5,
+            "oi_call": 94,
+            "oi_put": 0
+          },
+          {
+            "strike": 72.5,
+            "oi_call": 0,
+            "oi_put": 72
+          },
+          {
+            "strike": 73,
+            "oi_call": 377,
+            "oi_put": 772
+          },
+          {
+            "strike": 73.5,
+            "oi_call": 0,
+            "oi_put": 42
+          },
+          {
+            "strike": 74,
+            "oi_call": 0,
+            "oi_put": 414
+          },
+          {
+            "strike": 75,
+            "oi_call": 15,
+            "oi_put": 0
+          },
+          {
+            "strike": 75.25,
+            "oi_call": 12,
+            "oi_put": 0
+          },
+          {
+            "strike": 75.5,
+            "oi_call": 51,
+            "oi_put": 0
+          },
+          {
+            "strike": 76,
+            "oi_call": 0,
+            "oi_put": 205
+          },
+          {
+            "strike": 77,
+            "oi_call": 0,
+            "oi_put": 76
+          },
+          {
+            "strike": 78,
+            "oi_call": 500,
+            "oi_put": 356
+          },
+          {
+            "strike": 78.5,
+            "oi_call": 650,
+            "oi_put": 0
+          },
+          {
+            "strike": 79,
+            "oi_call": 0,
+            "oi_put": 77
+          },
+          {
+            "strike": 80,
+            "oi_call": 0,
+            "oi_put": 81
+          },
+          {
+            "strike": 80.5,
+            "oi_call": 51,
+            "oi_put": 0
+          },
+          {
+            "strike": 81,
+            "oi_call": 200,
+            "oi_put": 200
+          },
+          {
+            "strike": 82,
+            "oi_call": 18,
+            "oi_put": 6
+          },
+          {
+            "strike": 85,
+            "oi_call": 700,
+            "oi_put": 0
+          },
+          {
+            "strike": 87,
+            "oi_call": 10,
+            "oi_put": 0
+          },
+          {
+            "strike": 88.5,
+            "oi_call": 200,
+            "oi_put": 0
+          },
+          {
+            "strike": 95,
+            "oi_call": 10,
+            "oi_put": 0
+          }
+        ],
+        "candles": []
+      },
+      "CCMN27": {
+        "contrato": "CCMN27",
+        "vencimento_opcoes": "2027-07-15",
+        "preco_referencia": 78.94,
+        "preco_estimado": false,
+        "call_wall": 79,
+        "put_wall": 72.75,
+        "max_pain": 72.75,
+        "total_oi_calls": 4686,
+        "total_oi_puts": 3740,
+        "grade": [
+          {
+            "strike": 60,
+            "oi_call": 0,
+            "oi_put": 12
+          },
+          {
+            "strike": 64.5,
+            "oi_call": 0,
+            "oi_put": 150
+          },
+          {
+            "strike": 65,
+            "oi_call": 0,
+            "oi_put": 614
+          },
+          {
+            "strike": 70,
+            "oi_call": 0,
+            "oi_put": 124
+          },
+          {
+            "strike": 71,
+            "oi_call": 150,
+            "oi_put": 0
+          },
+          {
+            "strike": 71.5,
+            "oi_call": 500,
+            "oi_put": 0
+          },
+          {
+            "strike": 72.75,
+            "oi_call": 0,
+            "oi_put": 2200
+          },
+          {
+            "strike": 73.5,
+            "oi_call": 0,
+            "oi_put": 400
+          },
+          {
+            "strike": 74,
+            "oi_call": 0,
+            "oi_put": 10
+          },
+          {
+            "strike": 74.5,
+            "oi_call": 250,
+            "oi_put": 0
+          },
+          {
+            "strike": 75,
+            "oi_call": 462,
+            "oi_put": 202
+          },
+          {
+            "strike": 76,
+            "oi_call": 500,
+            "oi_put": 22
+          },
+          {
+            "strike": 79,
+            "oi_call": 1242,
+            "oi_put": 0
+          },
+          {
+            "strike": 79.5,
+            "oi_call": 200,
+            "oi_put": 0
+          },
+          {
+            "strike": 80,
+            "oi_call": 6,
+            "oi_put": 6
+          },
+          {
+            "strike": 84,
+            "oi_call": 500,
+            "oi_put": 0
+          },
+          {
+            "strike": 85,
+            "oi_call": 644,
+            "oi_put": 0
+          },
+          {
+            "strike": 85.5,
+            "oi_call": 200,
+            "oi_put": 0
+          },
+          {
+            "strike": 86,
+            "oi_call": 10,
+            "oi_put": 0
+          },
+          {
+            "strike": 91,
+            "oi_call": 22,
+            "oi_put": 0
+          }
+        ],
+        "candles": []
+      },
+      "CCMU27": {
+        "contrato": "CCMU27",
+        "vencimento_opcoes": "2027-09-15",
+        "preco_referencia": 79.14,
+        "preco_estimado": false,
+        "call_wall": 80,
+        "put_wall": 67,
+        "max_pain": 74,
+        "total_oi_calls": 47455,
+        "total_oi_puts": 38881,
+        "grade": [
+          {
+            "strike": 62,
+            "oi_call": 0,
+            "oi_put": 1110
+          },
+          {
+            "strike": 65,
+            "oi_call": 0,
+            "oi_put": 500
+          },
+          {
+            "strike": 66,
+            "oi_call": 0,
+            "oi_put": 870
+          },
+          {
+            "strike": 67,
+            "oi_call": 0,
+            "oi_put": 5724
+          },
+          {
+            "strike": 67.5,
+            "oi_call": 0,
+            "oi_put": 2220
+          },
+          {
+            "strike": 68,
+            "oi_call": 0,
+            "oi_put": 740
+          },
+          {
+            "strike": 69,
+            "oi_call": 0,
+            "oi_put": 3790
+          },
+          {
+            "strike": 70,
+            "oi_call": 0,
+            "oi_put": 2953
+          },
+          {
+            "strike": 70.75,
+            "oi_call": 370,
+            "oi_put": 4440
+          },
+          {
+            "strike": 71,
+            "oi_call": 0,
+            "oi_put": 2318
+          },
+          {
+            "strike": 71.25,
+            "oi_call": 0,
+            "oi_put": 1000
+          },
+          {
+            "strike": 71.5,
+            "oi_call": 0,
+            "oi_put": 225
+          },
+          {
+            "strike": 72,
+            "oi_call": 5624,
+            "oi_put": 617
+          },
+          {
+            "strike": 72.25,
+            "oi_call": 0,
+            "oi_put": 418
+          },
+          {
+            "strike": 72.5,
+            "oi_call": 470,
+            "oi_put": 1185
+          },
+          {
+            "strike": 73,
+            "oi_call": 2890,
+            "oi_put": 433
+          },
+          {
+            "strike": 74,
+            "oi_call": 21,
+            "oi_put": 2176
+          },
+          {
+            "strike": 74.5,
+            "oi_call": 0,
+            "oi_put": 500
+          },
+          {
+            "strike": 75,
+            "oi_call": 1522,
+            "oi_put": 4230
+          },
+          {
+            "strike": 75.5,
+            "oi_call": 350,
+            "oi_put": 850
+          },
+          {
+            "strike": 76,
+            "oi_call": 1141,
+            "oi_put": 620
+          },
+          {
+            "strike": 76.5,
+            "oi_call": 1110,
+            "oi_put": 90
+          },
+          {
+            "strike": 77,
+            "oi_call": 2654,
+            "oi_put": 597
+          },
+          {
+            "strike": 77.5,
+            "oi_call": 370,
+            "oi_put": 0
+          },
+          {
+            "strike": 77.75,
+            "oi_call": 100,
+            "oi_put": 100
+          },
+          {
+            "strike": 78,
+            "oi_call": 418,
+            "oi_put": 0
+          },
+          {
+            "strike": 78.5,
+            "oi_call": 1665,
+            "oi_put": 0
+          },
+          {
+            "strike": 79,
+            "oi_call": 2000,
+            "oi_put": 1161
+          },
+          {
+            "strike": 79.5,
+            "oi_call": 500,
+            "oi_put": 0
+          },
+          {
+            "strike": 80,
+            "oi_call": 7354,
+            "oi_put": 14
+          },
+          {
+            "strike": 80.5,
+            "oi_call": 185,
+            "oi_put": 0
+          },
+          {
+            "strike": 81,
+            "oi_call": 4450,
+            "oi_put": 0
+          },
+          {
+            "strike": 82,
+            "oi_call": 918,
+            "oi_put": 0
+          },
+          {
+            "strike": 83,
+            "oi_call": 2454,
+            "oi_put": 0
+          },
+          {
+            "strike": 83.5,
+            "oi_call": 1665,
+            "oi_put": 0
+          },
+          {
+            "strike": 84,
+            "oi_call": 2854,
+            "oi_put": 0
+          },
+          {
+            "strike": 84.5,
+            "oi_call": 870,
+            "oi_put": 0
+          },
+          {
+            "strike": 85,
+            "oi_call": 2000,
+            "oi_put": 0
+          },
+          {
+            "strike": 86,
+            "oi_call": 1500,
+            "oi_put": 0
+          },
+          {
+            "strike": 100,
+            "oi_call": 2000,
+            "oi_put": 0
+          }
+        ],
+        "candles": []
+      },
+      "CCMX27": {
+        "contrato": "CCMX27",
+        "vencimento_opcoes": "2027-11-16",
+        "preco_referencia": 81.79,
+        "preco_estimado": false,
+        "call_wall": 83,
+        "put_wall": 68,
+        "max_pain": 72,
+        "total_oi_calls": 1006,
+        "total_oi_puts": 516,
+        "grade": [
+          {
+            "strike": 68,
+            "oi_call": 0,
+            "oi_put": 500
+          },
+          {
+            "strike": 72,
+            "oi_call": 500,
+            "oi_put": 0
+          },
+          {
+            "strike": 77,
+            "oi_call": 0,
+            "oi_put": 10
+          },
+          {
+            "strike": 79,
+            "oi_call": 500,
+            "oi_put": 0
+          },
+          {
+            "strike": 83,
+            "oi_call": 6,
+            "oi_put": 6
+          }
+        ],
+        "candles": []
+      }
+    },
+    "sazonalidade": {
+      "status": "FALHA",
+      "periodo_base": null,
+      "aviso_historico": null,
+      "fase_agricola": null,
+      "descricao_fase": null,
+      "vies_sazonal": null,
+      "quinzena_atual": null,
+      "desvio_atual_pct": null,
+      "desvio_std_pct": null,
+      "proxima_quinzena": null,
+      "desvio_proxima_pct": null,
+      "delta_quinzenal_pct": null,
+      "tendencia_sazonal": null,
+      "virada_sazonal": null,
+      "meses_ate_pico_mar": null,
+      "calendario_mensal": []
+    },
+    "spread_calendario": {
+      "contratos_considerados": [],
+      "pares": []
+    },
+    "calendario_economico": {
+      "bloquear_hoje": false,
+      "eventos_hoje": [],
+      "proximo_evento": {
+        "data": "2026-09-30",
+        "orgao": "USDA",
+        "evento": "Estoques Trimestrais",
+        "horario_et": "12:00",
+        "impacto": "MAXIMO",
+        "data_br": "30/09/2026"
+      },
+      "dias_ate_proximo_evento": 13,
+      "aviso_amanha": false,
+      "proximos_eventos": [
+        {
+          "data": "2026-09-30",
+          "orgao": "USDA",
+          "evento": "Estoques Trimestrais",
+          "horario_et": "12:00",
+          "impacto": "MAXIMO",
+          "data_br": "30/09/2026"
+        },
+        {
+          "data": "2026-10-09",
+          "orgao": "USDA",
+          "evento": "WASDE",
+          "horario_et": "12:00",
+          "impacto": "ALTO",
+          "data_br": "09/10/2026"
+        },
+        {
+          "data": "2026-10-15",
+          "orgao": "CONAB",
+          "evento": "Boletim da Safra de Grãos (CONAB)",
+          "horario_et": null,
+          "impacto": "ALTO",
+          "data_br": "15/10/2026"
+        },
+        {
+          "data": "2026-11-10",
+          "orgao": "USDA",
+          "evento": "WASDE",
+          "horario_et": "12:00",
+          "impacto": "ALTO",
+          "data_br": "10/11/2026"
+        },
+        {
+          "data": "2026-11-16",
+          "orgao": "CONAB",
+          "evento": "Boletim da Safra de Grãos (CONAB)",
+          "horario_et": null,
+          "impacto": "ALTO",
+          "data_br": "16/11/2026"
+        }
+      ],
+      "usda_desatualizado": false
+    },
+    "ingestao_brapi_sombra": {
+      "token_disponivel": true,
+      "cambio": {
+        "legado": {
+          "wdofut": 5150.0,
+          "wdofut_usdbrl": 5.15
+        },
+        "brapi": {
+          "wdofut": 5175.409,
+          "wdofut_symbol": "WDOV26",
+          "wdofut_usdbrl": 5.1754,
+          "variacao_semanal_pct": -0.09
+        },
+        "divergencia_wdofut_pct": 0.49
+      },
+      "di": {
+        "legado": {
+          "di1f27_taxa": 13.71,
+          "di1f29_taxa": 14.17
+        },
+        "brapi": {
+          "di1f27_taxa": 13.592,
+          "di1f29_taxa": 13.903
+        },
+        "divergencia_di1f27_pct": -0.86
+      },
+      "curva": {
+        "vencimento_ativo_legado": "N/A",
+        "vencimento_ativo_brapi": "CCMX26",
+        "contratos_concordam": false
+      }
+    },
+    "bias_estrutural": {
+      "versao": "1.0",
+      "score_bruto": -60.0,
+      "score_ajustado": -15.0,
+      "confianca": "1/4 dimensões validadas",
+      "decisao": "Neutro / No-Go",
+      "dimensoes": {
+        "sazonalidade": null,
+        "fisico": null,
+        "macro": -60.0,
+        "tecnico": null
+      },
+      "detalhes": {
+        "sazonalidade": "sem dado (desvio_atual_pct ou desvio_std_pct ausente)",
+        "fisico": "sem dado (convergencia.spread_zscore ausente)",
+        "macro": "fundamentos.vies_fundamental='BAIXISTA' -> -60",
+        "tecnico": "sem rótulo reconhecido em sinal_ema920 (valor bruto: 'N/A')"
+      }
+    },
+    "veredito_consolidado": {
+      "veredito": "AGUARDAR",
+      "direcao": null,
+      "convicao": null,
+      "motivo": "TRIX v5 sem posição aberta (FLAT) e sem cruzamento hoje."
+    },
+    "resumo_executivo": {
+      "trader": "AGUARDAR. TRIX v5 sem posição aberta (FLAT) e sem cruzamento hoje.",
+      "comprador": "Sem viés estrutural relevante — decisão de compra deve seguir sua necessidade operacional, não timing de mercado.",
+      "vendedor": "Sem viés estrutural relevante — decisão de venda deve seguir seu fluxo de caixa/logística, não timing de mercado."
+    },
+    "contratos_analise": {},
+    "resumo_contratos": [],
+    "sizing": {
+      "sacas_por_contrato": 450,
+      "valor_contrato": 0.0,
+      "margem_estimada": 0.0,
+      "stop_mensal": {
+        "conservador": 2000,
+        "moderado": 4000,
+        "arrojado": 8000
+      },
+      "contratos": {
+        "conservador": 2,
+        "moderado": 4,
+        "arrojado": 8
+      },
+      "risco_por_contrato": 0.0
+    },
+    "destaque_semana": "Preencher manualmente: tema de destaque desta semana."
+  }
+}
