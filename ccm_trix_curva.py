@@ -25,6 +25,7 @@ Funcionalidades:
 
 import os
 import sys
+import re
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -1555,10 +1556,35 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
         try:
             with open(output_html, "r", encoding="utf-8") as f:
                 conteudo = f.read()
+
+            # Integra Feed de Notícias (coluna esquerda do gráfico)
+            sidebar_html, css_feed, js_feed = "", "", ""
+            try:
+                import feed_noticias
+                sidebar_html, css_feed, js_feed = feed_noticias.montar_html_feed_noticias()
+            except Exception:
+                pass
+
+            if sidebar_html:
+                m_plotly = re.search(r'(<div[^>]*class=["\']plotly-graph-div["\'][^>]*>[\s\S]*?</script>\s*</div>)', conteudo)
+                if m_plotly:
+                    bloco_plotly = m_plotly.group(1)
+                    bloco_com_feed = (
+                        f'<div class="dashboard-outer-container">\n'
+                        f'    <div class="chart-and-news-wrapper">\n'
+                        f'        {sidebar_html}\n'
+                        f'        <div class="chart-main-container">\n'
+                        f'            {bloco_plotly}\n'
+                        f'        </div>\n'
+                        f'    </div>\n'
+                        f'</div>'
+                    )
+                    conteudo = conteudo.replace(bloco_plotly, bloco_com_feed)
+
             if "</head>" in conteudo:
-                conteudo = conteudo.replace("</head>", f"{css_profit}\n{grade_css}\n</head>")
+                conteudo = conteudo.replace("</head>", f"{css_profit}\n{grade_css}\n{css_feed}\n</head>")
             if "</body>" in conteudo:
-                corpo_adicional = f"{grade_card_html}\n{tabela_html}\n{grade_js}"
+                corpo_adicional = f"{tabela_html}\n{grade_card_html}\n{grade_js}\n{js_feed}"
                 conteudo = conteudo.replace("</body>", f"{corpo_adicional}\n</body>")
             with open(output_html, "w", encoding="utf-8") as f:
                 f.write(conteudo)

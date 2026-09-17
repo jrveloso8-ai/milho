@@ -405,3 +405,66 @@ def test_obter_rtcni_atual_online_e_fallback():
         assert res_fb["rtcni_data"] != "N/D"
         assert "fallback" in res_fb.get("fonte", "")
 
+
+# ══════════════════════════════════════════════════════════════════════════
+# 5. TESTES DO FEED DE NOTÍCIAS DO MILHO (CEPEA, CONAB, USDA)
+# ══════════════════════════════════════════════════════════════════════════
+
+import feed_noticias as fn
+
+
+def test_feed_noticias_coleta_rss_mock():
+    """Valida a coleta e parsing de itens RSS de notícias com mock."""
+    mock_rss = """<?xml version="1.0" encoding="UTF-8"?>
+    <rss version="2.0">
+      <channel>
+        <item>
+          <title>Conab prevê safra recorde de milho no Brasil - Canal Rural</title>
+          <link>https://example.com/noticia-conab</link>
+          <pubDate>Thu, 17 Sep 2026 14:00:00 GMT</pubDate>
+          <source>Canal Rural</source>
+        </item>
+      </channel>
+    </rss>
+    """
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = mock_rss.encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+
+    with patch("urllib.request.urlopen", return_value=mock_resp):
+        itens = fn._consultar_feed_rss("milho conab")
+        assert len(itens) == 1
+        assert "Conab prevê safra recorde de milho no Brasil" in itens[0]["titulo"]
+        assert itens[0]["fonte"] == "Canal Rural"
+        assert itens[0]["link"] == "https://example.com/noticia-conab"
+
+
+def test_feed_noticias_montar_html():
+    """Valida a montagem do componente de sidebar do Feed de Notícias."""
+    mock_dados = [
+        {
+            "categoria": "CEPEA",
+            "titulo": "Indicador CEPEA Milho em alta",
+            "fonte": "Cepea",
+            "link": "https://cepea.org.br",
+            "pubDate": "Wed, 16 Sep 2026 18:00:00 GMT",
+        },
+        {
+            "categoria": "USDA",
+            "titulo": "Relatório WASDE projeta estoques globais de milho",
+            "fonte": "USDA",
+            "link": "https://usda.gov",
+            "pubDate": "Wed, 16 Sep 2026 19:00:00 GMT",
+        },
+    ]
+
+    with patch("feed_noticias.obter_noticias_milho", return_value=mock_dados):
+        sidebar_html, css_feed, js_feed = fn.montar_html_feed_noticias()
+        assert 'id="newsSidebar"' in sidebar_html
+        assert "CEPEA" in sidebar_html
+        assert "USDA" in sidebar_html
+        assert "Indicador CEPEA Milho em alta" in sidebar_html
+        assert ".news-sidebar" in css_feed
+        assert "alternarSidebarFeed" in js_feed
+
+
