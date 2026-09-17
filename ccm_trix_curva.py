@@ -155,19 +155,22 @@ def classificar_proveniencia(df: pd.DataFrame, coluna: str, data=None) -> str:
 
     # Preço e volume diretos
     if coluna in ("Open", "High", "Low", "Close", "Volume", "Qtd"):
-        return "ESTIMADO" if bool(row.get("is_sintetico", False)) else "MEDIDO"
+        if bool(row.get("is_sintetico", False)):
+            return "ESTIMADO"
+        # Item 6 (Opção a): no primeiro pregão real, o proxy de Open vem do Close do
+        # dia sintético anterior, herdando portanto a classificação ESTIMADO.
+        if coluna == "Open" and idx > 0 and bool(df.iloc[idx - 1].get("is_sintetico", False)):
+            return "ESTIMADO"
+        return "MEDIDO"
 
-    # Indicadores técnicos com regra de contágio de janela
-    janelas = {
-        "trend_sma100": 100,
-        "posicao_trix_v5": 100,  # depende do filtro de tendência SMA(100)
-        "entrada_hoje": 100,
-        "saida_hoje": 100,
-        "trix": 21,              # triple EMA(7) efetiva
-        "trix_sinal": 24,
-    }
-
-    tam_janela = janelas.get(coluna, 100)
+    # Indicadores técnicos com regra de contágio de janela:
+    # Item 5: Unificado em 100 pregões para trend_sma100, trix, trix_sinal, posicao_trix_v5,
+    # entrada_hoje e saida_hoje.
+    # Justificativa técnica: TRIX(7) é uma tripla EMA(7) cuja memória exponencial decai
+    # assintoticamente sem zerar numa marca arbitrária; além disso, a validação de tendência
+    # do sistema depende da SMA(100). Adota-se o corte unificado e conservador de 100 pregões
+    # reais para todo o conjunto de indicadores do sistema, garantindo consistência estrita.
+    tam_janela = 100
     inicio_janela = max(0, idx - tam_janela + 1)
     trecho = df.iloc[inicio_janela : idx + 1]
 
