@@ -75,9 +75,20 @@ if defined GIT_SUJO (
 echo [OK] 6.5: Repositorio git perfeitamente limpo.
 echo.
 
+echo ----------------------------------------------------------------------
+echo [6.6] Verificando seguranca de credenciais no repositorio (auditar_seguranca.py)...
+echo ----------------------------------------------------------------------
+python auditar_seguranca.py
+if errorlevel 1 (
+    set "FALHA_ITEM=6.6 (Auditoria de seguranca de credenciais reprovada)"
+    goto REPROVADO
+)
+echo [OK] 6.6: Auditoria de seguranca passou com sucesso.
+echo.
+
 echo ======================================================================
 echo PARECER FINAL: APROVADO
-echo Todos os portoes de auditoria (6.1 a 6.5) foram atendidos com sucesso!
+echo Todos os portoes de auditoria (6.1 a 6.6) foram atendidos com sucesso!
 echo ======================================================================
 exit /b 0
 

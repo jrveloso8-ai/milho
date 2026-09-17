@@ -557,17 +557,30 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
     /* ── RESPONSIVIDADE MULTI-DISPOSITIVO (TABLET E MOBILE) ────────────── */
     @media (max-width: 1080px) {
         .chart-and-news-wrapper {
+            display: flex !important;
             flex-direction: column !important;
             height: auto !important;
+            gap: 16px !important;
+        }
+        .chart-main-container {
+            order: 1 !important; /* Gráfico em destaque no topo no Mobile/Tablet */
+            width: 100% !important;
+            height: 560px !important;
+            min-height: 520px !important;
+        }
+        .plotly-graph-div {
+            height: 100% !important;
+            width: 100% !important;
         }
         .news-sidebar {
+            order: 2 !important; /* Feed de Notícias abaixo do gráfico */
             width: 100% !important;
             min-width: 100% !important;
             max-width: 100% !important;
-            height: 380px !important;
+            height: 400px !important;
         }
         .news-sidebar.collapsed {
-            height: 52px !important;
+            height: 50px !important;
             width: 100% !important;
             min-width: 100% !important;
             max-width: 100% !important;
@@ -577,61 +590,77 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
             justify-content: space-between !important;
             padding: 12px 16px !important;
         }
-        .chart-main-container {
-            width: 100% !important;
-            height: 600px !important;
-        }
-        .plotly-graph-div {
-            height: 600px !important;
-        }
     }
 
     @media (max-width: 768px) {
         body {
-            padding: 8px 8px 32px 8px !important;
+            padding: 8px 6px 32px 6px !important;
         }
         .dashboard-outer-container {
-            gap: 16px !important;
+            gap: 12px !important;
+            width: 100% !important;
+            padding: 0 !important;
         }
-        .profit-card {
-            margin: 14px auto !important;
+        .chart-main-container {
+            height: 520px !important;
+            min-height: 480px !important;
             border-radius: 8px !important;
         }
+        .news-sidebar {
+            height: 380px !important;
+            border-radius: 8px !important;
+        }
+        .news-sidebar.collapsed {
+            height: 46px !important;
+            min-height: 46px !important;
+        }
+        .profit-card {
+            margin: 12px 0 !important;
+            border-radius: 8px !important;
+            width: 100% !important;
+        }
         .profit-card-header {
-            padding: 12px 14px !important;
+            padding: 10px 12px !important;
             flex-direction: column !important;
             align-items: flex-start !important;
-            gap: 8px !important;
+            gap: 6px !important;
         }
         .profit-title-text {
-            font-size: 14px !important;
+            font-size: 13px !important;
         }
         .profit-subtitle {
             font-size: 11px !important;
         }
-        .chart-main-container {
-            height: 480px !important;
+        .profit-table th, .profit-table td {
+            padding: 9px 10px !important;
+            font-size: 12px !important;
+            white-space: nowrap !important;
         }
-        .plotly-graph-div {
-            height: 480px !important;
-        }
-        .news-sidebar {
-            height: 340px !important;
+        .opcoes-table th, .opcoes-table td {
+            padding: 8px 8px !important;
+            font-size: 11px !important;
+            white-space: nowrap !important;
         }
         .grade-kpi-bar {
-            padding: 10px 12px !important;
-            gap: 12px !important;
+            padding: 8px 10px !important;
+            gap: 8px !important;
+            overflow-x: auto !important;
+        }
+        .grade-kpi-item {
+            min-width: 100px !important;
         }
         .grade-kpi-item .kpi-val {
-            font-size: 12px !important;
+            font-size: 11px !important;
         }
         .opcoes-nav {
-            padding: 8px 10px !important;
-            gap: 6px !important;
+            padding: 6px 8px !important;
+            gap: 4px !important;
+            overflow-x: auto !important;
         }
         .btn-contrato-opcoes {
-            padding: 6px 10px !important;
-            font-size: 11px !important;
+            padding: 5px 8px !important;
+            font-size: 10px !important;
+            white-space: nowrap !important;
         }
     }
     </style>
@@ -651,11 +680,58 @@ def montar_html_feed_noticias() -> tuple[str, str, str]:
         }, 310);
     }
 
+    function ajustarGraficoMobile() {
+        var gd = document.getElementsByClassName('plotly-graph-div')[0];
+        if (!gd || !window.Plotly) return;
+        var w = window.innerWidth;
+        var isMobile = w <= 768;
+        var isTablet = w <= 1080 && w > 768;
+        
+        var targetHeight = isMobile ? 520 : (isTablet ? 600 : 720);
+        var targetMargin = isMobile 
+            ? { l: 8, r: 42, t: 40, b: 24, pad: 0 }
+            : { l: 16, r: 50, t: 40, b: 30, pad: 0 };
+            
+        try {
+            Plotly.relayout(gd, {
+                height: targetHeight,
+                margin: targetMargin,
+                'yaxis.tickfont.size': isMobile ? 10 : 12,
+                'xaxis.tickfont.size': isMobile ? 9 : 11,
+                'legend.y': isMobile ? -0.16 : -0.12,
+                'legend.font.size': isMobile ? 9 : 11
+            });
+            Plotly.Plots.resize(gd);
+        } catch(e) {}
+    }
+
+    if (document.readyState === 'complete') {
+        ajustarGraficoMobile();
+    } else {
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth <= 1080) {
+                var sb = document.getElementById('newsSidebar');
+                if (sb && !sb.classList.contains('collapsed')) {
+                    sb.classList.add('collapsed');
+                }
+            }
+            setTimeout(ajustarGraficoMobile, 150);
+        });
+        window.addEventListener('load', function() {
+            setTimeout(ajustarGraficoMobile, 350);
+        });
+    }
+
     window.addEventListener('resize', function() {
         var gd = document.getElementsByClassName('plotly-graph-div')[0];
         if (gd && window.Plotly) {
             Plotly.Plots.resize(gd);
         }
+        ajustarGraficoMobile();
+    });
+
+    window.addEventListener('orientationchange', function() {
+        setTimeout(ajustarGraficoMobile, 250);
     });
 
     function filtrarNoticias(cat, el) {

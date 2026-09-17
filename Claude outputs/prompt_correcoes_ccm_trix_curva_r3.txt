@@ -1,0 +1,110 @@
+PROMPT DE CORREÇÃO — MILHO TRADER v1.0 — Módulo TRIX v5 por Contrato (Curva CCM)
+Rodada: r3 (pós-auditoria de 17/09/2026)
+Pasta do projeto: C:\Projetos Phyton\Milho
+
+======================================================================
+CONTEXTO
+======================================================================
+A entrega anterior foi auditada diretamente (código, testes e gates
+rodados de fato, não apenas o relatório de conclusão). Resultado:
+NÃO APROVADA. Os testes automatizados (pytest, 7/7) e a barreira AST
+contra literais soltos no plot (verificar_literais_plot.py) passaram
+de verdade e não precisam ser refeitos. Três problemas objetivos
+impedem o fechamento da entrega e precisam ser corrigidos nesta
+rodada, sem tocar no que já está correto.
+
+======================================================================
+ITEM 1 — Repositório git incompleto (BLOQUEANTE)
+======================================================================
+Problema constatado: a pasta .git entregue contém apenas
+refs/heads/master e logs/HEAD. Não existem HEAD, config nem objects/.
+Isso não é um repositório git funcional — comandos básicos como
+`git log`, `git show <hash>` e `git ls-files` falham com "fatal: not
+a git repository". Como consequência direta, auditar_seguranca.py
+(portão de segurança) também falha de cara, porque depende de
+`git ls-files`.
+
+O que fazer:
+- Reempacotar o projeto de forma que a pasta .git enviada seja um
+  repositório git real e íntegro (com HEAD, config, objects/, refs/),
+  não apenas uma cópia parcial de subpastas internas.
+- Confirmar rodando, na pasta entregue, ANTES de gerar o pacote final:
+    git status
+    git log --oneline
+    git show --stat HEAD
+  Os três comandos têm que funcionar sem erro.
+- Se o método de empacotamento for zip/cópia manual de pasta, incluir
+  a pasta .git inteira (não filtrar arquivos "invisíveis" ou ocultos
+  do sistema operacional na hora de compactar).
+
+======================================================================
+ITEM 2 — Dashboard ccm_trix_curva.html ausente do pacote (BLOQUEANTE)
+======================================================================
+Problema constatado: ccm_trix_curva.html — o entregável central do
+módulo, descrito em detalhe na tabela_proveniencia.md e citado no
+próprio commit "Entrega: modulo isolado TRIX v5 por contrato (curva
+CCM) com proveniencia e dashboard interativo" — não está no pacote.
+O próprio portão de auditoria do projeto (verificar_dados_fabricados.py,
+item 6.2) reprova a entrega exatamente por isso.
+
+O que fazer:
+- Rodar converter_seed_ccm.py (gera ccmfut_seed_2008_2026.csv a partir
+  de CCM_HIST.xlsx) e em seguida ccm_trix_curva.py de ponta a ponta,
+  com BRAPI_TOKEN válido configurado, até o HTML ser gerado com sucesso
+  em ccm_trix_curva.html.
+- Incluir esse ccm_trix_curva.html gerado no pacote final de entrega.
+- Rodar o portao_auditoria.bat completo (todos os itens, 6.1 a 6.6) até
+  o fim, sem interrupção por erro, e colar a saída bruta e completa no
+  relatório de entrega (ver seção de Requisitos de Relatório abaixo).
+
+======================================================================
+ITEM 3 — Verificação SSL desabilitada em ingestao_cepea.py (CORREÇÃO)
+======================================================================
+Problema constatado: em ingestao_cepea.py, a função _criar_ssl_context()
+desativa a verificação de certificado e de hostname:
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+Isso expõe as duas fontes de coleta do RTCNI (CEPEA/ESALQ e Notícias
+Agrícolas) a um ataque man-in-the-middle capaz de servir uma página
+HTML fabricada sem que o código perceba. O preço RTCNI classificado
+como "MEDIDO" alimenta a Watchlist e o cálculo de convergência/spread
+usados em decisão de trade — não é um dado meramente informativo, então
+o risco de integridade do dado é real, mesmo sendo baixa a probabilidade
+de exploração.
+
+O que fazer:
+- Remover as duas linhas citadas e usar o contexto SSL padrão retornado
+  por ssl.create_default_context() sem alterações (ou remover a função
+  _criar_ssl_context() por completo e usar o contexto default direto
+  nas duas chamadas de urllib.request.urlopen).
+- Confirmar que as duas fontes (CEPEA/ESALQ e Notícias Agrícolas)
+  continuam respondendo normalmente com a verificação de certificado
+  ativa. Se algum dos dois domínios apresentar erro de certificado
+  legítimo (expirado, cadeia incompleta), reportar isso explicitamente
+  no relatório de entrega em vez de reintroduzir o bypass.
+
+======================================================================
+REQUISITOS OBRIGATÓRIOS DO RELATÓRIO DE ENTREGA
+======================================================================
+O relatório de conclusão desta rodada só será aceito se contiver,
+colados sem edição (não resumidos, não redigitados de memória):
+
+1. Saída bruta e literal de `git log --oneline` (ou `git log --stat`)
+   mostrando o histórico completo do repositório após a correção do
+   Item 1.
+2. Listagem bruta da pasta do projeto (`dir` no Windows) confirmando a
+   presença de ccm_trix_curva.html, ccmfut_seed_2008_2026.csv e da
+   pasta .git completa.
+3. Saída bruta e completa da execução de `portao_auditoria.bat` do
+   início ao fim (todos os itens 6.1 a 6.6), incluindo o veredito final
+   ("APROVADO" ou "REPROVADO") de cada etapa — nunca apenas a frase
+   "todos os testes passaram".
+4. Confirmação explícita, item por item desta correção (1, 2 e 3 acima),
+   do que foi feito — sem omitir nenhum item, mesmo que algum não tenha
+   sido totalmente resolvido. Uma pendência declarada é aceitável; uma
+   pendência omitida não é.
+
+Commits devem continuar pequenos e frequentes, um por etapa lógica de
+correção (por exemplo: um commit para o Item 1, um para o Item 2, um
+para o Item 3) — nunca um único commit final agrupando as três
+correções.
