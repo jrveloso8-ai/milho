@@ -1,0 +1,204 @@
+PROMPT PARA PROGRAMADOR — Correções e pendências da entrega do módulo TRIX v5 por
+contrato (curva CCM)
+==========================================================================================
+Projeto: Milho Trader (CCM futuro, B3) — pasta C:\Projetos Phyton\Milho
+Referência: prompt original "prompt_modulo_ccm_trix_curva.txt", commit de entrega
+b019e8763773cf9e767decfcdef650bb373d8c6c (branch master, sobre a baseline
+c6dbfbcadf8ae60a409750feb725dd1962e1b1e8).
+
+Este NÃO é um prompt do zero. É a auditoria da entrega anterior, feita lendo
+pessoalmente o código real (ccm_trix_curva.py, ingestao_brapi.py,
+converter_seed_ccm.py, tabela_proveniencia.md, resumo_trix_curva.txt) e o histórico
+de git — não o relatório ("Walkthrough") que acompanhou a entrega. O núcleo do
+módulo (costura por offset aditivo, execução do trix_v5.py sem alteração, motor de
+classificação de proveniência, isolamento dos arquivos de produção) está correto e
+foi validado. Os itens abaixo são o que falta ou precisa de correção antes de eu
+considerar o módulo fechado.
+
+------------------------------------------------------------------------------------------
+1. PENDÊNCIA GRAVE — Portão de Auditoria (seção 6 do prompt original) não foi entregue
+------------------------------------------------------------------------------------------
+
+Nenhum dos itens da seção 6 existe na pasta do projeto: não há portao_auditoria.bat,
+não há suite de testes (pytest), não há verificar_dados_fabricados.py, não há
+configuração de lint com a barreira estrutural descrita em 6.3. Isso não é um ajuste
+fino — é uma seção inteira do escopo original que não foi construída, e o relatório
+de entrega não menciona essa ausência em nenhum momento.
+
+Entregar agora, exatamente como especificado no prompt original (mantenho a
+numeração de lá para referência direta):
+  - 6.1: suite pytest cobrindo montar_serie_ajustada() (offset aditivo e marcação de
+    is_sintetico nos dois lados da costura), classificar_proveniencia() (regra de
+    contágio testada no caso de borda exato da fronteira dos 100 pregões reais) e
+    coletar_historico_ccm() (Open nulo, descarte de linha sem negócio, erro de
+    rede/token ausente — tudo via mock da resposta da BRAPI, a suite nunca bate na
+    API real).
+  - 6.2: verificar_dados_fabricados.py varrendo resumo_trix_curva.txt, a watchlist
+    (item 2 abaixo) e tabela_proveniencia.md, falhando se encontrar barreira de
+    opções sem proveniência registrada, dia sintético desenhado como candle real, ou
+    preço de watchlist que não seja MEDIDO.
+  - 6.3: barreira estrutural (ruff/flake8 customizado ou script próprio com `ast`)
+    contra número literal solto dentro das funções de plot/render.
+  - 6.4: mypy sobre o módulo novo (recomendado, não bloqueante).
+  - 6.5: `git status --porcelain` limpo.
+  - 6.6: portao_auditoria.bat único, rodando 6.1–6.5 em sequência, com parecer final
+    REPROVADO (apontando o item que falhou) ou APROVADO.
+
+------------------------------------------------------------------------------------------
+2. PENDÊNCIA GRAVE — Watchlist (seção 2.6b do prompt original) não foi entregue
+------------------------------------------------------------------------------------------
+
+Não há, em nenhum dos arquivos gerados (resumo_trix_curva.txt, tabela_proveniencia.md,
+ccm_trix_curva.html), a lista de observação pedida: cada contrato vivo da curva CCM
+com seu último fechamento REAL (Close do dia mais recente com is_sintetico=False) ao
+lado do último fechamento do RTCNI (via convergencia.analisar_convergencia(), campo
+rtcni_preco — não reimplementar a leitura). É lista simples, sem indicador, sem cor
+de estado, proveniência MEDIDO para todos os valores. Entregar como especificado.
+
+------------------------------------------------------------------------------------------
+3. Disciplina de commit (item 1.8 do prompt original) foi violada — corrigir a partir daqui
+------------------------------------------------------------------------------------------
+
+O histórico real do repositório (`git log`) mostra 2 commits: a baseline e um único
+commit de entrega cobrindo todo o módulo. O item 1.8 pedia explicitamente commits
+pequenos e frequentes, um por etapa lógica, "nunca um commit único no final" — foi
+exatamente isso que aconteceu, e isso me impede de isolar em qual etapa um eventual
+problema entraria, que é o ponto inteiro da regra.
+
+Não vou pedir para desfazer o commit único já feito (reescrever histórico compartilhado
+não vale a pena aqui). Mas os itens 1 e 2 deste documento (Portão de Auditoria e
+Watchlist) devem ser entregues em commits separados e pequenos — pelo menos um por
+item de 6.1 a 6.6, e um para a watchlist — não um commit único agrupando tudo de novo.
+
+------------------------------------------------------------------------------------------
+4. Achado técnico — converter_seed_ccm.py: mapeamento de colunas frágil, sem validação
+------------------------------------------------------------------------------------------
+
+O código atual identifica a coluna High procurando a letra "x" no nome da coluna do
+Excel (`elif "x" in c_lower: col_map[col] = "High"`, com Low como "else" — tudo que
+sobra). Isso só funciona hoje porque, por coincidência de português, "Máxima" contém
+"x" e "Mínima" não. Não há nenhuma verificação de que o mapeamento resultou correto.
+
+Corrigir para:
+  a) Mapear as colunas por nome completo esperado (com tolerância a acento/caixa,
+     mesmo padrão defensivo já usado em leitor_csv.py deste projeto — reaproveitar a
+     lógica, não reinventar), não por substring genérica de uma letra.
+  b) Depois da conversão, validar programaticamente que High >= Open, Close, Low e
+     Low <= Open, Close para 100% das linhas — se falhar, o script deve parar com
+     erro claro, nunca gravar um seed com colunas potencialmente trocadas.
+  c) Se o Excel de origem mudar o texto do cabeçalho no futuro (novo export do
+     Profit), o script deve falhar de forma explícita (coluna esperada não
+     encontrada), nunca silenciosamente mapear errado.
+
+------------------------------------------------------------------------------------------
+5. Achado técnico — janela de contágio de trix/trix_sinal foi decidida sem consulta
+------------------------------------------------------------------------------------------
+
+Em classificar_proveniencia(), o código fixa uma janela de contágio de 21 pregões
+para "trix" e 24 para "trix_sinal" (dict `janelas`), tratando esses valores como
+DERIVADO assim que 21/24 pregões reais se passam da costura do seed. Isso não estava
+no prompt original — o prompt só especificava a janela de 100 pregões para
+trend_sma100/posicao_trix_v5. TRIX é uma tripla EMA(7); uma média móvel exponencial
+tem memória que decai mas não zera numa marca fixa de barras — usar 21/24 como corte
+é uma aproximação razoável na prática, mas foi uma decisão de modelagem tomada sem
+perguntar, o que o próprio prompt original proibia (seção 4: "não decidir sozinho
+nenhum parâmetro" / seção 1.8: "na dúvida, pare e pergunte antes de codar").
+
+Não estou pedindo para mudar o valor agora — é uma aproximação aceitável. Estou
+pedindo para documentar explicitamente, no próprio código (docstring de
+classificar_proveniencia()) e na tabela_proveniencia.md, que esse corte de
+21/24 pregões é uma convenção arbitrária (não vem do NTSL nem do prompt original) e
+qual foi o raciocínio para escolher esses números especificamente. Se não houver
+raciocínio quantitativo por trás, usar o mesmo critério do trend_sma100 (100
+pregões) para trix/trix_sinal também, por consistência, e registrar a mudança.
+
+------------------------------------------------------------------------------------------
+6. Achado técnico — tabela_proveniencia.md promete uma distinção que o código não faz
+------------------------------------------------------------------------------------------
+
+A tabela de proveniência entregue (linha "Preço Candle (Open)") descreve a
+classificação do campo Open no primeiro pregão real como "MEDIDO / ESTIMADO", com a
+justificativa de que, nesse dia específico, o valor de Open é herdado do último
+Close do seed (portanto deveria ser ESTIMADO). Mas o código real de
+classificar_proveniencia() não implementa essa exceção — ele classifica Open como
+qualquer outra coluna de preço, sempre MEDIDO quando is_sintetico=False naquele dia,
+sem checar se o valor herdou algo do trecho sintético.
+
+Resolver de um dos dois jeitos (documentar qual foi escolhido):
+  a) Implementar a exceção no código: Open do primeiro pregão real classificado como
+     ESTIMADO (porque seu valor vem do Close do dia sintético anterior), com a
+     tabela ficando como está; ou
+  b) Simplificar a tabela para bater com o código real: Open do primeiro pregão real
+     também MEDIDO, com nota explicando que o proxy de Open é sempre calculado sobre
+     o Close do pregão anterior (real ou sintético) e essa nuance específica não é
+     rastreada separadamente.
+Qualquer uma das duas é aceitável — o que não é aceitável é a documentação descrever
+um comportamento que o código não tem. Isso é exatamente o tipo de coisa que a
+auditoria da seção 7 do prompt original existe para pegar ("a tabela de proveniência
+bate com o código real, não com o texto que a descreve").
+
+------------------------------------------------------------------------------------------
+7. O que NÃO precisa mudar (confirmado correto na auditoria)
+------------------------------------------------------------------------------------------
+  - coletar_historico_ccm() em ingestao_brapi.py: proxy de Open e descarte de linha
+    sem negócio corretos, nunca lança exceção. Mantido como está.
+  - montar_serie_ajustada(): offset aditivo, truncamento do seed e marcação de
+    is_sintetico corretos. Mantido como está.
+  - Isolamento dos arquivos de produção (trix_v5.py, ccm_dados.py, pipeline.py,
+    milho_dashboard.html, sazonalidade_milho.py, leitor_csv.py): confirmado que
+    nenhum foi tocado. Mantido como está.
+  - .env.local: tratado corretamente, no .gitignore desde antes do commit baseline,
+    nunca commitado. Mantido como está.
+  - Cor do candle por estado (verde/vermelho/cinza) e linha única de SMA(100): o
+    prompt original já permitia "cinza ou branco neutro" para FLAT — o cinza usado
+    está dentro do especificado, não é achado.
+
+------------------------------------------------------------------------------------------
+8. REFORÇO EXPLÍCITO — ÚNICAS FONTES DE DADO PERMITIDAS NESTE MÓDULO
+------------------------------------------------------------------------------------------
+
+Confirmado com o Duda: nenhum dado de exportação do Profit (CSV/XLSX) pode alimentar
+o que o módulo trata como dado ao vivo ou atual. As únicas fontes permitidas são:
+
+  a) BRAPI — para TUDO que é preço, volume, OI/opções, curva de vencimentos dos
+     contratos CCM. Já confirmado limpo na auditoria: ccm_trix_curva.py e
+     ingestao_brapi.py não importam leitor_csv.py nem leem nenhum CSV de contrato
+     (CCMFUT, CCMF27, CCMH26, etc.) em nenhum ponto do fluxo ao vivo. Manter assim.
+
+  b) RTCNI externo — único dado fora da BRAPI permitido na watchlist (item 2 deste
+     documento), porque a BRAPI comprovadamente não cobre esse índice
+     (get_ticker_coverage retorna historical=false/ticker=false). Vem via
+     convergencia.analisar_convergencia() (campo rtcni_preco), reaproveitando o que
+     já existe — não vira uma leitura de CSV nova e solta dentro deste módulo.
+
+  c) EXCEÇÃO ÚNICA E JÁ DECIDIDA: ccmfut_seed_2008_2026.csv (derivado de
+     CCM_HIST.xlsx, export do Profit) continua permitido, e SÓ para a finalidade já
+     especificada — backfill congelado, read-only, gerado uma única vez, nunca
+     regravado ou puxado de novo do Profit. Ele nunca é desenhado como candle real,
+     nunca aparece como "preço atual" em nenhum lugar (gráfico, resumo, watchlist),
+     e todo valor derivado dele é classificado ESTIMADO, nunca MEDIDO — a regra de
+     contágio da seção 3 do prompt original já cobre isso. Fora dessa finalidade
+     exata (warm-up do indicador para contratos recém-listados), nenhum outro
+     arquivo de exportação do Profit pode ser lido por este módulo, em hipótese
+     nenhuma — nem os CSVs de contrato específico, nem DI/DOLFUT/WDOFUT/DOLINDEX
+     que outros módulos do projeto ainda usam.
+
+  Se em algum ponto da implementação do Portão de Auditoria (item 1) ou da
+  watchlist (item 2) parecer necessário ler qualquer CSV local além do seed
+  congelado e do RTCNI via convergencia.py — parar e perguntar antes de codar, não
+  decidir sozinho. O verificador anti-dados-fabricados (6.2) deve, inclusive,
+  checar que nenhum import de leitor_csv.py ou leitura direta de arquivo CSV de
+  contrato aparece em ccm_trix_curva.py ou ingestao_brapi.py, fora do
+  carregamento do seed congelado.
+
+------------------------------------------------------------------------------------------
+9. CRITÉRIO DE FECHAMENTO DESTA RODADA
+------------------------------------------------------------------------------------------
+  - Entrega em commits pequenos e separados por item (não um commit único agrupando
+    tudo de novo), com hash e diff de cada um.
+  - portao_auditoria.bat rodado de forma independente por mim, com parecer APROVADO,
+    antes de qualquer aceite.
+  - tabela_proveniencia.md e o código real batendo (item 6 resolvido, documentado
+    qual das duas opções foi escolhida).
+  - Qualquer dúvida nova que aparecer ao implementar o Portão de Auditoria ou a
+    watchlist: perguntar antes de decidir sozinho, mesma regra do prompt original.
