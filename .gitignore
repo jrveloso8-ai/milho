@@ -1,23 +1,54 @@
-# Ambientes e credenciais
-.env.local
+# Ambientes, Segredos e Credenciais (Blindagem Estrita)
 .env
+.env.local
+.env*
+*.env
+*.pem
+*.key
+*.cert
+*.pfx
+*.p12
+credentials*.json
+client_secret*.json
+token*.json
+token*.txt
+secrets*.json
+
+# Vercel e Deploy
+.vercel/
 
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.ipynb_checkpoints
+*.pyo
+*.pyd
+*.so
+venv/
+.venv/
+env/
+ENV/
 
-# Temporários do Office
-~$*
+# Logs e Cache
+*.log
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
 
-# Logs e IDE
+# IDEs e Editores
 .idea/
 .vscode/
+*.sublime-project
+*.sublime-workspace
 
-# Scratch e temporários
+# Temporários do Office e SO
+~$*
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Scratch e Temporários Locais
 scratch/
 *.tmp
-.pytest_cache/
-
-

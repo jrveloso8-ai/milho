@@ -1,0 +1,34 @@
+# .vercelignore — Impede que código backend, testes, dados internos e scripts sejam publicados na CDN pública da Vercel
+
+# Scripts Python e Testes
+*.py
+test_*.py
+conftest.py
+
+# Scripts de automação e shell
+*.bat
+*.cmd
+*.sh
+*.ps1
+
+# Arquivos de dados brutos e sementes internas
+*.csv
+*.xlsx
+*.parquet
+
+# Relatórios e resumos internos
+*.txt
+*.md
+*.log
+
+# Caches e configurações locais
+.pytest_cache
+__pycache__
+scratch/
+.git
+.github
+
+# Mantém apenas a página web e configurações públicas
+!index.html
+!ccm_trix_curva.html
+!vercel.json
