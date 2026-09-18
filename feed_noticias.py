@@ -39,10 +39,7 @@ HEADERS_PADRAO = {
 
 
 def _criar_ssl_context():
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    return ctx
+    return ssl.create_default_context()
 
 
 def _consultar_feed_rss(query: str, timeout: int = 6) -> List[Dict]:
