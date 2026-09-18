@@ -29,7 +29,6 @@ import os
 import sys
 
 PASTA_PROJETO = os.path.dirname(os.path.abspath(__file__))
-ARQUIVO_ALVO = os.path.join(PASTA_PROJETO, "ccm_trix_curva.py")
 
 # Nomes de variáveis proibidas de receber atribuição literal de números
 VARIAVEIS_DADOS_PROIBIDAS = {
@@ -67,35 +66,30 @@ class PlotLiteralAuditor(ast.NodeVisitor):
         self.funcao_atual = ""
 
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        # Verifica se o nome da função indica renderização / plot
+        anterior = self.em_funcao_plot
+        anterior_fn = self.funcao_atual
         nome = node.name.lower()
-        if any(term in nome for term in ("plot", "grafico", "render", "desenhar", "chart")):
-            anterior = self.em_funcao_plot
-            anterior_fn = self.funcao_atual
-            self.em_funcao_plot = True
-            self.funcao_atual = node.name
+        self.em_funcao_plot = any(term in nome for term in ("plot", "grafico", "render", "desenhar", "chart"))
+        self.funcao_atual = node.name
 
-            # Visita nós filhos da função de plot
-            self.generic_visit(node)
+        self.generic_visit(node)
 
-            self.em_funcao_plot = anterior
-            self.funcao_atual = anterior_fn
-        else:
-            self.generic_visit(node)
+        self.em_funcao_plot = anterior
+        self.funcao_atual = anterior_fn
 
     def visit_Assign(self, node: ast.Assign):
-        if self.em_funcao_plot:
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    var_name = target.id.lower()
-                    # Checa atribuição de literal a variável de dado de mercado
-                    for termo in VARIAVEIS_DADOS_PROIBIDAS:
-                        if termo in var_name:
-                            if isinstance(node.value, ast.Constant) and isinstance(node.value.value, (int, float)):
-                                self.erros.append(
-                                    f"{self.filename}:{node.lineno} na função '{self.funcao_atual}': "
-                                    f"Atribuição de número literal {node.value.value} à variável de mercado '{target.id}'."
-                                )
+        fn_nome = self.funcao_atual or "módulo"
+        for target in node.targets:
+            if isinstance(target, ast.Name):
+                var_name = target.id.lower()
+                # Checa atribuição de literal a variável de dado de mercado (em qualquer função ou módulo)
+                for termo in VARIAVEIS_DADOS_PROIBIDAS:
+                    if termo in var_name:
+                        if isinstance(node.value, ast.Constant) and isinstance(node.value.value, (int, float)):
+                            self.erros.append(
+                                f"{self.filename}:{node.lineno} no escopo '{fn_nome}': "
+                                f"Atribuição de número literal {node.value.value} à variável de mercado '{target.id}'."
+                            )
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
@@ -143,36 +137,44 @@ class PlotLiteralAuditor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+ARQUIVOS_ALVO = [
+    os.path.join(PASTA_PROJETO, "ccm_trix_curva.py"),
+    os.path.join(PASTA_PROJETO, "sentinel_engine.py"),
+]
+
+
 def auditar_literais_plot():
     print("=" * 70)
     print("BARREIRA ESTRUTURAL (AST) CONTRA LITERAIS SOLTOS NO PLOT (Item 6.3)")
     print("=" * 70)
 
-    if not os.path.isfile(ARQUIVO_ALVO):
-        print(f"ERRO: Arquivo {ARQUIVO_ALVO} não encontrado.")
-        return 1
+    erros_totais = []
+    for arq in ARQUIVOS_ALVO:
+        if not os.path.isfile(arq):
+            print(f"ERRO: Arquivo {arq} não encontrado.")
+            return 1
 
-    with open(ARQUIVO_ALVO, "r", encoding="utf-8") as f:
-        codigo = f.read()
+        with open(arq, "r", encoding="utf-8") as f:
+            codigo = f.read()
 
-    try:
-        tree = ast.parse(codigo, filename=ARQUIVO_ALVO)
-    except SyntaxError as e:
-        print(f"ERRO de sintaxe ao fazer parse do AST: {e}")
-        return 1
+        try:
+            tree = ast.parse(codigo, filename=arq)
+        except SyntaxError as e:
+            print(f"ERRO de sintaxe ao fazer parse do AST em {arq}: {e}")
+            return 1
 
-    auditor = PlotLiteralAuditor(os.path.basename(ARQUIVO_ALVO))
-    auditor.visit(tree)
+        auditor = PlotLiteralAuditor(os.path.basename(arq))
+        auditor.visit(tree)
+        print(f"Análise AST concluída sobre: {os.path.basename(arq)}")
+        erros_totais.extend(auditor.erros)
 
-    print(f"Análise AST concluída sobre: {os.path.basename(ARQUIVO_ALVO)}")
-
-    if auditor.erros:
-        print(f"PARECER: REPROVADO — {len(auditor.erros)} violação(ões) encontrada(s):")
-        for err in auditor.erros:
+    if erros_totais:
+        print(f"PARECER: REPROVADO — {len(erros_totais)} violação(ões) encontrada(s):")
+        for err in erros_totais:
             print(f"  [VIOLAÇÃO] {err}")
         return 1
     else:
-        print("PARECER: APROVADO — Nenhum número literal solto ou preço hardcoded detectado no plot.")
+        print("PARECER: APROVADO — Nenhum número literal solto ou preço hardcoded detectado.")
         return 0
 
 
