@@ -1937,6 +1937,11 @@ def executar():
     try:
         salvar_dados_curva_json(resultados, watchlist, sentinel_dados)
         print("Arquivo de dados leves salvo em: dados_curva.json")
+        try:
+            import gerar_sistema_novo
+            gerar_sistema_novo.gerar_sistema_novo()
+        except Exception as e_sis:
+            print(f"Aviso ao atualizar sistema_sentinel.html: {e_sis}")
     except Exception as e_json:
         print(f"Aviso ao salvar dados_curva.json: {e_json}")
 
