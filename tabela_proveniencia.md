@@ -51,17 +51,17 @@ $$\text{ESTIMADO} \text{ contamina } \text{DERIVADO}$$
 
 ## 4. Auditoria Analítica por Contrato Ativo (Snapshot Atual)
 
-Com base na execução sobre os dados reais da curva de contratos vivos em 17/09/2026:
+Com base na execução sobre os dados reais da curva de contratos vivos em 18/09/2026:
 
 | Contrato | Vencimento | Pregões Reais | Status SMA(100) Atual | Data de Transição para DERIVADO Puro | Barreiras de Opções |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| **CCMX26** | 16/11/2026 | 235 | **DERIVADO** | **27/02/2026** (100º pregão real) | Call Wall: R$ 80,00 (7.642 contratos) \| Put Wall: R$ 65,00 (3.082 contratos) \| Max Pain: R$ 70,00 |
-| **CCMF27** | 15/01/2027 | 168 | **DERIVADO** | **11/06/2026** (100º pregão real) | Call Wall: R$ 90,00 (4.000 contratos) \| Put Wall: R$ 70,00 (3.430 contratos) \| Max Pain: R$ 76,00 |
-| **CCMH27** | 15/03/2027 | 156 | **DERIVADO** | **29/06/2026** (100º pregão real) | Call Wall: R$ 84,00 (1.273 contratos) \| Put Wall: R$ 75,00 (629 contratos) \| Max Pain: R$ 75,25 |
-| **CCMK27** | 17/05/2027 | 80 | **ESTIMADO** | *Pendente* (faltam 20 pregões reais) | Call Wall: R$ 85,00 (700 contratos) \| Put Wall: R$ 73,00 (772 contratos) \| Max Pain: R$ 78,00 |
-| **CCMN27** | 15/07/2027 | 59 | **ESTIMADO** | *Pendente* (faltam 41 pregões reais) | Call Wall: R$ 79,00 (1.242 contratos) \| Put Wall: R$ 72,75 (2.200 contratos) \| Max Pain: R$ 72,75 |
-| **CCMU27** | 15/09/2027 | 119 | **DERIVADO** | **19/08/2026** (100º pregão real) | Call Wall: R$ 80,00 (7.354 contratos) \| Put Wall: R$ 67,00 (5.724 contratos) \| Max Pain: R$ 74,00 |
-| **CCMX27** | 16/11/2027 | 41 | **ESTIMADO** | *Pendente* (faltam 59 pregões reais) | Call Wall: R$ 83,00 (6 contratos) \| Put Wall: R$ 68,00 (500 contratos) \| Max Pain: R$ 72,00 |
+| **CCMX26** | 16/11/2026 | 235 | **DERIVADO** | **02/03/2026** (100º pregão real) | Call Wall: R$ 80.00 (6,580 contratos) \| Put Wall: R$ 75.00 (3,104 contratos) \| Max Pain: R$ 71.00 |
+| **CCMF27** | 15/01/2027 | 169 | **DERIVADO** | **11/06/2026** (100º pregão real) | Call Wall: R$ 90.00 (4,000 contratos) \| Put Wall: R$ 70.00 (3,430 contratos) \| Max Pain: R$ 76.00 |
+| **CCMH27** | 15/03/2027 | 157 | **DERIVADO** | **29/06/2026** (100º pregão real) | Call Wall: R$ 84.00 (1,273 contratos) \| Put Wall: R$ 75.00 (629 contratos) \| Max Pain: R$ 75.25 |
+| **CCMK27** | 17/05/2027 | 81 | **ESTIMADO** | *Pendente* (faltam 19 pregões reais) | Call Wall: R$ 85.00 (700 contratos) \| Put Wall: R$ 73.00 (772 contratos) \| Max Pain: R$ 78.00 |
+| **CCMN27** | 15/07/2027 | 60 | **ESTIMADO** | *Pendente* (faltam 40 pregões reais) | Call Wall: R$ 79.50 (850 contratos) \| Put Wall: R$ 72.75 (2,200 contratos) \| Max Pain: R$ 73.50 |
+| **CCMU27** | 15/09/2027 | 120 | **DERIVADO** | **19/08/2026** (100º pregão real) | Call Wall: R$ 80.00 (7,354 contratos) \| Put Wall: R$ 67.00 (5,724 contratos) \| Max Pain: R$ 74.00 |
+| **CCMX27** | 16/11/2027 | 42 | **ESTIMADO** | *Pendente* (faltam 58 pregões reais) | Call Wall: R$ 83.00 (6 contratos) \| Put Wall: R$ 68.00 (500 contratos) \| Max Pain: R$ 72.00 |
 
 ---
 
@@ -94,6 +94,3 @@ Conforme implementado em `sentinel_engine.py` e integrado no pipeline e dashboar
 | **Calendário Econômico (20%)** | Calendário oficial de relatórios USDA (WASDE) e CONAB | **DERIVADO** / **MEDIDO** | Janela temporal baseada nas datas oficiais de divulgação de safra. |
 | **Sentimento Técnico & Opções (60%)** | Ponderação TRIX v5, NTSL e barreiras reais de Call/Put Wall e Max Pain | **DERIVADO** | Indicadores técnicos e concentração de Open Interest apurados pela B3. |
 | **Score Consolidado e Classificação** | Média ponderada linear: $0.60 \times \text{Técnico} + 0.20 \times \text{RSS} + 0.20 \times \text{Calendário}$ | **DERIVADO** | Classificação formal em ALTISTA, LATERAL ou BAIXISTA com rastreabilidade 100% matemática. |
-
-
-
