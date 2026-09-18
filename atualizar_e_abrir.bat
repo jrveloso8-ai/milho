@@ -29,9 +29,14 @@ if errorlevel 1 (
 )
 echo.
 
-echo [2/3] Rodando pipeline - gera dados_milho.json atualizado
+echo [2/4] Rodando pipeline - gera dados_milho.json atualizado
 echo.
 py -3.13 "%PASTA%\pipeline.py" "%PASTA%" "%PASTA%"
+echo.
+
+echo [3/4] Rodando analise TRIX curva e Sentinel-Corn - gera dados_curva.json e grafico
+echo.
+py -3.13 "%PASTA%\ccm_trix_curva.py"
 echo.
 
 if not exist "%PASTA%\dados_milho.json" (
@@ -42,7 +47,7 @@ if not exist "%PASTA%\dados_milho.json" (
     pause
 )
 
-echo [3/3] Iniciando servidor local e abrindo o Dashboard...
+echo [4/4] Iniciando servidor local e abrindo o Dashboard...
 echo.
 echo Dashboard disponivel em: http://localhost:8000/milho_dashboard.html
 echo.
