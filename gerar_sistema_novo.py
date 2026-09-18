@@ -976,8 +976,6 @@ def gerar_sistema_novo():
 
   let contratoAtual = (DADOS.contratos && DADOS.contratos.length > 0) ? DADOS.contratos[0].codigo : "CCMX26";
   let periodoBarras = 90;
-  let premioPorto = DADOS.sentinel_corn.parametros_arbitragem?.premio_porto_usd ?? 0.70;
-  let custosLog = DADOS.sentinel_corn.parametros_arbitragem?.custos_logisticos_brl ?? 10.00;
 
   function formatarMoeda(val) {{
     if (val === null || val === undefined || isNaN(val)) return "N/D";

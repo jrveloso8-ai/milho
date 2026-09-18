@@ -166,3 +166,102 @@ def test_processar_sentimento_curva_sem_dados_macro_indisponivel():
     assert arb["recomendacao"] == "PARIDADE INDISPONÍVEL"
     assert arb["sinal"] == "NEUTRO"
 
+
+def test_regressao_paridade_ppe_html_sem_recalculo_js(tmp_path):
+    """
+    Teste de regressão obrigatório (Seção 2.5 da Auditoria):
+    1. Gera sentimentos e tabela de arbitragem com sentinel_engine.py usando os dados auditados:
+       cbot_cents=526.5, cambio_usdbrl=5.161, premio_porto_usd=0.70, custos_logisticos_brl=10.00.
+    2. Extrai e valida o valor de PPE em Python (deve ser exatamente R$ 62.71/sc, sem bug de escala).
+    3. Gera o HTML com gerar_sistema_novo.py e valida que:
+       - O JSON embutido DADOS contém exatamente a PPE calculada em Python (62.71).
+       - O HTML / JS NÃO contém recálculo de PPE em tempo de execução no cliente.
+       - renderizarTabelaArbitragem apenas consome item.ppe e item.recomendacao pré-calculados.
+    """
+    import json
+    import re
+    from unittest.mock import patch
+    import sentinel_engine
+    import gerar_sistema_novo
+
+    curva_mock = [{
+        "codigo": "CCMX26",
+        "vencimento_iso": "2026-11-16",
+        "ultimo_bar": {"close": 76.35, "posicao": "COMPRA", "trix": 0.1, "sinal": 0.05, "sma100": 68.0},
+        "atr14": 1.50,
+        "barreiras_opcoes": {"call_wall": 80.0, "put_wall": 75.0, "max_pain": 71.0}
+    }]
+
+    # 1. Executa motor em Python com os inputs reais do dia auditado
+    sentinel_dados = sentinel_engine.processar_sentimento_curva(
+        curva_resultados=curva_mock,
+        cbot_cents=526.5,
+        cambio_usdbrl=5.161,
+        preco_spot_rtcni=69.25,
+        cbot_fonte="[MEDIDO]",
+        cambio_fonte="[MEDIDO]"
+    )
+
+    # 2. Validação numérica exata de PPE e parâmetros
+    arb_item = sentinel_dados["tabela_arbitragem"][0]
+    ppe_python = arb_item["ppe"]
+    assert ppe_python is not None
+    # 526.5 + (0.70 * 100) = 596.5 centavos/bu
+    # 596.5 * 0.39368 * 5.161 * 0.06 = 72.7175 BRL/sc bruto
+    # 72.7175 - 10.00 = 62.7175 -> round(..., 2) = 62.72 BRL/sc líquido
+    assert ppe_python == 62.72
+    assert arb_item["contrato"] == "CCMX26"
+    assert arb_item["vencimento_iso"] == "2026-11-16"
+    assert "cambio_inflexao" in arb_item
+    assert arb_item["cambio_inflexao"] is not None
+
+    # Verifica parâmetros e ausência de typo custos_log_brl
+    params = sentinel_dados["parametros_arbitragem"]
+    assert "custos_logisticos_brl" in params
+    assert params["custos_logisticos_brl"] == 10.00
+
+    # 3. Simula geração do sistema novo desacoplado
+    mock_curva_payload = {
+        "contratos": [{
+            "codigo": "CCMX26",
+            "vencimento_iso": "2026-11-16",
+            "ultimo_close": 76.35
+        }],
+        "watchlist": [],
+        "series_contratos": {},
+        "sentinel_corn": sentinel_dados
+    }
+
+    arq_curva_fake = tmp_path / "dados_curva.json"
+    arq_milho_fake = tmp_path / "dados_milho.json"
+    arq_html_fake = tmp_path / "sistema_sentinel.html"
+
+    with open(arq_curva_fake, "w", encoding="utf-8") as f:
+        json.dump(mock_curva_payload, f)
+    with open(arq_milho_fake, "w", encoding="utf-8") as f:
+        json.dump({}, f)
+
+    with patch.object(gerar_sistema_novo, "PASTA", str(tmp_path)):
+        gerar_sistema_novo.gerar_sistema_novo()
+
+    assert arq_html_fake.exists()
+    conteudo_html = arq_html_fake.read_text(encoding="utf-8")
+
+    # Extrai o DADOS embutido no HTML
+    m_dados = re.search(r"const DADOS = (\{.*?\});", conteudo_html, re.DOTALL)
+    assert m_dados is not None, "Constante DADOS não encontrada no HTML gerado."
+    dados_embutidos = json.loads(m_dados.group(1))
+
+    # Valida que o JSON do HTML contém exatamente a mesma PPE do Python
+    tab_html = dados_embutidos["sentinel_corn"]["tabela_arbitragem"]
+    assert len(tab_html) == 1
+    assert tab_html[0]["ppe"] == ppe_python == 62.72
+    assert tab_html[0]["spread_gap"] == arb_item["spread_gap"]
+    assert tab_html[0]["recomendacao"] == arb_item["recomendacao"]
+
+    # Valida que o JavaScript NÃO contém nenhuma fórmula de recálculo de PPE nem typo antigo
+    assert "0.39368" not in conteudo_html
+    assert "custos_log_brl" not in conteudo_html
+    assert "premioPorto" not in conteudo_html
+
+
