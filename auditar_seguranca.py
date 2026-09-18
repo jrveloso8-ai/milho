@@ -96,7 +96,7 @@ def main():
         sys.exit(1)
 
     print("----------------------------------------------------------------------")
-    print("PARECER DE SEGURANCA: APROVADO — Repositório 100% seguro para publicação.")
+    print("PARECER DE SEGURANCA: APROVADO — Nenhum padrão conhecido de segredo ou credencial detectado nos arquivos rastreados.")
     sys.exit(0)
 
 if __name__ == '__main__':

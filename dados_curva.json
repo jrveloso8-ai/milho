@@ -1,5 +1,5 @@
 {
-  "gerado_em": "2026-09-18T10:26:28.798000",
+  "gerado_em": "2026-09-18T11:12:40.510426",
   "contratos": [
     {
       "codigo": "CCMX26",
@@ -3504,13 +3504,18 @@
     }
   ],
   "sentinel_corn": {
-    "timestamp": "2026-09-18T10:26:28.564292",
+    "timestamp": "2026-09-18T11:12:40.281539",
     "parametros_arbitragem": {
-      "cbot_cents": 530.0,
-      "cambio_usdbrl": 5.166,
+      "cbot_cents": 526.5,
+      "cbot_fonte": "[MEDIDO / CME ZC=F]",
+      "cbot_prov": "[MEDIDO]",
+      "cambio_usdbrl": 5.161,
+      "cambio_fonte": "[MEDIDO / B3 WDOV26]",
+      "cambio_prov": "[MEDIDO]",
       "premio_porto_usd": 0.7,
       "custos_logisticos_brl": 10.0,
-      "ppe_referencia": 54.76,
+      "ppe_referencia": 54.27,
+      "ppe_prov": "[DERIVADO]",
       "preco_spot_rtcni": 69.25
     },
     "score_noticias": {
@@ -3521,37 +3526,47 @@
       "total_analisado": 18
     },
     "score_calendario": {
-      "score": 0.0,
+      "score": 10.0,
       "status": "JANELA_LIMPA",
-      "dias_ate_proximo": null,
-      "proximo_evento": null,
-      "resumo": "Nenhum relatório oficial (USDA/CONAB) nos próximos 15 dias. Menor risco de gap."
+      "classificacao": "JANELA_LIMPA",
+      "dias_ate_proximo": 12,
+      "proximo_evento": "Estoques Trimestrais",
+      "eventos_proximos": [
+        {
+          "data": "2026-09-30",
+          "dias_ate": 12,
+          "evento": "Estoques Trimestrais",
+          "orgao": "USDA",
+          "impacto": "MAXIMO"
+        }
+      ],
+      "resumo": "Janela livre de relatórios oficiais imediatos. Próximo: Estoques Trimestrais em 12 dias."
     },
     "contratos": [
       {
         "contrato": "CCMX26",
         "preco": 76.35,
         "sentimento": "ALTISTA",
-        "score_final": 44.0,
+        "score_final": 46.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 40.0
         },
-        "ponto_inflexao_cambio": 6.888,
-        "diferenca_cambio_atual": -1.722,
+        "ponto_inflexao_cambio": 6.934,
+        "diferenca_cambio_atual": -1.773,
         "pivot_points": {
           "suporte": 75,
           "resistencia": 80
         },
         "matriz_basis_paridade": {
           "preco_b3": 76.35,
-          "ppe": 54.76,
-          "gap_ppe": 21.59,
+          "ppe": 54.27,
+          "gap_ppe": 22.08,
           "basis": -7.1,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 76.35) está R$ 21.59 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 76.35) está R$ 22.08 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 40.0,
@@ -3573,26 +3588,26 @@
         "contrato": "CCMF27",
         "preco": 80.21,
         "sentimento": "ALTISTA",
-        "score_final": 32.0,
+        "score_final": 34.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 20.0
         },
-        "ponto_inflexao_cambio": 7.196,
-        "diferenca_cambio_atual": -2.03,
+        "ponto_inflexao_cambio": 7.244,
+        "diferenca_cambio_atual": -2.083,
         "pivot_points": {
           "suporte": 70,
           "resistencia": 90
         },
         "matriz_basis_paridade": {
           "preco_b3": 80.21,
-          "ppe": 54.76,
-          "gap_ppe": 25.45,
+          "ppe": 54.27,
+          "gap_ppe": 25.94,
           "basis": -10.96,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 80.21) está R$ 25.45 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 80.21) está R$ 25.94 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 20.0,
@@ -3613,26 +3628,26 @@
         "contrato": "CCMH27",
         "preco": 81.9,
         "sentimento": "ALTISTA",
-        "score_final": 32.0,
+        "score_final": 34.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 20.0
         },
-        "ponto_inflexao_cambio": 7.331,
-        "diferenca_cambio_atual": -2.165,
+        "ponto_inflexao_cambio": 7.38,
+        "diferenca_cambio_atual": -2.219,
         "pivot_points": {
           "suporte": 75,
           "resistencia": 84
         },
         "matriz_basis_paridade": {
           "preco_b3": 81.9,
-          "ppe": 54.76,
-          "gap_ppe": 27.14,
+          "ppe": 54.27,
+          "gap_ppe": 27.63,
           "basis": -12.65,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 81.90) está R$ 27.14 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 81.90) está R$ 27.63 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 20.0,
@@ -3653,26 +3668,26 @@
         "contrato": "CCMK27",
         "preco": 80.4,
         "sentimento": "ALTISTA",
-        "score_final": 32.0,
+        "score_final": 34.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 20.0
         },
-        "ponto_inflexao_cambio": 7.211,
-        "diferenca_cambio_atual": -2.045,
+        "ponto_inflexao_cambio": 7.259,
+        "diferenca_cambio_atual": -2.098,
         "pivot_points": {
           "suporte": 73,
           "resistencia": 85
         },
         "matriz_basis_paridade": {
           "preco_b3": 80.4,
-          "ppe": 54.76,
-          "gap_ppe": 25.64,
+          "ppe": 54.27,
+          "gap_ppe": 26.13,
           "basis": -11.15,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 80.40) está R$ 25.64 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 80.40) está R$ 26.13 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 20.0,
@@ -3693,26 +3708,26 @@
         "contrato": "CCMN27",
         "preco": 79.04,
         "sentimento": "LATERAL",
-        "score_final": 20.0,
+        "score_final": 22.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 0.0
         },
-        "ponto_inflexao_cambio": 7.103,
-        "diferenca_cambio_atual": -1.937,
+        "ponto_inflexao_cambio": 7.15,
+        "diferenca_cambio_atual": -1.989,
         "pivot_points": {
           "suporte": 72.75,
           "resistencia": 79.5
         },
         "matriz_basis_paridade": {
           "preco_b3": 79.04,
-          "ppe": 54.76,
-          "gap_ppe": 24.28,
+          "ppe": 54.27,
+          "gap_ppe": 24.77,
           "basis": -9.79,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 79.04) está R$ 24.28 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 79.04) está R$ 24.77 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 0.0,
@@ -3734,26 +3749,26 @@
         "contrato": "CCMU27",
         "preco": 78.99,
         "sentimento": "LATERAL",
-        "score_final": 20.0,
+        "score_final": 22.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 0.0
         },
-        "ponto_inflexao_cambio": 7.099,
-        "diferenca_cambio_atual": -1.933,
+        "ponto_inflexao_cambio": 7.146,
+        "diferenca_cambio_atual": -1.985,
         "pivot_points": {
           "suporte": 67,
           "resistencia": 80
         },
         "matriz_basis_paridade": {
           "preco_b3": 78.99,
-          "ppe": 54.76,
-          "gap_ppe": 24.23,
+          "ppe": 54.27,
+          "gap_ppe": 24.72,
           "basis": -9.74,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 78.99) está R$ 24.23 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 78.99) está R$ 24.72 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 0.0,
@@ -3775,26 +3790,26 @@
         "contrato": "CCMX27",
         "preco": 81.5,
         "sentimento": "LATERAL",
-        "score_final": 20.0,
+        "score_final": 22.0,
         "pesos": {
           "noticias_20": 100.0,
-          "calendario_20": 0.0,
+          "calendario_20": 10.0,
           "tecnico_60": 0.0
         },
-        "ponto_inflexao_cambio": 7.299,
-        "diferenca_cambio_atual": -2.133,
+        "ponto_inflexao_cambio": 7.348,
+        "diferenca_cambio_atual": -2.187,
         "pivot_points": {
           "suporte": 68,
           "resistencia": 83
         },
         "matriz_basis_paridade": {
           "preco_b3": 81.5,
-          "ppe": 54.76,
-          "gap_ppe": 26.74,
+          "ppe": 54.27,
+          "gap_ppe": 27.23,
           "basis": -12.25,
           "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
           "sinal": "VENDA",
-          "explicacao": "Preço B3 (R$ 81.50) está R$ 26.74 acima da PPE (R$ 54.76) com Contango excessivo frente ao spot."
+          "explicacao": "Preço B3 (R$ 81.50) está R$ 27.23 acima da PPE (R$ 54.27) com Contango excessivo frente ao spot."
         },
         "detalhes_tecnicos": {
           "score": 0.0,
@@ -3813,65 +3828,123 @@
         }
       }
     ],
-    "tabela_arbitragem_porto": [
+    "tabela_arbitragem": [
       {
         "contrato": "CCMX26",
         "preco_b3": 76.35,
-        "ppe": 54.76,
-        "spread_gap": 21.59,
+        "ppe": 54.27,
+        "spread_gap": 22.08,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       },
       {
         "contrato": "CCMF27",
         "preco_b3": 80.21,
-        "ppe": 54.76,
-        "spread_gap": 25.45,
+        "ppe": 54.27,
+        "spread_gap": 25.94,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       },
       {
         "contrato": "CCMH27",
         "preco_b3": 81.9,
-        "ppe": 54.76,
-        "spread_gap": 27.14,
+        "ppe": 54.27,
+        "spread_gap": 27.63,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       },
       {
         "contrato": "CCMK27",
         "preco_b3": 80.4,
-        "ppe": 54.76,
-        "spread_gap": 25.64,
+        "ppe": 54.27,
+        "spread_gap": 26.13,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       },
       {
         "contrato": "CCMN27",
         "preco_b3": 79.04,
-        "ppe": 54.76,
-        "spread_gap": 24.28,
+        "ppe": 54.27,
+        "spread_gap": 24.77,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       },
       {
         "contrato": "CCMU27",
         "preco_b3": 78.99,
-        "ppe": 54.76,
-        "spread_gap": 24.23,
+        "ppe": 54.27,
+        "spread_gap": 24.72,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       },
       {
         "contrato": "CCMX27",
         "preco_b3": 81.5,
-        "ppe": 54.76,
-        "spread_gap": 26.74,
+        "ppe": 54.27,
+        "spread_gap": 27.23,
         "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
         "sinal": "VENDA"
       }
     ],
-    "parecer_executivo": "### 🌽 SENTINEL-CORN 2.0 — PARECER ESTRATÉGICO DE SENTIMENTO\n**Referência:** 18/09/2026 10:26 | **Vencimento em Foco:** CCMX26 | **Sentimento Consolidado:** ALTISTA (Score: +44.0)\n\n---\n\n#### 1. SÍNTESE EXECUTIVA & VETORES DE PRESSÃO\n- **Veredito do Sentinel-Corn 2.0:** O contrato **CCMX26** opera sob viés **ALTISTA**, com score ponderado de **+44.0/100** (60% Técnico: +40.0 | 20% Notícias: +100.0 | 20% Calendário: +0.0).\n- **Sazonalidade das Correlações:** Julho a Dezembro: Foco em Chicago (CBOT), prêmios nos portos e Paridade de Exportação (colheita Safrinha).\n- **Estrutura da Curva:** CONTANGO — Basis Spot RTCNI (R$ 69.25) vs Futuro em -7.10 R$/sc.\n\n---\n\n#### 2. TABELA DE ARBITRAGEM DE PORTO (PPE)\n*Paridade calculada com CBOT a 530.0¢/bu, Prêmio Porto Basis de +US$ 0,70 e Frete/Logística de R$ 10,00/sc:*\n\n| Contrato Alvo | Preço B3 (Tela) | PPE Calculada | Spread (Gap) | Recomendação Sentinel |\n|---|---|---|---|---|\n| CCMX26 | R$ 76.35 | R$ 54.76 | R$ +21.59 | ALERTA DE VENDA (Short/Bearish) |\n| CCMF27 | R$ 80.21 | R$ 54.76 | R$ +25.45 | ALERTA DE VENDA (Short/Bearish) |\n| CCMH27 | R$ 81.90 | R$ 54.76 | R$ +27.14 | ALERTA DE VENDA (Short/Bearish) |\n| CCMK27 | R$ 80.40 | R$ 54.76 | R$ +25.64 | ALERTA DE VENDA (Short/Bearish) |\n| CCMN27 | R$ 79.04 | R$ 54.76 | R$ +24.28 | ALERTA DE VENDA (Short/Bearish) |\n| CCMU27 | R$ 78.99 | R$ 54.76 | R$ +24.23 | ALERTA DE VENDA (Short/Bearish) |\n| CCMX27 | R$ 81.50 | R$ 54.76 | R$ +26.74 | ALERTA DE VENDA (Short/Bearish) |\n\n---\n\n#### 3. MATRIZ COMPARATIVA DE CENÁRIOS (BULLISH vs. BEARISH)\n\n| Vetor de Mercado | Cenário Altista (Bullish) | Cenário Baixista (Bearish) | Status Atual |\n|---|---|---|---|\n| **Fundamentos & Clima** | Quebra de safra, retenção de vendas pelo produtor físico | Avanço rápido da colheita, supersafra Safrinha consolidada | Noticiário com viés ALTISTA (3 termos de alta vs 0 de baixa), pautado por clima/estoques. |\n| **Paridade & Câmbio** | Dólar acima do ponto de inflexão ativa escoamento no porto | Dólar fraco fecha janela de exportação e represamento local | Ponto de Inflexão WDO: R$ 6.888 (Tela: R$ 5.166) |\n| **Estrutura Técnica & Opções** | Preço sustentado no Put Wall, TRIX NTSL virando para compra | Preço colidindo com Call Wall, divergência baixista no TRIX | Suporte: R$ 75.00 | Resistência: R$ 80.00 |\n\n---\n\n#### 4. VISÃO DE RISCO CAMBIAL & GAMMA (MARKET MAKERS)\n- **Ponto de Inflexão de Câmbio:** O patamar de dólar que iguala o milho B3 à paridade internacional é de **R$ 6.888**. Como o câmbio atual opera em R$ 5.166, o mercado apresenta gap de R$ -1.722, calibrando a competitividade no porto de Santos/Paranaguá.\n- **Barreiras Operacionais:** Atenção imediata aos Pivot Points: Suporte institucional em **R$ 75.00** e Resistência de Gamma em **R$ 80.00**."
+    "tabela_arbitragem_porto": [
+      {
+        "contrato": "CCMX26",
+        "preco_b3": 76.35,
+        "ppe": 54.27,
+        "spread_gap": 22.08,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      },
+      {
+        "contrato": "CCMF27",
+        "preco_b3": 80.21,
+        "ppe": 54.27,
+        "spread_gap": 25.94,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      },
+      {
+        "contrato": "CCMH27",
+        "preco_b3": 81.9,
+        "ppe": 54.27,
+        "spread_gap": 27.63,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      },
+      {
+        "contrato": "CCMK27",
+        "preco_b3": 80.4,
+        "ppe": 54.27,
+        "spread_gap": 26.13,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      },
+      {
+        "contrato": "CCMN27",
+        "preco_b3": 79.04,
+        "ppe": 54.27,
+        "spread_gap": 24.77,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      },
+      {
+        "contrato": "CCMU27",
+        "preco_b3": 78.99,
+        "ppe": 54.27,
+        "spread_gap": 24.72,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      },
+      {
+        "contrato": "CCMX27",
+        "preco_b3": 81.5,
+        "ppe": 54.27,
+        "spread_gap": 27.23,
+        "recomendacao": "ALERTA DE VENDA (Short/Bearish)",
+        "sinal": "VENDA"
+      }
+    ],
+    "parecer_executivo": "### 🌽 SENTINEL-CORN 2.0 — PARECER ESTRATÉGICO DE SENTIMENTO\n**Referência:** 18/09/2026 11:12 | **Vencimento em Foco:** CCMX26 | **Sentimento Consolidado:** ALTISTA (Score: +46.0)\n\n---\n\n#### 1. SÍNTESE EXECUTIVA & VETORES DE PRESSÃO\n- **Veredito do Sentinel-Corn 2.0:** O contrato **CCMX26** opera sob viés **ALTISTA**, com score ponderado de **+46.0/100** (60% Técnico: +40.0 | 20% Notícias: +100.0 | 20% Calendário: +10.0).\n- **Sazonalidade das Correlações:** Julho a Dezembro: Foco em Chicago (CBOT), prêmios nos portos e Paridade de Exportação (colheita Safrinha).\n- **Estrutura da Curva:** CONTANGO — Basis Spot RTCNI (R$ 69.25) vs Futuro em -7.10 R$/sc.\n\n---\n\n#### 2. TABELA DE ARBITRAGEM DE PORTO (PPE)\n*Paridade calculada com CBOT a 526.5¢/bu [[MEDIDO / CME ZC=F]], Câmbio WDO a R$ 5.161 [[MEDIDO / B3 WDOV26]], Prêmio Porto de +US$ 0,70 e Frete/Logística de R$ 10,00/sc:*\n\n| Contrato Alvo | Preço B3 (Tela) | PPE Calculada | Spread (Gap) | Recomendação Sentinel |\n|---|---|---|---|---|\n| CCMX26 | R$ 76.35 | R$ 54.27 | R$ +22.08 | ALERTA DE VENDA (Short/Bearish) |\n| CCMF27 | R$ 80.21 | R$ 54.27 | R$ +25.94 | ALERTA DE VENDA (Short/Bearish) |\n| CCMH27 | R$ 81.90 | R$ 54.27 | R$ +27.63 | ALERTA DE VENDA (Short/Bearish) |\n| CCMK27 | R$ 80.40 | R$ 54.27 | R$ +26.13 | ALERTA DE VENDA (Short/Bearish) |\n| CCMN27 | R$ 79.04 | R$ 54.27 | R$ +24.77 | ALERTA DE VENDA (Short/Bearish) |\n| CCMU27 | R$ 78.99 | R$ 54.27 | R$ +24.72 | ALERTA DE VENDA (Short/Bearish) |\n| CCMX27 | R$ 81.50 | R$ 54.27 | R$ +27.23 | ALERTA DE VENDA (Short/Bearish) |\n\n---\n\n#### 3. MATRIZ COMPARATIVA DE CENÁRIOS (BULLISH vs. BEARISH)\n\n| Vetor de Mercado | Cenário Altista (Bullish) | Cenário Baixista (Bearish) | Status Atual |\n|---|---|---|---|\n| **Fundamentos & Clima** | Quebra de safra, retenção de vendas pelo produtor físico | Avanço rápido da colheita, supersafra Safrinha consolidada | Noticiário com viés ALTISTA (3 termos de alta vs 0 de baixa), pautado por clima/estoques. |\n| **Paridade & Câmbio** | Dólar acima do ponto de inflexão ativa escoamento no porto | Dólar fraco fecha janela de exportação e represamento local | Ponto de Inflexão WDO: R$ 6.934 (Tela: R$ 5.161 [[MEDIDO / B3 WDOV26]]) |\n| **Estrutura Técnica & Opções** | Preço sustentado no Put Wall, TRIX NTSL virando para compra | Preço colidindo com Call Wall, divergência baixista no TRIX | Suporte: R$ 75.00 | Resistência: R$ 80.00 |\n\n---\n\n#### 4. VISÃO DE RISCO CAMBIAL & GAMMA (MARKET MAKERS)\n- **Ponto de Inflexão de Câmbio:** O patamar de dólar que iguala o milho B3 à paridade internacional é de **R$ 6.934**. Com o câmbio atual em **R$ 5.161 [[MEDIDO / B3 WDOV26]]**, o mercado apresenta spread de **R$ -1.773**, calibrando a atratividade de exportação nos portos.\n- **Barreiras Operacionais:** Atenção imediata aos Pivot Points: Suporte institucional em **R$ 75.00** e Resistência de Gamma em **R$ 80.00**."
   },
   "series_contratos": {
     "CCMX26": [

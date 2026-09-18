@@ -38,20 +38,21 @@ ARQUIVO_CACHE_NOTICIAS = os.path.join(PASTA_PROJETO, "dados_noticias_milho.json"
 # ══════════════════════════════════════════════════════════════════════════
 
 def calcular_ppe(
-    cbot_cents: float,
+    cbot_cents: Optional[float],
     premio_porto_usd: float = 0.70,
-    cambio_usdbrl: float = 5.40,
+    cambio_usdbrl: Optional[float] = 5.40,
     custos_logisticos_brl: float = 10.00
-) -> float:
+) -> Optional[float]:
     """
     Calcula a Paridade de Exportação (PPE) em R$/saca (60kg).
     Fórmula do usuário/mercado:
       PPE = ((CBOT + Prêmio) * 0.39368 * Câmbio * 0.06) - Custos_Logísticos
+    Retorna None se CBOT ou Câmbio forem nulos/indisponíveis.
     """
     if cbot_cents is None or cbot_cents <= 0:
-        return 0.0
+        return None
     if cambio_usdbrl is None or cambio_usdbrl <= 0:
-        return 0.0
+        return None
 
     ppe_bruta = (cbot_cents + premio_porto_usd) * 0.39368 * cambio_usdbrl * 0.06
     ppe_liquida = ppe_bruta - custos_logisticos_brl
@@ -60,10 +61,10 @@ def calcular_ppe(
 
 def calcular_ponto_inflexao_cambio(
     preco_b3: float,
-    cbot_cents: float,
+    cbot_cents: Optional[float],
     premio_porto_usd: float = 0.70,
     custos_logisticos_brl: float = 10.00
-) -> float:
+) -> Optional[float]:
     """
     Calcula qual patamar de Dólar (R$/USD) tornaria o preço B3 em tela igual à PPE.
     Isolando Câmbio na equação:
@@ -71,10 +72,10 @@ def calcular_ponto_inflexao_cambio(
       Câmbio_Inflexão = (Preço_B3 + Custos) / ((CBOT + Prêmio) * 0.39368 * 0.06)
     """
     if cbot_cents is None or cbot_cents <= 0:
-        return 0.0
+        return None
     denominador = (cbot_cents + premio_porto_usd) * 0.39368 * 0.06
     if denominador <= 0:
-        return 0.0
+        return None
 
     cambio_inflexao = (preco_b3 + custos_logisticos_brl) / denominador
     return round(cambio_inflexao, 3)
@@ -82,7 +83,7 @@ def calcular_ponto_inflexao_cambio(
 
 def matriz_decisao_basis_paridade(
     preco_b3: float,
-    ppe: float,
+    ppe: Optional[float],
     preco_spot_rtcni: Optional[float] = None,
     estrutura_curva: str = "CONTANGO"
 ) -> Dict[str, Any]:
@@ -91,12 +92,24 @@ def matriz_decisao_basis_paridade(
       - ALERTA DE VENDA (Short/Bearish): Se Preço B3 > PPE + R$ 3,00 E Contango excessivo
       - ALERTA DE COMPRA (Long/Bullish): Se Preço B3 < PPE E Basis estreito ou Backwardation
       - NEUTRO / FAIR: Se oscilando na banda de arbitragem
+      - PARIDADE INDISPONÍVEL: Se PPE for None (CBOT ou Câmbio ausente)
     """
-    gap_ppe = round(preco_b3 - ppe, 2)
-
     basis = None
     if preco_spot_rtcni and preco_spot_rtcni > 0:
         basis = round(preco_spot_rtcni - preco_b3, 2)
+
+    if ppe is None or ppe <= 0:
+        return {
+            "preco_b3": preco_b3,
+            "ppe": None,
+            "gap_ppe": None,
+            "basis": basis,
+            "recomendacao": "PARIDADE INDISPONÍVEL",
+            "sinal": "NEUTRO",
+            "explicacao": "Cotação CBOT (CME) ou Câmbio WDO indisponível para cálculo da PPE."
+        }
+
+    gap_ppe = round(preco_b3 - ppe, 2)
 
     # Lógica de recomendação estrita
     is_contango_excessivo = (estrutura_curva == "CONTANGO" and (basis is not None and basis < -4.0)) or (estrutura_curva == "CONTANGO" and gap_ppe > 3.0)
@@ -233,8 +246,10 @@ def calcular_score_calendario(data_ref: Optional[date] = None) -> Tuple[float, D
         return 0.0, {
             "score": 0.0,
             "status": "JANELA_LIMPA",
+            "classificacao": "JANELA_LIMPA",
             "dias_ate_proximo": None,
             "proximo_evento": None,
+            "eventos_proximos": [],
             "resumo": "Nenhum relatório oficial (USDA/CONAB) nos próximos 15 dias. Menor risco de gap."
         }
 
@@ -258,8 +273,10 @@ def calcular_score_calendario(data_ref: Optional[date] = None) -> Tuple[float, D
     return round(score, 1), {
         "score": round(score, 1),
         "status": status,
+        "classificacao": status,
         "dias_ate_proximo": dias,
         "proximo_evento": nome_evento,
+        "eventos_proximos": eventos,
         "resumo": resumo
     }
 
@@ -365,12 +382,14 @@ def classificar_sentimento(score_final: float) -> str:
 
 def processar_sentimento_curva(
     curva_resultados: List[Dict[str, Any]],
-    cbot_cents: float,
-    cambio_usdbrl: float,
+    cbot_cents: Optional[float],
+    cambio_usdbrl: Optional[float],
     preco_spot_rtcni: Optional[float] = None,
     premio_porto: float = 0.70,
     custos_logisticos: float = 10.00,
-    estrutura_curva: str = "CONTANGO"
+    estrutura_curva: str = "CONTANGO",
+    cbot_fonte: str = "CME / yfinance",
+    cambio_fonte: str = "B3 / BRAPI (WDOFUT)"
 ) -> Dict[str, Any]:
     """
     Processa a análise completa Sentinel-Corn 2.0 para todos os contratos vivos da curva.
@@ -405,6 +424,8 @@ def processar_sentimento_curva(
         resistencia_pivot = round(cw if cw else (preco_close + (atr14 * 1.5)), 2)
         suporte_pivot = round(pw if pw else (preco_close - (atr14 * 1.5)), 2)
 
+        dif_cambio = round(cambio_usdbrl - cambio_inflexao, 3) if (cambio_usdbrl and cambio_inflexao) else None
+
         item_sentimento = {
             "contrato": cod,
             "preco": preco_close,
@@ -416,7 +437,7 @@ def processar_sentimento_curva(
                 "tecnico_60": score_tec
             },
             "ponto_inflexao_cambio": cambio_inflexao,
-            "diferenca_cambio_atual": round(cambio_usdbrl - cambio_inflexao, 3) if cambio_usdbrl else 0.0,
+            "diferenca_cambio_atual": dif_cambio,
             "pivot_points": {
                 "suporte": suporte_pivot,
                 "resistencia": resistencia_pivot
@@ -444,22 +465,30 @@ def processar_sentimento_curva(
         preco_spot_rtcni,
         estrutura_curva,
         info_noticias,
-        info_calendario
+        info_calendario,
+        cbot_fonte,
+        cambio_fonte
     )
 
     return {
         "timestamp": datetime.now().isoformat(),
         "parametros_arbitragem": {
             "cbot_cents": cbot_cents,
+            "cbot_fonte": cbot_fonte,
+            "cbot_prov": "[MEDIDO]" if cbot_cents else "[INDISPONIVEL]",
             "cambio_usdbrl": cambio_usdbrl,
+            "cambio_fonte": cambio_fonte,
+            "cambio_prov": "[MEDIDO]" if cambio_usdbrl else "[INDISPONIVEL]",
             "premio_porto_usd": premio_porto,
             "custos_logisticos_brl": custos_logisticos,
             "ppe_referencia": ppe_ref,
+            "ppe_prov": "[DERIVADO]" if ppe_ref else "[INDISPONIVEL]",
             "preco_spot_rtcni": preco_spot_rtcni
         },
         "score_noticias": info_noticias,
         "score_calendario": info_calendario,
         "contratos": contratos_sentimento,
+        "tabela_arbitragem": tabela_arbitragem,
         "tabela_arbitragem_porto": tabela_arbitragem,
         "parecer_executivo": parecer_texto
     }
@@ -472,13 +501,15 @@ def processar_sentimento_curva(
 def gerar_parecer_sentinel_corn_2(
     contratos: List[Dict[str, Any]],
     tabela_arbitragem: List[Dict[str, Any]],
-    cbot_cents: float,
-    cambio_usdbrl: float,
-    ppe: float,
+    cbot_cents: Optional[float],
+    cambio_usdbrl: Optional[float],
+    ppe: Optional[float],
     preco_spot: Optional[float],
     estrutura_curva: str,
     info_noticias: Dict[str, Any],
-    info_calendario: Dict[str, Any]
+    info_calendario: Dict[str, Any],
+    cbot_fonte: str = "CME / yfinance",
+    cambio_fonte: str = "B3 / BRAPI (WDOFUT)"
 ) -> str:
     """
     Gera o relatório analítico no tom do estrategista sênior Sentinel-Corn 2.0:
@@ -492,8 +523,10 @@ def gerar_parecer_sentinel_corn_2(
 
     linhas_arbitragem = []
     for item in tabela_arbitragem:
+        ppe_str = f"R$ {item['ppe']:.2f}" if item.get('ppe') is not None else "N/D [INDISPONIVEL]"
+        gap_str = f"R$ {item['spread_gap']:+.2f}" if item.get('spread_gap') is not None else "N/D"
         linhas_arbitragem.append(
-            f"| {item['contrato']} | R$ {item['preco_b3']:.2f} | R$ {item['ppe']:.2f} | R$ {item['spread_gap']:+.2f} | {item['recomendacao']} |"
+            f"| {item['contrato']} | R$ {item['preco_b3']:.2f} | {ppe_str} | {gap_str} | {item['recomendacao']} |"
         )
     tabela_arb_md = "\n".join(linhas_arbitragem)
 
@@ -501,7 +534,7 @@ def gerar_parecer_sentinel_corn_2(
     cod_ativo = c_ativo["contrato"] if c_ativo else "CCM"
     sent_ativo = c_ativo["sentimento"] if c_ativo else "NEUTRO"
     score_ativo = c_ativo["score_final"] if c_ativo else 0.0
-    inflex_ativo = c_ativo["ponto_inflexao_cambio"] if c_ativo else 0.0
+    inflex_ativo = c_ativo["ponto_inflexao_cambio"] if c_ativo else None
     sup_ativo = c_ativo["pivot_points"]["suporte"] if c_ativo else 0.0
     res_ativo = c_ativo["pivot_points"]["resistencia"] if c_ativo else 0.0
 
@@ -510,6 +543,11 @@ def gerar_parecer_sentinel_corn_2(
         foco_sazonal = "Janeiro a Junho: Foco no RTCNI (Cepea/Campinas), entressafra e demanda doméstica das granjas/etanol."
     else:
         foco_sazonal = "Julho a Dezembro: Foco em Chicago (CBOT), prêmios nos portos e Paridade de Exportação (colheita Safrinha)."
+
+    cbot_desc = f"{cbot_cents:.1f}¢/bu [{cbot_fonte}]" if cbot_cents else "INDISPONÍVEL"
+    cambio_desc = f"R$ {cambio_usdbrl:.3f} [{cambio_fonte}]" if cambio_usdbrl else "INDISPONÍVEL"
+    inflex_desc = f"R$ {inflex_ativo:.3f}" if inflex_ativo else "N/D"
+    dif_desc = f"R$ {cambio_usdbrl - inflex_ativo:+.3f}" if (cambio_usdbrl and inflex_ativo) else "N/D"
 
     parecer = f"""### 🌽 SENTINEL-CORN 2.0 — PARECER ESTRATÉGICO DE SENTIMENTO
 **Referência:** {data_str} | **Vencimento em Foco:** {cod_ativo} | **Sentimento Consolidado:** {sent_ativo} (Score: {score_ativo:+.1f})
@@ -524,7 +562,7 @@ def gerar_parecer_sentinel_corn_2(
 ---
 
 #### 2. TABELA DE ARBITRAGEM DE PORTO (PPE)
-*Paridade calculada com CBOT a {cbot_cents:.1f}¢/bu, Prêmio Porto Basis de +US$ 0,70 e Frete/Logística de R$ 10,00/sc:*
+*Paridade calculada com CBOT a {cbot_desc}, Câmbio WDO a {cambio_desc}, Prêmio Porto de +US$ 0,70 e Frete/Logística de R$ 10,00/sc:*
 
 | Contrato Alvo | Preço B3 (Tela) | PPE Calculada | Spread (Gap) | Recomendação Sentinel |
 |---|---|---|---|---|
@@ -537,13 +575,13 @@ def gerar_parecer_sentinel_corn_2(
 | Vetor de Mercado | Cenário Altista (Bullish) | Cenário Baixista (Bearish) | Status Atual |
 |---|---|---|---|
 | **Fundamentos & Clima** | Quebra de safra, retenção de vendas pelo produtor físico | Avanço rápido da colheita, supersafra Safrinha consolidada | {info_noticias['resumo']} |
-| **Paridade & Câmbio** | Dólar acima do ponto de inflexão ativa escoamento no porto | Dólar fraco fecha janela de exportação e represamento local | Ponto de Inflexão WDO: R$ {inflex_ativo:.3f} (Tela: R$ {cambio_usdbrl:.3f}) |
+| **Paridade & Câmbio** | Dólar acima do ponto de inflexão ativa escoamento no porto | Dólar fraco fecha janela de exportação e represamento local | Ponto de Inflexão WDO: {inflex_desc} (Tela: {cambio_desc}) |
 | **Estrutura Técnica & Opções** | Preço sustentado no Put Wall, TRIX NTSL virando para compra | Preço colidindo com Call Wall, divergência baixista no TRIX | Suporte: R$ {sup_ativo:.2f} | Resistência: R$ {res_ativo:.2f} |
 
 ---
 
 #### 4. VISÃO DE RISCO CAMBIAL & GAMMA (MARKET MAKERS)
-- **Ponto de Inflexão de Câmbio:** O patamar de dólar que iguala o milho B3 à paridade internacional é de **R$ {inflex_ativo:.3f}**. Como o câmbio atual opera em R$ {cambio_usdbrl:.3f}, o mercado apresenta gap de R$ {cambio_usdbrl - inflex_ativo:+.3f}, calibrando a competitividade no porto de Santos/Paranaguá.
+- **Ponto de Inflexão de Câmbio:** O patamar de dólar que iguala o milho B3 à paridade internacional é de **{inflex_desc}**. Com o câmbio atual em **{cambio_desc}**, o mercado apresenta spread de **{dif_desc}**, calibrando a atratividade de exportação nos portos.
 - **Barreiras Operacionais:** Atenção imediata aos Pivot Points: Suporte institucional em **R$ {sup_ativo:.2f}** e Resistência de Gamma em **R$ {res_ativo:.2f}**.
 """
     return parecer.strip()

@@ -1,0 +1,218 @@
+======================================================================================================
+AUDITORIA DE SISTEMA EXISTENTE — MILHO TRADER "SISTEMA NOVO" (raiz do projeto, excluindo /versao_anterior)
+Método: /auditoria-sistema-existente (inventário -> classificação MEDIDO/DERIVADO/ESTIMADO/SIMULADO/
+INDISPONIVEL -> priorização por risco de decisão -> avaliação dos gates existentes -> critério de fechamento)
+Executado por: Claude (Cowork) | Data: 18/09/2026
+Escopo lido linha a linha: trix_v5.py, convergencia.py, ccm_trix_curva.py (2000 linhas), ingestao_brapi.py,
+leitor_csv.py, oi_opcoes.py, sentinel_engine.py, calendario_economico.py, auditar_seguranca.py,
+verificar_dados_fabricados.py, verificar_literais_plot.py, portao_auditoria.bat, test_ccm_trix_curva.py,
+test_sentinel_engine.py, tabela_proveniencia.md, resumo_trix_curva.txt, dados_curva.json (dado real gerado
+hoje), index.html/sistema_sentinel.html (confirmados idênticos byte a byte).
+Não avaliado em profundidade (fora do escopo pedido): /versao_anterior; feed_noticias.py e
+ingestao_cepea.py foram lidos por referência de chamada, não linha a linha; gerar_sistema_novo.py (1609
+linhas) foi varrido por padrão/grep, não lido integralmente.
+======================================================================================================
+
+VEREDITO GERAL
+--------------
+O núcleo tecnico do sistema novo (TRIX v5, costura de seed com regra de contágio, Watchlist CCM x RTCNI,
+Open Interest/Call Wall/Put Wall/Max Pain via BRAPI) tem proveniência real, rastreável e bem defendida no
+código — isso é trabalho de engenharia sério, não maquiagem de dashboard. Mas o módulo Sentinel-Corn 2.0
+(paridade de exportação, ponto de inflexão cambial, matriz de decisão de compra/venda, 20/20/60 de
+sentimento) está QUEBRADO de duas formas independentes e produz, hoje, um sinal de "ALERTA DE VENDA" em
+TODOS os 7 contratos vivos da curva com base em dois números que nunca vieram de mercado nenhum. Isso não
+é um bug cosmético: é exatamente o padrão que a skill de auditoria pede para caçar primeiro — um número
+pequeno, sem badge de aviso, que parece autoritativo e está posicionado para influenciar decisão de
+compra/venda real.
+
+Recomendação direta: NÃO usar o parecer do Sentinel-Corn 2.0 (PPE, Ponto de Inflexão Cambial, "ALERTA DE
+VENDA/COMPRA", score consolidado) para decisão até os Achados 1 e 2 abaixo serem corrigidos e cobertos por
+teste de integração. O restante do sistema (TRIX v5 por contrato, Watchlist, Grade de Opções) pode
+continuar em uso — a proveniência ali é sólida e eu não encontrei fabricação nessa parte.
+
+======================================================================================================
+ACHADOS, EM ORDEM DE RISCO DE DECISÃO (não de tamanho de código)
+======================================================================================================
+
+ACHADO 1 — CRÍTICO — CBOT e Câmbio do Sentinel-Corn são literais fixos, nunca dados de mercado
+------------------------------------------------------------------------------------------------
+Onde: ccm_trix_curva.py, linhas 1911-1922 (função que monta o bloco 5b do pipeline).
+
+    cbot_val = 530.0
+    cambio_val = 5.166
+    caminho_dados_milho = os.path.join(PASTA_PROJETO, "dados_milho.json")
+    if os.path.isfile(caminho_dados_milho):
+        ... só troca cbot_val/cambio_val se esse arquivo existir ...
+
+Fato verificado: "dados_milho.json" NÃO EXISTE na pasta do projeto (confirmei na listagem completa do
+diretório). Esse arquivo é produzido pelo pipeline LEGADO (cambio_macro.py/pipeline.py), que não faz parte
+do sistema novo e não foi solicitado para rodar aqui. Resultado prático, comprovado no dados_curva.json
+gerado hoje (18/09/2026, 10:26): cbot_cents=530.0 e cambio_usdbrl=5.166 em 100% dos 7 contratos — os
+mesmos dois números fixos do código-fonte, sem nenhuma variação, o que por si só prova que nenhum dado real
+está entrando ali nesta configuração.
+
+Consequência em cascata, também comprovada no dados_curva.json real de hoje:
+  PPE calculada = R$ 54,76/sc para todos os contratos
+  Gap vs. preço B3 em tela = entre R$ 21,59 e R$ 27,14/sc (CCMX26 a CCMX27)
+  Recomendação do sistema para os 7 contratos = "ALERTA DE VENDA (Short/Bearish)"
+
+Por que isso é grave e não um detalhe: a docstring do próprio módulo (sentinel_engine.py, linha 22-23) diz
+"100% compatível com dados MEDIDOS e DERIVADOS reais da B3/BRAPI/Esalq. Sem dados fabricados ou
+simulados." e a tabela_proveniencia.md (seção 6) classifica a PPE como DERIVADO "com CBOT e Câmbio reais".
+Nenhuma das duas afirmações é verdadeira na configuração atual. O usuário vê um selo de proveniência
+correto no restante do dashboard (Watchlist, Barreiras de Opções) e isso cria falsa confiança de que o
+Sentinel-Corn segue o mesmo padrão — mas ele não segue: não há nenhum badge [ESTIMADO] ou [INDISPONIVEL]
+na tela ao lado do CBOT/Câmbio/PPE, é exibido como número liso.
+
+Agravante: o módulo ingestao_brapi.coletar_cambio() JÁ EXISTE e já busca WDOFUT real via BRAPI (usado em
+outro ponto do sistema) — está sentado ao lado do bug, mas não foi conectado ao Sentinel-Corn. Não existe,
+em nenhum arquivo do escopo lido, uma função de ingestão real de CBOT (ZC futures); esse dado nunca teve
+uma fonte real neste módulo, só o fallback.
+
+ACHADO 2 — CRÍTICO — 20% do score de sentimento (Calendário Econômico) nunca executa; sempre retorna 0.0
+------------------------------------------------------------------------------------------------------
+Onde: sentinel_engine.py linha 228 chama `cal.obter_eventos_proximos(data_ref, dias_a_frente=15)`.
+calendario_economico.py define `verificar_calendario_economico(hoje)` — a função `obter_eventos_proximos`
+NÃO EXISTE nesse arquivo (confirmei por grep de todas as definições `def` do arquivo).
+
+Toda chamada gera AttributeError, capturado por um `except Exception: eventos = []` mudo (linha 229-230).
+Resultado: `calcular_score_calendario()` SEMPRE cai no ramo "sem eventos" e devolve score=0.0, status
+"JANELA_LIMPA", com a frase fixa "Nenhum relatório oficial (USDA/CONAB) nos próximos 15 dias. Menor risco
+de gap." — mesmo em dias em que o calendário WASDE/CONAB (que existe e está bem construído no arquivo,
+com datas verificadas por busca web e um mecanismo de auto-alerta `usda_desatualizado` para anos futuros)
+mostraria risco real. Comprovado no dados_curva.json de hoje: score_calendario = 0.0 em todos os contratos,
+mesmo com o gerador WASDE 2026 tendo evento em 11/09/2026 (7 dias atrás) e nada nos próximos 15 dias —
+neste caso específico o resultado até coincide com a realidade por acaso, mas o mecanismo que deveria
+provar isso está morto; no próximo relatório WASDE dentro da janela de 15 dias, o sistema vai continuar
+dizendo "JANELA_LIMPA" quando devia alertar risco máximo.
+
+Isso é o segundo dos três insumos do score ponderado (20/20/60) rodando permanentemente em modo de falha
+silenciosa, sem qualquer teste (unitário ou de integração) que exercite essa chamada entre os dois
+módulos — test_sentinel_engine.py testa calcular_score_calendario? Não: a suíte de teste nem importa essa
+função (ver Achado 4).
+
+ACHADO 3 — ALTO — Score de notícias (20% do peso) usa o cache do ciclo anterior, não o do ciclo exibido
+--------------------------------------------------------------------------------------------------------
+Onde: ccm_trix_curva.py — a etapa 5b (Sentinel-Corn, que lê dados_noticias_milho.json via
+sentinel_engine.calcular_score_noticias) roda ANTES da etapa 7 (gerar_grafico_interativo), e é dentro da
+etapa 7 que feed_noticias.montar_html_feed_noticias() é chamado e (presumivelmente) atualiza o cache de
+notícias que alimenta a barra lateral do dashboard. Ou seja: o score de notícias usado no parecer
+executivo do Sentinel-Corn reflete a rodada ANTERIOR do pipeline, não as manchetes que o usuário vê na
+tela naquele mesmo carregamento. Não é dado fabricado — é dado real, só que fora de sincronia por um
+ciclo, sem aviso disso ao usuário. Baixo risco isolado, mas relevante porque contamina 20% do mesmo score
+que já está comprometido pelos Achados 1 e 2.
+
+ACHADO 4 — MÉDIO — Os gates de auditoria existentes (6.1 a 6.6) não cobrem nada do Sentinel-Corn
+---------------------------------------------------------------------------------------------------
+Verifiquei os 4 mecanismos de "portão" que o próprio projeto já tem:
+  • portao_auditoria.bat (orquestra 6.1-6.6) — nenhum item menciona sentinel_engine.py.
+  • verificar_dados_fabricados.py (item 6.2) — só varre resumo_trix_curva.txt, tabela_proveniencia.md e
+    ccm_trix_curva.html; nunca abre sentinel_engine.py nem valida cbot_cents/cambio_usdbrl.
+  • verificar_literais_plot.py (item 6.3, barreira AST) — está corretamente desenhado para pegar literal
+    solto DENTRO de funções cujo nome contenha "plot/grafico/render/desenhar/chart" em ccm_trix_curva.py.
+    O código do Achado 1 está fora de qualquer função com esse nome (está na orquestração/main), e as
+    variáveis se chamam `cbot_val`/`cambio_val`, que não estão na lista `VARIAVEIS_DADOS_PROIBIDAS`
+    (preco, close, open, high, low, call_wall, put_wall, max_pain, strike, volume, trades, saldo, spread,
+    cotacao, valor_mercado). O literal escapa pelas duas frestas ao mesmo tempo: escopo de função errado
+    e nome de variável fora da lista.
+  • test_sentinel_engine.py (roda no item 6.1, pytest) — testa `calcular_ppe`, `calcular_ponto_inflexao_
+    cambio`, `matriz_decisao_basis_paridade`, `classificar_sentimento`, `calcular_score_tecnico_contrato`
+    isoladamente, com valores de teste digitados na mão (ex.: cbot=450.0, câmbio=5.50). Nunca chama
+    `processar_sentimento_curva()` (a função de integração que tem o bug) nem `calcular_score_calendario()`
+    (a função com o AttributeError mudo). A suíte passa 100% e o portão imprime "PARECER FINAL: APROVADO"
+    — exatamente o padrão que a skill de auditoria descreve: "TUDO PASSOU" só prova que as regras que já
+    existem continuam batendo; um achado novo, por definição, não tinha regra escrita para pegá-lo.
+
+Isso não é uma crítica ao padrão de qualidade do resto do projeto — pelo contrário, a engenharia dos
+gates 6.1-6.6 é incomum em maturidade para um projeto individual. É precisamente por isso que dá para
+confiar no diagnóstico: o problema não é falta de disciplina de auditoria, é que o Sentinel-Corn 2.0 foi
+adicionado depois que a cerca foi construída e ninguém estendeu a cerca para cobri-lo.
+
+ACHADO 5 — MÉDIO — Badge "PROVENIÊNCIA: MEDIDO / B3" no card de Grade de Opções mistura classificações
+---------------------------------------------------------------------------------------------------------
+Onde: ccm_trix_curva.py, ~linha 748 (card de Grade de Opções) e ~linha 574-576. O card exibe um selo único
+"PROVENIÊNCIA: MEDIDO / B3" para o bloco inteiro, mas dentro dele Call Wall/Put Wall/Max Pain são
+DERIVADO (calculados) e só o OI bruto por strike é MEDIDO — exatamente como a própria tabela_
+proveniencia.md classifica (seção 3: Call Wall = DERIVADO ou INDISPONIVEL; OI = MEDIDO ou INDISPONIVEL).
+O resumo em texto (resumo_trix_curva.txt) faz a distinção correta linha a linha ("[DERIVADO/MEDIDO]"), mas
+o selo de cabeçalho do card HTML simplifica para "MEDIDO" puro. É uma inconsistência de rotulagem, não de
+cálculo — mas é exatamente o tipo de badge que a skill de auditoria adverte para não aceitar de cara: o
+selo mais visível da tela está, tecnicamente, errado sobre parte do que ele endossa.
+
+ACHADO 6 — BAIXO — tabela_proveniencia.md é um documento estático, já desatualizado no dia em que foi lido
+--------------------------------------------------------------------------------------------------------------
+Comparei a seção 4 da tabela_proveniencia.md (snapshot "17/09/2026") com o resumo_trix_curva.txt gerado
+nesta mesma sessão (18/09/2026, 10:26:28) e achei divergências reais, mesmo sendo apenas 1 dia de
+diferença: CCMX26 235→235 pregões mas transição 27/02/2026 vs. 02/03/2026 no resumo; CCMF27 168→169
+pregões; CCMH27 156→157; CCMN27 59→60 pregões E Call Wall R$79,00/1.242 contratos → R$79,50/850 contratos
+(o strike da parede mudou de um dia para o outro, o que é esperado dado que é OI real, mas mostra que a
+tabela .md não é regenerada automaticamente a cada rodada — foi escrita/editada manualmente uma vez).
+Enquanto ela for mantida manualmente, ela vai continuar divergindo do sistema real a cada rodada nova, e
+um documento de proveniência que "atrasa" é, na prática, uma fonte de verdade que não se pode auditar
+contra o sistema vivo sem reconferir campo a campo — o que anula parte do propósito do documento.
+
+ACHADO 7 — BAIXO — "PARECER DE SEGURANÇA: APROVADO — Repositório 100% seguro" é uma afirmação mais forte
+do que o script prova
+-----------------------------------------------------------------------------------------------------------
+auditar_seguranca.py (bem desenhado: varre nomes de arquivo, 4 regex de conteúdo sobre todo arquivo
+rastreado no git, e presença de itens no .gitignore) imprime "100% seguro para publicação" — nenhum
+scanner baseado em 4 padrões de regex sustenta essa afirmação absoluta (não cobre, por exemplo, chaves AWS,
+tokens de outros formatos, segredos em arquivos binários/notebooks, ou vazamento via variável de ambiente
+exposta em log/response da BRAPI). Não é um risco de segurança em si — é uma frase que deveria dizer
+"nenhum padrão conhecido de segredo foi encontrado nos arquivos rastreados", não "100% seguro".
+
+======================================================================================================
+PONTOS FORTES CONFIRMADOS (para não distorcer o retrato — nem tudo aqui é achado)
+======================================================================================================
+- trix_v5.py: réplica linha a linha documentada e referenciada contra o backtest original (paridade
+  Python vs. NTSL citada com números de trades/WR/PF), com aviso explícito para não confundir
+  stop_atr15/alvo_rr2 (gestão de risco) com a lógica de saída validada (stop-and-reverse puro). Isso é
+  exatamente a disciplina que evita a maior classe de erro em portar sistema validado.
+- classificar_proveniencia() + regra de contágio (SMA100/TRIX herdam ESTIMADO se qualquer dia da janela
+  de 100 for sintético): implementação correta e coerente com a própria tabela_proveniencia.md — validei
+  contra o código, não contra o rótulo, e bate.
+- Watchlist CCM x RTCNI: 100% dos campos exibidos são de fato MEDIDO fim a fim, com fallback online→CSV
+  local documentado e aviso [DEFASADO] quando a defasagem passa de 7 dias corridos.
+- leitor_csv.py e ingestao_brapi.py: tratamento defensivo real (retry em lock de arquivo, remoção de bytes
+  NUL do exportador do Profit, timeout e nunca lançar exceção em falha de rede) — não é boilerplate, cada
+  regra tem uma causa raiz documentada com data de observação em produção.
+- calendario_economico.py, isoladamente: bem pesquisado (datas WASDE/CONAB 2026 com fonte citada), e tem
+  autodefesa própria contra ficar desatualizado em anos futuros (usda_desatualizado). O problema não é a
+  qualidade deste arquivo — é a integração quebrada com quem o chama (Achado 2).
+
+======================================================================================================
+RECOMENDAÇÃO E CRITÉRIO DE FECHAMENTO
+======================================================================================================
+Recomendação (decisão, não só mapa de risco):
+1. Bloquear/ocultar o bloco "Sentinel-Corn 2.0" do dashboard (ou marcar CBOT/Câmbio/PPE/Ponto de Inflexão/
+   Recomendação como [INDISPONIVEL] explicitamente) até o Achado 1 estar corrigido com fonte real de CBOT
+   e câmbio, com fallback que gera N/D visível — nunca literal silencioso — quando a fonte falhar.
+2. Corrigir o Achado 2 trocando a chamada para o nome de função que existe (`verificar_calendario_
+   economico`) ou implementando `obter_eventos_proximos` em calendario_economico.py; adicionar teste de
+   integração que importe e chame de fato `sentinel_engine.calcular_score_calendario()` contra o módulo
+   real (não mockado) — esse teste, por si só, teria pego o AttributeError no primeiro run.
+3. Reordenar a etapa 5b para rodar depois da atualização do cache de notícias (ou fazer as duas lerem o
+   mesmo snapshot gerado no início da rodada) — resolve o Achado 3.
+4. Estender o portão de auditoria: novo item 6.7 dedicado a sentinel_engine.py em
+   verificar_dados_fabricados.py (checar que cbot_cents/cambio_usdbrl no dados_curva.json nunca sejam
+   exatamente 530.0/5.166 — usar esses dois valores como "tripwire" de regressão), e ampliar
+   verificar_literais_plot.py para também auditar a função de orquestração principal (não só as com nome de
+   plot) contra literais de mercado com nomes de variável fora da lista atual.
+5. Unificar o badge do card de Grade de Opções (Achado 5) para refletir DERIVADO nas paredes e MEDIDO só
+   no OI, como o resumo em texto já faz corretamente.
+6. Regenerar tabela_proveniencia.md automaticamente a partir do pipeline (ou removê-la e apontar só para
+   resumo_trix_curva.txt, que já é gerado a cada rodada) — documento de proveniência editado a mão vira
+   fonte de desinformação com o tempo (Achado 6).
+
+Critério de fechamento desta auditoria (binário, definido agora, não "vou continuar olhando"):
+  FECHADA quando: (a) Achados 1 e 2 corrigidos com teste de integração real cobrindo a chamada entre
+  sentinel_engine.py e calendario_economico.py/fonte de CBOT-câmbio; (b) novo item 6.7 do portão de
+  auditoria verde; (c) portao_auditoria.bat completo (6.1-6.7) roda limpo do zero. A partir desse ponto,
+  qualquer achado novo é bug de manutenção normal, não reabertura desta auditoria. Achados 3, 5, 6 e 7 iram
+  para lista separada de melhoria de qualidade (não bloqueiam o critério de fechamento acima, mas ficam
+  nomeados aqui para não virarem "vou olhar depois" permanente).
+
+Nota sobre papéis (conforme preferência registrada): este documento é auditoria — não contém código de
+correção. A implementação dos itens 1-6 deve ser feita pelo programador/agente responsável pelo código;
+este relatório é a especificação do que precisa ser corrigido e por quê, com localização exata (arquivo e
+linha) para cada achado.

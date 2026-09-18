@@ -35,7 +35,7 @@ ARQUIVO_ALVO = os.path.join(PASTA_PROJETO, "ccm_trix_curva.py")
 VARIAVEIS_DADOS_PROIBIDAS = {
     "preco", "preco_futuro", "preco_fisico", "close", "open", "high", "low",
     "call_wall", "put_wall", "max_pain", "strike", "volume", "trades",
-    "saldo", "spread", "cotacao", "valor_mercado"
+    "saldo", "spread", "cotacao", "valor_mercado", "cbot", "cambio", "ppe", "ptax"
 }
 
 # Nomes de argumentos de traços proibidos de receber número literal direto

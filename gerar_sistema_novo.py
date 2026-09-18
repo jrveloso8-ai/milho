@@ -863,8 +863,9 @@ def gerar_sistema_novo():
           <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="grade-subtitulo">CCMX26 · Vencimento 2026-11-16</div>
         </div>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <span class="badge-proveniencia">B3 DERIVADOS</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">OI: MEDIDO (B3)</span>
+        <span style="background: rgba(186, 153, 255, 0.15); color: #ba99ff; border: 1px solid rgba(186, 153, 255, 0.4); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">PAREDES / MAX PAIN: DERIVADO (B3)</span>
         <span style="font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;" id="grade-data-lote">Lote B3: 2026-09-17</span>
       </div>
     </div>
@@ -910,7 +911,9 @@ def gerar_sistema_novo():
     <div class="content-card">
       <div class="content-card-header">
         <span class="content-card-title">⚓ Arbitragem & Paridade de Exportação (PPE)</span>
-        <span style="font-size: 11px; color: var(--corn-gold); font-family: 'JetBrains Mono', monospace;">Fórmula B3/CME</span>
+        <div id="arbitrage-cbot-cambio-prov" style="display: flex; gap: 8px; align-items: center;">
+          <span style="font-size: 11px; color: var(--corn-gold); font-family: 'JetBrains Mono', monospace;">Fórmula B3/CME</span>
+        </div>
       </div>
       <div class="content-card-body">
         <div class="slider-group">
@@ -1037,6 +1040,20 @@ def gerar_sistema_novo():
 
       // Parecer
       document.getElementById("parecer-box").innerText = DADOS.sentinel_corn.parecer_executivo || "Parecer disponível.";
+
+      // Proveniência de CBOT e Câmbio na Arbitragem
+      const pArb = DADOS.sentinel_corn.parametros_arbitragem || {{}};
+      const cbotProv = pArb.cbot_prov || "[MEDIDO / CME]";
+      const cambioProv = pArb.cambio_prov || "[MEDIDO / B3]";
+      const elProv = document.getElementById("arbitrage-cbot-cambio-prov");
+      if (elProv) {{
+        const cbotTxt = pArb.cbot_cents ? `${{pArb.cbot_cents}} ¢/bu` : 'INDISPONÍVEL';
+        const cambioTxt = pArb.cambio_usdbrl ? `R$ ${{pArb.cambio_usdbrl}}` : 'INDISPONÍVEL';
+        elProv.innerHTML = `
+          <span style="background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); padding: 3px 7px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">CBOT: ${{cbotTxt}} ${{cbotProv}}</span>
+          <span style="background: rgba(0, 208, 96, 0.15); color: #00d060; border: 1px solid rgba(0, 208, 96, 0.4); padding: 3px 7px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace;">WDO: ${{cambioTxt}} ${{cambioProv}}</span>
+        `;
+      }}
 
       renderizarContrato(contratoAtual);
       renderizarTabelaArbitragem();
@@ -1550,12 +1567,29 @@ def gerar_sistema_novo():
     const tbody = document.getElementById("arbitrage-tbody");
     tbody.innerHTML = "";
 
-    const cbot = DADOS.sentinel_corn.parametros_arbitragem?.cbot_cents || 530.0;
-    const cambio = DADOS.sentinel_corn.parametros_arbitragem?.cambio_ptax || 5.166;
+    const pArb = DADOS.sentinel_corn.parametros_arbitragem || {{}};
+    const cbot = pArb.cbot_cents;
+    const cambio = pArb.cambio_usdbrl ?? pArb.cambio_ptax;
     const convBushel = 0.39368 * 0.06;
 
     DADOS.contratos.forEach(c => {{
       const closeVal = c.ultimo_close ?? c.close ?? 0;
+
+      if (!cbot || !cambio) {{
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-weight:700; color:#fff;">${{c.codigo}}</td>
+            <td style="color:var(--text-muted);">${{c.vencimento_iso || c.vencimento}}</td>
+            <td style="font-weight:700; color:#fff;">${{formatarMoeda(closeVal)}}</td>
+            <td style="color:var(--text-muted); font-style:italic;">INDISPONÍVEL</td>
+            <td style="color:var(--text-muted); font-style:italic;">—</td>
+            <td style="color:var(--text-muted); font-style:italic;">INDISPONÍVEL</td>
+            <td style="font-weight:700; color:var(--text-muted);">PARIDADE INDISPONÍVEL</td>
+          </tr>
+        `;
+        return;
+      }}
+
       const cbotTotal = (cbot / 100.0) + premioPorto;
       const ppe = (cbotTotal * cambio * convBushel * 100.0) - custosLog;
       const spread = closeVal - ppe;

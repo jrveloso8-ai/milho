@@ -113,3 +113,55 @@ def test_ponderacao_tripla_sentimento():
     # 10.0 - 2.0 + 48.0 = 56.0
     assert round(score_final, 1) == 56.0
     assert classificar_sentimento(score_final) == "ALTISTA"
+
+
+def test_calcular_score_calendario_integracao_real():
+    """Valida integração real com o calendário econômico oficial (sem mock), prevenindo regressão de AttributeError."""
+    from sentinel_engine import calcular_score_calendario
+    score, info = calcular_score_calendario()
+
+    assert isinstance(score, float)
+    assert -100.0 <= score <= 100.0
+    assert "classificacao" in info
+    assert "proximo_evento" in info
+    assert "eventos_proximos" in info
+    assert isinstance(info["eventos_proximos"], list)
+    # Com calendário real, deve conter eventos conhecidos (USDA / CONAB)
+    if info["proximo_evento"]:
+        assert isinstance(info["proximo_evento"], str)
+        assert info["dias_ate_proximo"] is not None
+        assert info["dias_ate_proximo"] >= 0
+
+
+def test_processar_sentimento_curva_sem_dados_macro_indisponivel():
+    """Valida que ausência de CBOT e Câmbio resulta em PARIDADE INDISPONÍVEL sem quebrar nem inventar números."""
+    from sentinel_engine import processar_sentimento_curva
+
+    curva_mock = [{
+        "codigo": "CCMX26",
+        "ultimo_bar": {"close": 71.50, "posicao": "COMPRA", "trix": 0.1, "sinal": 0.05, "sma100": 68.0},
+        "atr14": 1.50,
+        "barreiras_opcoes": {"call_wall": 74.0, "put_wall": 66.0, "max_pain": 70.0}
+    }]
+
+    res = processar_sentimento_curva(
+        curva_resultados=curva_mock,
+        cbot_cents=None,
+        cambio_usdbrl=None,
+        cbot_fonte="[INDISPONIVEL]",
+        cambio_fonte="[INDISPONIVEL]"
+    )
+
+    assert "contratos" in res
+    assert len(res["contratos"]) == 1
+    assert "parametros_arbitragem" in res
+    assert res["parametros_arbitragem"]["cbot_cents"] is None
+    assert res["parametros_arbitragem"]["cambio_usdbrl"] is None
+    assert res["parametros_arbitragem"]["ppe_prov"] == "[INDISPONIVEL]"
+
+    # Tabela de arbitragem deve marcar recomendação como INDISPONÍVEL
+    arb = res["tabela_arbitragem"][0]
+    assert arb["ppe"] is None
+    assert arb["recomendacao"] == "PARIDADE INDISPONÍVEL"
+    assert arb["sinal"] == "NEUTRO"
+

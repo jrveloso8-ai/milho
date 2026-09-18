@@ -744,8 +744,9 @@ def montar_html_grade_opcoes(resultados: list) -> tuple:
                     Posições reais em aberto de Calls e Puts registradas na B3 (BRAPI). Compare strikes, concentração de contratos (Open Interest), Call Wall, Put Wall, Max Pain e zonas de proteção por contrato.
                 </p>
             </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <span style="background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;">PROVENIÊNCIA: MEDIDO / B3</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="background: rgba(88, 166, 255, 0.15); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.4); padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">OI: MEDIDO (B3)</span>
+                <span style="background: rgba(186, 153, 255, 0.15); color: #ba99ff; border: 1px solid rgba(186, 153, 255, 0.4); padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.5px;">PAREDES: DERIVADO (B3)</span>
             </div>
         </div>
         <div class="opcoes-nav">
@@ -1229,7 +1230,43 @@ def salvar_dados_curva_json(resultados: list, watchlist: list, sentinel_dados: d
     }
 
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
+        json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
+
+
+def coletar_cbot_chicago(timeout: int = 10) -> tuple:
+    """
+    Coleta cotação em tempo real/fechamento do milho na CME Chicago (ZC=F) via yfinance.
+    Retorna (cbot_cents_per_bushel, proveniencia).
+    Se indisponível, retorna (None, "[INDISPONIVEL]").
+    """
+    try:
+        import yfinance as yf
+        ticker = yf.Ticker("ZC=F")
+        hist = ticker.history(period="5d", timeout=timeout)
+        if hist is not None and not hist.empty:
+            cbot_cents = float(hist["Close"].iloc[-1])
+            return round(cbot_cents, 2), "[MEDIDO / CME ZC=F]"
+    except Exception as e:
+        print(f"  [AVISO] Falha ao coletar CBOT ZC=F via yfinance: {e}")
+    return None, "[INDISPONIVEL]"
+
+
+def coletar_cambio_wdofut() -> tuple:
+    """
+    Coleta cotação oficial do dólar futuro (WDOFUT) via BRAPI.
+    Retorna (cambio_usdbrl, proveniencia).
+    Se indisponível, retorna (None, "[INDISPONIVEL]").
+    """
+    try:
+        import ingestao_brapi
+        res = ingestao_brapi.coletar_cambio()
+        if res and res.get("wdofut_usdbrl"):
+            sym = res.get("wdofut_symbol", "WDOFUT")
+            return float(res["wdofut_usdbrl"]), f"[MEDIDO / B3 {sym}]"
+    except Exception as e:
+        print(f"  [AVISO] Falha ao coletar Câmbio WDOFUT via BRAPI: {e}")
+    return None, "[INDISPONIVEL]"
+
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1904,22 +1941,25 @@ def executar():
     print("\nMontando Watchlist (Curva CCM vs Físico RTCNI)...")
     watchlist = montar_watchlist(resultados, PASTA_PROJETO)
 
-    # 5b. Executar Motor Sentinel-Corn 2.0 (Análise de Sentimento 360° e Paridade de Exportação)
-    print("\nProcessando análise de sentimento Sentinel-Corn 2.0...")
+    # 5b. Atualização do Feed de Notícias ANTES do Sentinel-Corn (Garante notícias frescas para a análise de sentimento)
+    print("\nAtualizando feed de notícias RSS do milho...")
+    try:
+        import feed_noticias
+        feed_noticias.obter_noticias_milho(forcar=True)
+    except Exception as e_feed:
+        print(f"  [AVISO] Falha ao atualizar feed de notícias: {e_feed}")
+
+    # 5c. Executar Motor Sentinel-Corn 2.0 (Análise de Sentimento 360° e Paridade de Exportação)
+    print("\nProcessando análise de sentimento Sentinel-Corn 2.0 com dados reais...")
     sentinel_dados = {}
     try:
         import sentinel_engine
-        cbot_val = 530.0
-        cambio_val = 5.166
-        caminho_dados_milho = os.path.join(PASTA_PROJETO, "dados_milho.json")
-        if os.path.isfile(caminho_dados_milho):
-            try:
-                with open(caminho_dados_milho, "r", encoding="utf-8") as f_d:
-                    d_m = json.load(f_d)
-                    cbot_val = float((d_m.get("zc_cme") or {}).get("ultimo_preco") or 530.0)
-                    cambio_val = float((d_m.get("cambio") or {}).get("wdofut_usdbrl") or 5.166)
-            except Exception:
-                pass
+        
+        # Coleta estrita de CBOT e Câmbio sem inventar números nem usar hardcodes estáticos
+        cbot_val, cbot_prov = coletar_cbot_chicago()
+        cambio_val, cambio_prov = coletar_cambio_wdofut()
+        print(f"  CBOT ZC: {cbot_val} ¢/bu {cbot_prov}")
+        print(f"  Câmbio WDO: R$ {cambio_val} {cambio_prov}")
 
         spot_val = watchlist[0].get("rtcni_preco") if watchlist else None
         curva_para_sentinel = []
@@ -1944,7 +1984,9 @@ def executar():
             cbot_cents=cbot_val,
             cambio_usdbrl=cambio_val,
             preco_spot_rtcni=spot_val,
-            estrutura_curva="CONTANGO"
+            estrutura_curva="CONTANGO",
+            cbot_fonte=cbot_prov,
+            cambio_fonte=cambio_prov
         )
         print(f"Sentimento Sentinel-Corn 2.0 calculado para {len(sentinel_dados.get('contratos', []))} contratos.")
     except Exception as e_sent:

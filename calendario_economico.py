@@ -149,6 +149,33 @@ def verificar_calendario_economico(hoje: date = None) -> dict:
     }
 
 
+def obter_eventos_proximos(data_ref: date = None, dias_a_frente: int = 15) -> list:
+    """
+    Retorna a lista de eventos agendados (USDA e CONAB) dentro da janela de dias_a_frente,
+    calculando a quantidade de dias restantes (dias_ate).
+    Usado pelo motor Sentinel-Corn 2.0 para determinacao de risco de volatilidade pre-relatorio.
+    """
+    data_ref = data_ref or date.today()
+    todos = _montar_todos_eventos(data_ref.year)
+    if data_ref.month >= 11:
+        todos += _montar_todos_eventos(data_ref.year + 1)
+
+    eventos = []
+    for e in todos:
+        diff = (e['data'] - data_ref).days
+        if 0 <= diff <= dias_a_frente:
+            d_val = e['data']
+            eventos.append({
+                'data': d_val.isoformat() if hasattr(d_val, 'isoformat') else str(d_val),
+                'dias_ate': diff,
+                'evento': e['evento'],
+                'orgao': e['orgao'],
+                'impacto': e['impacto']
+            })
+    eventos.sort(key=lambda x: x['dias_ate'])
+    return eventos
+
+
 # ── TESTE ─────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     import sys

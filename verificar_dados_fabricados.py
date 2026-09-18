@@ -158,6 +158,44 @@ def auditar_grafico_html():
     return erros
 
 
+def auditar_dados_curva_tripwires():
+    """Varre dados_curva.json checando ausência de números fabricados/hardcodes conhecidos (tripwires 530.0 / 5.166)."""
+    erros = []
+    arq_json = os.path.join(PASTA_PROJETO, "dados_curva.json")
+    if not os.path.isfile(arq_json):
+        return []
+
+    import json
+    try:
+        with open(arq_json, "r", encoding="utf-8") as f:
+            d = json.load(f)
+        
+        sentinel = d.get("sentinel_corn") or {}
+        params = sentinel.get("parametros_arbitragem") or {}
+
+        cbot = params.get("cbot_cents")
+        cambio = params.get("cambio_usdbrl")
+
+        # Tripwire 1: CBOT estático 530.0 (valor do legado descontinuado)
+        if cbot == 530.0:
+            erros.append("dados_curva.json: CBOT está com valor estático hardcoded 530.0 (Tripwire violado)!")
+
+        # Tripwire 2: Câmbio estático 5.166 (valor do legado descontinuado)
+        if cambio == 5.166:
+            erros.append("dados_curva.json: Câmbio está com valor estático hardcoded 5.166 (Tripwire violado)!")
+
+        # Validação de proveniência em parâmetros de arbitragem
+        for k_prov in ("cbot_prov", "cambio_prov", "ppe_prov"):
+            prov = params.get(k_prov)
+            if prov and prov not in ("MEDIDO", "DERIVADO", "ESTIMADO", "INDISPONIVEL", "[MEDIDO]", "[DERIVADO]", "[INDISPONIVEL]"):
+                if not any(prov.startswith(p) for p in ("[MEDIDO", "[DERIVADO", "[INDISPONIVEL")):
+                    erros.append(f"dados_curva.json: Classificação de proveniência inválida '{prov}' para '{k_prov}'.")
+    except Exception as e:
+        erros.append(f"dados_curva.json: Erro ao inspecionar arquivo JSON: {e}")
+
+    return erros
+
+
 def main():
     print("=" * 70)
     print("AUDITORIA DE DADOS FABRICADOS E PROVENIÊNCIA (Item 6.2)")
@@ -165,7 +203,7 @@ def main():
 
     erros_totais = []
 
-    print("[1/3] Auditando resumo_trix_curva.txt...")
+    print("[1/4] Auditando resumo_trix_curva.txt...")
     erros_resumo = auditar_resumo_trix_curva()
     erros_totais.extend(erros_resumo)
     if not erros_resumo:
@@ -174,7 +212,7 @@ def main():
         for e in erros_resumo:
             print(f"      [FALHA] {e}")
 
-    print("[2/3] Auditando tabela_proveniencia.md...")
+    print("[2/4] Auditando tabela_proveniencia.md...")
     erros_tabela = auditar_tabela_proveniencia()
     erros_totais.extend(erros_tabela)
     if not erros_tabela:
@@ -183,13 +221,22 @@ def main():
         for e in erros_tabela:
             print(f"      [FALHA] {e}")
 
-    print("[3/3] Auditando ccm_trix_curva.html...")
+    print("[3/4] Auditando ccm_trix_curva.html...")
     erros_html = auditar_grafico_html()
     erros_totais.extend(erros_html)
     if not erros_html:
         print("      -> OK: Zero candles sintéticos, Watchlist MEDIDO incorporada.")
     else:
         for e in erros_html:
+            print(f"      [FALHA] {e}")
+
+    print("[4/4] Auditando tripwires em dados_curva.json...")
+    erros_json = auditar_dados_curva_tripwires()
+    erros_totais.extend(erros_json)
+    if not erros_json:
+        print("      -> OK: Zero hardcodes de CBOT/Câmbio e proveniências válidas.")
+    else:
+        for e in erros_json:
             print(f"      [FALHA] {e}")
 
     print("-" * 70)

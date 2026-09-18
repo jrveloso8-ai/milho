@@ -85,11 +85,11 @@ Conforme especificado na seção 2.6b do prompt original, a Watchlist apresenta 
 
 Conforme implementado em `sentinel_engine.py` e integrado no pipeline e dashboard:
 
-| Campo Sentinel-Corn | Origem dos Dados | Classificação | Justificativa / Rastreabilidade |
-| :--- | :--- | :--- | :--- |
-| **Preço de Paridade de Exportação (PPE)** | Fórmula matemática: `((CBOT + Prêmio) * 0.39368 * Câmbio * 0.06) - Custos` | **DERIVADO** | Cálculo determinístico com CBOT e Câmbio reais (MEDIDO/DERIVADO) e parâmetros de custos portuários auditados. |
-| **Ponto de Inflexão Cambial (WDO)** | Isolamento algébrico: `(Preço_B3 + Custos) / ((CBOT + Prêmio) * 0.39368 * 0.06)` | **DERIVADO** | Nível exato de câmbio que iguala paridade de exportação ao mercado interno. |
-| **Matriz de Decisão Basis vs Paridade** | Algoritmo determinístico de spreads entre B3, RTCNI físico e PPE | **DERIVADO** | Classificação algorítmica estrita (Alerta de Venda, Oportunidade de Compra, etc.) sem arbitrariedade. |
+| **CME Chicago Corn (CBOT ZC)** | Coleta via `yfinance` (`ZC=F`) de cotação real do pregão da CME | **MEDIDO** ou **INDISPONIVEL** | Cotação em centavos de dólar por bushel do milho na Bolsa de Chicago. Se indisponível, marcado como `[INDISPONIVEL]`. |
+| **Dólar Futuro (WDOFUT)** | BRAPI `/v2/futures/term-structure?asset=WDO` (`settlement`) | **MEDIDO** ou **INDISPONIVEL** | Cotação de liquidação do primeiro contrato vigente do WDO na B3. Se indisponível, marcado como `[INDISPONIVEL]`. |
+| **Preço de Paridade de Exportação (PPE)** | Fórmula matemática: `((CBOT + Prêmio) * 0.39368 * Câmbio * 0.06) - Custos` | **DERIVADO** ou **INDISPONIVEL** | Cálculo determinístico com CBOT e Câmbio reais (MEDIDO) e parâmetros de custos portuários auditados. Se insumos faltarem, marcado como `INDISPONIVEL`. |
+| **Ponto de Inflexão Cambial (WDO)** | Isolamento algébrico: `(Preço_B3 + Custos) / ((CBOT + Prêmio) * 0.39368 * 0.06)` | **DERIVADO** ou **INDISPONIVEL** | Nível exato de câmbio que iguala paridade de exportação ao mercado interno. |
+| **Matriz de Decisão Basis vs Paridade** | Algoritmo determinístico de spreads entre B3, RTCNI físico e PPE | **DERIVADO** | Classificação algorítmica estrita (Alerta de Venda, Oportunidade de Compra, etc.) sem arbitrariedade. Se PPE for N/D, indica `PARIDADE INDISPONÍVEL`. |
 | **Sentimento de Mercado (RSS, 20%)** | RSS oficial de notícias agrícolas (feed XML real) + dicionário léxico auditado | **DERIVADO** | Score léxico determinístico no intervalo [-100, +100] sobre manchetes reais. Sem dados inventados. |
 | **Calendário Econômico (20%)** | Calendário oficial de relatórios USDA (WASDE) e CONAB | **DERIVADO** / **MEDIDO** | Janela temporal baseada nas datas oficiais de divulgação de safra. |
 | **Sentimento Técnico & Opções (60%)** | Ponderação TRIX v5, NTSL e barreiras reais de Call/Put Wall e Max Pain | **DERIVADO** | Indicadores técnicos e concentração de Open Interest apurados pela B3. |
