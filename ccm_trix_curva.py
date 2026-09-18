@@ -1189,6 +1189,10 @@ def salvar_dados_curva_json(resultados: list, watchlist: list, sentinel_dados: d
         reais = df_calc[~df_calc["is_sintetico"]].copy()
         pts = []
         for _, row in reais.iterrows():
+            col_sma = f"trend_sma{trix_v5.P_TREND}"
+            sma_val = row.get(col_sma)
+            sig_val = row.get("trix_sinal")
+            trix_val = row.get("trix")
             pts.append({
                 "data": row["Data"].strftime("%Y-%m-%d"),
                 "open": round(float(row["Open"]), 2),
@@ -1197,9 +1201,9 @@ def salvar_dados_curva_json(resultados: list, watchlist: list, sentinel_dados: d
                 "close": round(float(row["Close"]), 2),
                 "volume": float(row.get("Volume", 0) or 0),
                 "posicao": row.get("posicao_trix_v5", "FLAT"),
-                "sma100": round(float(row["sma100"]), 2) if pd.notna(row.get("sma100")) else None,
-                "trix": round(float(row["trix"]), 4) if pd.notna(row.get("trix")) else None,
-                "sinal": round(float(row["sinal"]), 4) if pd.notna(row.get("sinal")) else None,
+                "sma100": round(float(sma_val), 2) if pd.notna(sma_val) else None,
+                "trix": round(float(trix_val), 4) if pd.notna(trix_val) else None,
+                "sinal": round(float(sig_val), 4) if pd.notna(sig_val) else None,
             })
         series_contratos[cod] = pts
 

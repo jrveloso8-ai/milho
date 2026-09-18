@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-gerar_sistema_novo.py — Gera a interface do Novo Sistema Sentinel-Corn 360°
-Mantém a estrutura visual do HTML e foca exclusivamente nos requisitos solicitados.
-Alimenta tanto sistema_sentinel.html quanto mockup_sentinel_sistema_novo.html.
+gerar_sistema_novo.py — Gera a interface oficial do Novo Sistema Sentinel-Corn 360°
+Incorpora o padrão exato de gráfico candlestick multi-painel (Candles + Call/Put Wall + Volume + TRIX v5),
+com seletor de períodos (20P, 50P, 90P, 180P, Tudo), conforme o padrão de referência.
 """
 
 import json
@@ -15,7 +15,7 @@ def gerar_sistema_novo():
     arq_milho = os.path.join(PASTA, "dados_milho.json")
 
     if not os.path.exists(arq_curva):
-        print(f"Erro: {arq_curva} nao encontrado. Execute ccm_trix_curva.py primeiro.")
+        print(f"Erro: {arq_curva} nao encontrado.")
         return
 
     with open(arq_curva, "r", encoding="utf-8") as f:
@@ -51,14 +51,15 @@ def gerar_sistema_novo():
 <style>
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
   :root {{
-    --bg-dark: #0b0d11;
-    --card-bg: #141720;
-    --card-header: #181d28;
-    --border: #232a38;
+    --bg-dark: #07090e;
+    --card-bg: #0d111a;
+    --card-header: #121722;
+    --border: #1e2638;
     --text-main: #f0f4f8;
     --text-muted: #8b99ad;
     --text-dim: #5a6678;
     --corn-gold: #f59e0b;
+    --accent-cyan: #00e5ff;
     --accent-blue: #3b82f6;
     --bull-green: #00d060;
     --bear-red: #ff3b30;
@@ -74,7 +75,7 @@ def gerar_sistema_novo():
 
   /* HEADER */
   header {{
-    background: #11141c;
+    background: #0d111a;
     border-bottom: 1px solid var(--border);
     padding: 14px 28px;
     display: flex;
@@ -120,11 +121,11 @@ def gerar_sistema_novo():
 
   /* TICKER STRIP */
   .ticker-strip {{
-    background: #0d1017;
+    background: #0a0d14;
     border-bottom: 1px solid var(--border);
     padding: 10px 28px;
     display: flex;
-    gap: 20px;
+    gap: 16px;
     overflow-x: auto;
     align-items: center;
   }}
@@ -134,10 +135,10 @@ def gerar_sistema_novo():
     gap: 8px;
     font-size: 12px;
     white-space: nowrap;
-    background: #141722;
+    background: #101522;
     padding: 6px 12px;
     border-radius: 6px;
-    border: 1px solid #1f2736;
+    border: 1px solid #1a2233;
     cursor: pointer;
     transition: all 0.2s;
   }}
@@ -148,7 +149,7 @@ def gerar_sistema_novo():
   /* MAIN CONTAINER */
   .container {{
     max-width: 1440px;
-    margin: 24px auto;
+    margin: 20px auto;
     padding: 0 20px;
   }}
 
@@ -161,7 +162,7 @@ def gerar_sistema_novo():
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 12px 18px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 12px;
   }}
@@ -178,10 +179,10 @@ def gerar_sistema_novo():
     flex-wrap: wrap;
   }}
   .pill-btn {{
-    background: #181d28;
+    background: #141926;
     border: 1px solid var(--border);
     color: var(--text-muted);
-    padding: 8px 16px;
+    padding: 7px 15px;
     border-radius: 6px;
     font-size: 13px;
     font-weight: 700;
@@ -202,12 +203,12 @@ def gerar_sistema_novo():
 
   /* HERO SENTINEL CARD */
   .hero-card {{
-    background: linear-gradient(135deg, #161c28 0%, #11151f 100%);
-    border: 1px solid #2d3748;
+    background: linear-gradient(135deg, #121824 0%, #0c1017 100%);
+    border: 1px solid #232c3d;
     border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 12px 32px rgba(0,0,0,0.55);
+    padding: 22px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   }}
   .hero-top {{
     display: flex;
@@ -215,18 +216,18 @@ def gerar_sistema_novo():
     align-items: center;
     flex-wrap: wrap;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 16px;
+    padding-bottom: 14px;
   }}
   .hero-title-group {{
     display: flex;
     align-items: center;
     gap: 14px;
   }}
-  .hero-icon {{ font-size: 38px; }}
+  .hero-icon {{ font-size: 36px; }}
   .hero-title {{
-    font-size: 19px;
+    font-size: 18px;
     font-weight: 800;
     color: #ffffff;
     letter-spacing: 0.3px;
@@ -267,7 +268,7 @@ def gerar_sistema_novo():
     display: grid;
     grid-template-columns: 1.2fr 1fr 1fr;
     gap: 16px;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
   }}
   @media (max-width: 1024px) {{
     .pillars-grid {{ grid-template-columns: 1fr; }}
@@ -276,7 +277,7 @@ def gerar_sistema_novo():
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 20px;
+    padding: 18px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -285,9 +286,9 @@ def gerar_sistema_novo():
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
-    border-bottom: 1px solid #1a202c;
-    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #161e2e;
+    padding-bottom: 8px;
   }}
   .pillar-title {{
     font-size: 12px;
@@ -309,7 +310,7 @@ def gerar_sistema_novo():
     font-weight: 800;
   }}
   .pillar-value-box {{
-    margin: 8px 0;
+    margin: 6px 0;
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -319,23 +320,23 @@ def gerar_sistema_novo():
   .pillar-score-badge {{
     font-size: 12px;
     font-weight: 700;
-    padding: 4px 10px;
+    padding: 3px 10px;
     border-radius: 4px;
   }}
 
   /* NEWS LIST */
   .news-list {{
     list-style: none;
-    margin-top: 10px;
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
   }}
   .news-item {{
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-muted);
-    background: #11141c;
-    padding: 8px 10px;
+    background: #090c12;
+    padding: 7px 10px;
     border-radius: 6px;
     border-left: 3px solid var(--accent-blue);
     line-height: 1.4;
@@ -343,7 +344,86 @@ def gerar_sistema_novo():
   .news-item.bullish {{ border-left-color: var(--bull-green); }}
   .news-item.bearish {{ border-left-color: var(--bear-red); }}
 
-  /* SECTION 2-COL */
+  /* SEÇÃO GRÁFICO (PADRÃO REF CNPI-T / PROFIT) */
+  .chart-card {{
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }}
+  .chart-card-header {{
+    background: var(--card-header);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }}
+  .chart-header-left {{
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }}
+  .pulse-icon {{
+    color: var(--accent-cyan);
+    font-size: 18px;
+  }}
+  .chart-title-text {{
+    font-size: 14px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }}
+  .chart-subtitle-text {{
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }}
+  .range-pills {{
+    display: flex;
+    gap: 6px;
+    background: #090c14;
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid #1a2233;
+  }}
+  .range-btn {{
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.15s;
+  }}
+  .range-btn:hover {{
+    color: #fff;
+  }}
+  .range-btn.active {{
+    background: var(--accent-cyan);
+    color: #000;
+    font-weight: 800;
+    box-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+  }}
+
+  .chart-container-inner {{
+    padding: 12px 14px;
+    background: #07090e;
+  }}
+  .chart-box {{
+    width: 100%;
+    height: 640px;
+  }}
+
+  /* SEÇÃO PARIDADE & PARECER */
   .section-2col {{
     display: grid;
     grid-template-columns: 1.2fr 0.8fr;
@@ -396,7 +476,7 @@ def gerar_sistema_novo():
   }}
   .arbitrage-table td {{
     padding: 12px;
-    border-bottom: 1px solid #1c222e;
+    border-bottom: 1px solid #161c28;
     font-family: 'JetBrains Mono', monospace;
   }}
   .arbitrage-table tr:hover td {{
@@ -408,7 +488,7 @@ def gerar_sistema_novo():
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
-    background: #11141c;
+    background: #090c14;
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 14px 20px;
@@ -438,17 +518,11 @@ def gerar_sistema_novo():
     line-height: 1.7;
     color: #cbd5e1;
     white-space: pre-wrap;
-    background: #0f121a;
+    background: #090c12;
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 18px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }}
-
-  /* PLOTLY CHART WRAPPER */
-  .chart-box {{
-    height: 480px;
-    width: 100%;
   }}
 </style>
 </head>
@@ -530,7 +604,7 @@ def gerar_sistema_novo():
             <span class="pillar-metric-val" id="tec-pain">R$ 71,00</span>
           </div>
         </div>
-        <div style="margin-top: 14px; border-top: 1px solid #1a202c; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-top: 14px; border-top: 1px solid #161e2e; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 11px; color: var(--text-muted);">Score Técnico:</span>
           <span class="pillar-score-badge" id="tec-score-badge" style="background:rgba(59,130,246,0.15); color:#60a5fa;">+40.0 / 100</span>
         </div>
@@ -554,7 +628,7 @@ def gerar_sistema_novo():
           <div style="margin-top: 10px; font-size: 11px; color: var(--text-muted); font-weight: 700;">MANCHETES REAIS MONITORADAS:</div>
           <ul class="news-list" id="rss-manchetes-list"></ul>
         </div>
-        <div style="margin-top: 14px; border-top: 1px solid #1a202c; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-top: 14px; border-top: 1px solid #161e2e; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 11px; color: var(--text-muted);">Score RSS:</span>
           <span class="pillar-score-badge" id="rss-score-badge" style="background:rgba(0,208,96,0.15); color:var(--bull-green);">+100 / 100</span>
         </div>
@@ -579,11 +653,11 @@ def gerar_sistema_novo():
             <span class="pillar-metric-name">Janela Temporal:</span>
             <span class="pillar-metric-val" id="cal-dias">Em 12 dias</span>
           </div>
-          <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted); background: #11141c; padding: 10px; border-radius: 6px; line-height: 1.4;">
+          <div style="margin-top: 10px; font-size: 12px; color: var(--text-muted); background: #090c12; padding: 10px; border-radius: 6px; line-height: 1.4;">
             Órgãos oficiais: <b>USDA (WASDE)</b> e <b>CONAB</b>. Em janelas pré-relatório (&lt; 2 dias), a volatilidade implícita se eleva e o risco direcional recebe desconto.
           </div>
         </div>
-        <div style="margin-top: 14px; border-top: 1px solid #1a202c; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="margin-top: 14px; border-top: 1px solid #161e2e; padding-top: 10px; display: flex; justify-content: space-between; align-items: center;">
           <span style="font-size: 11px; color: var(--text-muted);">Score Calendário:</span>
           <span class="pillar-score-badge" id="cal-score-badge" style="background:rgba(245,158,11,0.15); color:var(--corn-gold);">0.0 / 100</span>
         </div>
@@ -591,7 +665,7 @@ def gerar_sistema_novo():
     </div>
 
     <!-- PONTUAÇÃO CONSOLIDADA E FÓRMULA -->
-    <div style="background: #10141d; border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div style="background: #090d14; border: 1px solid var(--border); border-radius: 8px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
       <div>
         <span style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Cálculo da Média Ponderada:</span>
         <div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #fff; margin-top: 3px;" id="formula-ponderacao">
@@ -605,16 +679,69 @@ def gerar_sistema_novo():
     </div>
   </div>
 
-  <!-- SEÇÃO 2-COL: GRÁFICO TRIX V5 & PARECER EXECUTIVO -->
+  <!-- SEÇÃO GRÁFICO DIÁRIO MULTI-PAINEL (EXATAMENTE COMO O PADRÃO DE REFERÊNCIA) -->
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div class="chart-header-left">
+        <span class="pulse-icon">⚡</span>
+        <div>
+          <div class="chart-title-text" id="chart-card-title">GRÁFICO CANDLESTICK & TRIX v5 — CCMX26</div>
+          <div class="chart-subtitle-text">Candles diários com Barreiras de Opções (Call/Put Walls), Volume e Indicador TRIX v5 (Tripla EMA)</div>
+        </div>
+      </div>
+      <div class="range-pills">
+        <button class="range-btn" onclick="alterarPeriodo(20)">20P</button>
+        <button class="range-btn" onclick="alterarPeriodo(50)">50P</button>
+        <button class="range-btn active" onclick="alterarPeriodo(90)">90P</button>
+        <button class="range-btn" onclick="alterarPeriodo(180)">180P</button>
+        <button class="range-btn" onclick="alterarPeriodo('Tudo')">Tudo</button>
+      </div>
+    </div>
+    <div class="chart-container-inner">
+      <div id="plotly-chart" class="chart-box"></div>
+    </div>
+  </div>
+
+  <!-- SEÇÃO 2-COL: PARIDADE DE EXPORTAÇÃO & PARECER EXECUTIVO -->
   <div class="section-2col">
-    <!-- GRÁFICO INTERATIVO -->
+    <!-- PARIDADE DE EXPORTAÇÃO (PPE) -->
     <div class="content-card">
       <div class="content-card-header">
-        <span class="content-card-title" id="chart-card-title">Gráfico Diário & Barreiras — CCMX26</span>
-        <span style="font-size: 11px; color: var(--text-muted);">Candles Reais · SMA 100 · TRIX v5 · Walls</span>
+        <span class="content-card-title">⚓ Arbitragem & Paridade de Exportação (PPE)</span>
+        <span style="font-size: 11px; color: var(--corn-gold); font-family: 'JetBrains Mono', monospace;">Fórmula B3/CME</span>
       </div>
-      <div class="content-card-body" style="padding: 10px;">
-        <div id="plotly-chart" class="chart-box"></div>
+      <div class="content-card-body">
+        <div class="slider-group">
+          <div class="slider-item">
+            <div class="slider-label">
+              <span>Prêmio Porto (Basis Paranaguá/Santos):</span>
+              <b id="lbl-premio-porto">+US$ 0.70/bu</b>
+            </div>
+            <input type="range" id="slider-premio" min="0.0" max="2.5" step="0.05" value="0.70" oninput="atualizarSliders()">
+          </div>
+          <div class="slider-item">
+            <div class="slider-label">
+              <span>Custos Logísticos (Frete Fazenda-Porto):</span>
+              <b id="lbl-custos-log">R$ 10.00/sc</b>
+            </div>
+            <input type="range" id="slider-custos" min="4.0" max="25.0" step="0.5" value="10.00" oninput="atualizarSliders()">
+          </div>
+        </div>
+
+        <table class="arbitrage-table">
+          <thead>
+            <tr>
+              <th>Contrato</th>
+              <th>Vencimento</th>
+              <th>Preço B3</th>
+              <th>PPE Porto</th>
+              <th>Spread</th>
+              <th>Inflexão WDO</th>
+              <th>Decisão</th>
+            </tr>
+          </thead>
+          <tbody id="arbitrage-tbody"></tbody>
+        </table>
       </div>
     </div>
 
@@ -622,54 +749,11 @@ def gerar_sistema_novo():
     <div class="content-card">
       <div class="content-card-header">
         <span class="content-card-title">🤖 Parecer do Consultor Sentinel-Corn</span>
-        <span style="font-size: 11px; color: var(--accent-blue);">Visão 360° Fundamental & Técnica</span>
+        <span style="font-size: 11px; color: var(--accent-cyan);">Visão 360°</span>
       </div>
       <div class="content-card-body">
         <div class="parecer-text" id="parecer-box"></div>
       </div>
-    </div>
-  </div>
-
-  <!-- SEÇÃO: PARIDADE DE EXPORTAÇÃO & RISCO CAMBIAL -->
-  <div class="content-card" style="margin-bottom: 24px;">
-    <div class="content-card-header">
-      <span class="content-card-title">⚓ Simulador de Arbitragem & Paridade de Exportação (PPE)</span>
-      <span style="font-size: 11px; color: var(--corn-gold); font-family: 'JetBrains Mono', monospace;">Fórmula B3 / CME: PPE = ((CBOT + Prêmio) × 0.39368 × Câmbio × 0.06) - Custos</span>
-    </div>
-    <div class="content-card-body">
-      <!-- SLIDERS -->
-      <div class="slider-group">
-        <div class="slider-item">
-          <div class="slider-label">
-            <span>Prêmio Porto (Basis Paranaguá/Santos):</span>
-            <b id="lbl-premio-porto">+US$ 0.70/bu</b>
-          </div>
-          <input type="range" id="slider-premio" min="0.0" max="2.5" step="0.05" value="0.70" oninput="atualizarSliders()">
-        </div>
-        <div class="slider-item">
-          <div class="slider-label">
-            <span>Custos Logísticos (Frete Fazenda-Porto):</span>
-            <b id="lbl-custos-log">R$ 10.00/sc</b>
-          </div>
-          <input type="range" id="slider-custos" min="4.0" max="25.0" step="0.5" value="10.00" oninput="atualizarSliders()">
-        </div>
-      </div>
-
-      <!-- TABELA ARBITRAGEM -->
-      <table class="arbitrage-table">
-        <thead>
-          <tr>
-            <th>Contrato</th>
-            <th>Vencimento</th>
-            <th>Preço B3</th>
-            <th>PPE Porto</th>
-            <th>Spread (B3 - PPE)</th>
-            <th>Ponto Inflexão Câmbio</th>
-            <th>Matriz de Decisão Basis vs. Paridade</th>
-          </tr>
-        </thead>
-        <tbody id="arbitrage-tbody"></tbody>
-      </table>
     </div>
   </div>
 
@@ -678,7 +762,6 @@ def gerar_sistema_novo():
 <script>
   const DADOS = {dados_json_str};
 
-  // Mapeamento dos contratos do sentinel_corn
   const sentinelContratosMap = {{}};
   if (Array.isArray(DADOS.sentinel_corn.contratos)) {{
     DADOS.sentinel_corn.contratos.forEach(item => {{
@@ -687,6 +770,7 @@ def gerar_sistema_novo():
   }}
 
   let contratoAtual = (DADOS.contratos && DADOS.contratos.length > 0) ? DADOS.contratos[0].codigo : "CCMX26";
+  let periodoBarras = 90; // Default idêntico ao 90P da imagem
   let premioPorto = DADOS.sentinel_corn.parametros_arbitragem?.premio_porto_usd ?? 0.70;
   let custosLog = DADOS.sentinel_corn.parametros_arbitragem?.custos_log_brl ?? 10.00;
 
@@ -759,6 +843,20 @@ def gerar_sistema_novo():
     }}
   }}
 
+  function alterarPeriodo(p) {{
+    periodoBarras = p;
+    document.querySelectorAll(".range-btn").forEach(btn => {{
+      const txt = btn.innerText.trim();
+      if ((p === 'Tudo' && txt === 'Tudo') || (txt === p + 'P')) {{
+        btn.classList.add("active");
+      }} else {{
+        btn.classList.remove("active");
+      }}
+    }});
+    const c = DADOS.contratos.find(x => x.codigo === contratoAtual) || DADOS.contratos[0];
+    desenharGraficoMultiPainel(c);
+  }}
+
   function selecionarContrato(cod) {{
     contratoAtual = cod;
     document.querySelectorAll(".pill-btn").forEach(btn => {{
@@ -796,7 +894,6 @@ def gerar_sistema_novo():
     document.getElementById("tec-score-badge").innerText = `${{sTec > 0 ? '+' : ''}}${{sTec.toFixed(1)}} / 100`;
     document.getElementById("score-consolidado-val").innerText = `${{sCons > 0 ? '+' : ''}}${{sCons.toFixed(1)}} / 100`;
     
-    // Cor do score consolidado
     const elCons = document.getElementById("score-consolidado-val");
     if (sCons > 15) elCons.style.color = "var(--bull-green)";
     else if (sCons < -15) elCons.style.color = "var(--bear-red)";
@@ -805,64 +902,203 @@ def gerar_sistema_novo():
     document.getElementById("formula-ponderacao").innerText = 
       `Score = (60% × ${{sTec.toFixed(1)}}) + (20% × ${{sRss.toFixed(1)}}) + (20% × ${{sCal.toFixed(1)}}) = ${{sCons > 0 ? '+' : ''}}${{sCons.toFixed(1)}}`;
 
-    document.getElementById("chart-card-title").innerText = `Gráfico Diário & Barreiras — ${{c.codigo}}`;
-    desenharGrafico(c);
+    document.getElementById("chart-card-title").innerText = `GRÁFICO CANDLESTICK & TRIX v5 — ${{c.codigo}}`;
+    desenharGraficoMultiPainel(c);
   }}
 
-  function desenharGrafico(c) {{
-    const serie = DADOS.series_contratos?.[c.codigo] || [];
-    const dates = serie.map(item => item.data);
-    const closes = serie.map(item => item.close);
-    const sma100 = serie.map(item => item.sma100);
+  function desenharGraficoMultiPainel(c) {{
+    const serieCompleta = DADOS.series_contratos?.[c.codigo] || [];
+    let serie = serieCompleta;
+    if (periodoBarras !== 'Tudo' && typeof periodoBarras === 'number') {{
+      serie = serieCompleta.slice(-periodoBarras);
+    }}
 
-    const traceClose = {{
+    const dates = serie.map(item => item.data);
+    const opens = serie.map(item => item.open);
+    const highs = serie.map(item => item.high);
+    const lows = serie.map(item => item.low);
+    const closes = serie.map(item => item.close);
+    const volumes = serie.map(item => item.volume);
+    const trixVals = serie.map(item => item.trix);
+    const sinalVals = serie.map(item => item.sinal);
+
+    // Cores de volume: verde se close >= open, vermelho se close < open
+    const volumeColors = closes.map((cls, i) => (cls >= opens[i] ? '#00d060' : '#ff3b30'));
+
+    // 1. Painel Superior: Candlestick
+    const traceCandles = {{
       x: dates,
-      y: closes,
-      type: 'scatter',
-      mode: 'lines',
-      name: `${{c.codigo}} Fechamento`,
-      line: {{ color: '#00e5ff', width: 2 }}
+      open: opens,
+      high: highs,
+      low: lows,
+      close: closes,
+      type: 'candlestick',
+      name: `${{c.codigo}}`,
+      increasing: {{ line: {{ color: '#00d060', width: 1 }}, fillcolor: '#00d060' }},
+      decreasing: {{ line: {{ color: '#ff3b30', width: 1 }}, fillcolor: '#ff3b30' }},
+      yaxis: 'y1',
+      xaxis: 'x'
     }};
 
-    const traceSma = {{
+    // 2. Painel Central: Volume Diário
+    const traceVolume = {{
       x: dates,
-      y: sma100,
+      y: volumes,
+      type: 'bar',
+      name: 'Volume',
+      marker: {{ color: volumeColors }},
+      yaxis: 'y2',
+      xaxis: 'x'
+    }};
+
+    // 3. Painel Inferior: TRIX v5
+    const traceTrix = {{
+      x: dates,
+      y: trixVals,
       type: 'scatter',
       mode: 'lines',
-      name: 'SMA 100 (Tendência)',
-      line: {{ color: '#ffffff', width: 1.5, dash: 'dot' }}
+      name: 'TRIX v5 (7)',
+      line: {{ color: '#00e5ff', width: 1.5 }},
+      yaxis: 'y3',
+      xaxis: 'x'
+    }};
+
+    const traceSinal = {{
+      x: dates,
+      y: sinalVals,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Sinal (3)',
+      line: {{ color: '#f59e0b', width: 1.2 }},
+      yaxis: 'y3',
+      xaxis: 'x'
     }};
 
     const shapes = [];
+    const annotations = [];
+
+    // Barreiras de Opções no Painel Superior (Call Wall e Put Wall)
     const callPrice = typeof c.call_wall === 'number' ? c.call_wall : c.call_wall?.preco;
     const putPrice = typeof c.put_wall === 'number' ? c.put_wall : c.put_wall?.preco;
 
     if (callPrice) {{
       shapes.push({{
-        type: 'line', xref: 'paper', x0: 0, x1: 1, y0: callPrice, y1: callPrice,
+        type: 'line', xref: 'x', yref: 'y1',
+        x0: dates[0], x1: dates[dates.length - 1],
+        y0: callPrice, y1: callPrice,
         line: {{ color: '#ff3b30', width: 1.5, dash: 'dash' }}
       }});
-    }}
-    if (putPrice) {{
-      shapes.push({{
-        type: 'line', xref: 'paper', x0: 0, x1: 1, y0: putPrice, y1: putPrice,
-        line: {{ color: '#00d060', width: 1.5, dash: 'dash' }}
+      annotations.push({{
+        xref: 'paper', yref: 'y1',
+        x: 1.0, y: callPrice,
+        xanchor: 'left', yanchor: 'middle',
+        text: `RES ${{callPrice.toFixed(2)}}`,
+        font: {{ size: 10, color: '#ff3b30', family: 'JetBrains Mono', weight: 'bold' }},
+        showarrow: false,
+        bgcolor: 'rgba(255,59,48,0.15)',
+        bordercolor: '#ff3b30',
+        borderwidth: 1,
+        borderpad: 2
       }});
     }}
 
+    if (putPrice) {{
+      shapes.push({{
+        type: 'line', xref: 'x', yref: 'y1',
+        x0: dates[0], x1: dates[dates.length - 1],
+        y0: putPrice, y1: putPrice,
+        line: {{ color: '#00d060', width: 1.5, dash: 'dash' }}
+      }});
+      annotations.push({{
+        xref: 'paper', yref: 'y1',
+        x: 1.0, y: putPrice,
+        xanchor: 'left', yanchor: 'middle',
+        text: `SUP ${{putPrice.toFixed(2)}}`,
+        font: {{ size: 10, color: '#00d060', family: 'JetBrains Mono', weight: 'bold' }},
+        showarrow: false,
+        bgcolor: 'rgba(0,208,96,0.15)',
+        bordercolor: '#00d060',
+        borderwidth: 1,
+        borderpad: 2
+      }});
+    }}
+
+    // Linha Zero do TRIX
+    shapes.push({{
+      type: 'line', xref: 'x', yref: 'y3',
+      x0: dates[0], x1: dates[dates.length - 1],
+      y0: 0, y1: 0,
+      line: {{ color: '#2a3447', width: 1, dash: 'dot' }}
+    }});
+
+    // Layout Multi-Painel
     const layout = {{
-      paper_bgcolor: '#141720',
-      plot_bgcolor: '#141720',
+      paper_bgcolor: '#07090e',
+      plot_bgcolor: '#07090e',
       font: {{ color: '#8b99ad', family: 'Inter, sans-serif', size: 11 }},
-      margin: {{ l: 50, r: 25, t: 25, b: 40 }},
-      xaxis: {{ gridcolor: '#1f2937', zeroline: false }},
-      yaxis: {{ gridcolor: '#1f2937', zeroline: false }},
+      margin: {{ l: 20, r: 85, t: 15, b: 35 }},
+      showlegend: false,
+      xaxis: {{
+        type: 'category',
+        gridcolor: '#131824',
+        zeroline: false,
+        showline: true,
+        linecolor: '#1e2638',
+        tickfont: {{ size: 10, family: 'JetBrains Mono' }},
+        nticks: 10,
+        rangeslider: {{ visible: false }}
+      }},
+      yaxis: {{
+        domain: [0.38, 1.0],
+        side: 'right',
+        gridcolor: '#131824',
+        zeroline: false,
+        showline: true,
+        linecolor: '#1e2638',
+        tickformat: 'R$ .2f',
+        tickfont: {{ size: 10, family: 'JetBrains Mono' }}
+      }},
+      yaxis2: {{
+        domain: [0.22, 0.35],
+        side: 'right',
+        gridcolor: '#131824',
+        zeroline: false,
+        showticklabels: false,
+        showline: true,
+        linecolor: '#1e2638'
+      }},
+      yaxis3: {{
+        domain: [0.0, 0.19],
+        side: 'right',
+        gridcolor: '#131824',
+        zeroline: false,
+        showline: true,
+        linecolor: '#1e2638',
+        tickfont: {{ size: 9, family: 'JetBrains Mono' }}
+      }},
       shapes: shapes,
-      showlegend: true,
-      legend: {{ orientation: 'h', y: 1.12, font: {{ size: 11 }} }}
+      annotations: [
+        ...annotations,
+        {{
+          xref: 'paper', yref: 'paper',
+          x: 0.01, y: 0.36,
+          xanchor: 'left', yanchor: 'bottom',
+          text: 'VOLUME DIÁRIO',
+          font: {{ size: 9, color: '#5a6678', weight: 'bold' }},
+          showarrow: false
+        }},
+        {{
+          xref: 'paper', yref: 'paper',
+          x: 0.01, y: 0.20,
+          xanchor: 'left', yanchor: 'bottom',
+          text: 'TRIX v5 (Tripla EMA 7 + SMA 3) — NTSL',
+          font: {{ size: 9, color: '#00e5ff', weight: 'bold' }},
+          showarrow: false
+        }}
+      ]
     }};
 
-    Plotly.newPlot('plotly-chart', [traceClose, traceSma], layout, {{ responsive: true, displayModeBar: false }});
+    Plotly.newPlot('plotly-chart', [traceCandles, traceVolume, traceTrix, traceSinal], layout, {{ responsive: true, displayModeBar: false }});
   }}
 
   function atualizarSliders() {{
@@ -894,7 +1130,7 @@ def gerar_sistema_novo():
       let corDecisao = "var(--corn-gold)";
 
       if (spread > 3.0) {{
-        decisao = "ALERTA VENDA (B3 CARA VS PARIDADE)";
+        decisao = "ALERTA VENDA (B3 CARA)";
         corDecisao = "var(--bear-red)";
       }} else if (spread < -3.0) {{
         decisao = "OPORTUNIDADE COMPRA (B3 DESCONTADA)";
@@ -906,7 +1142,7 @@ def gerar_sistema_novo():
           <td style="font-weight:700; color:#fff;">${{c.codigo}}</td>
           <td style="color:var(--text-muted);">${{c.vencimento_iso || c.vencimento}}</td>
           <td style="font-weight:700; color:#fff;">${{formatarMoeda(closeVal)}}</td>
-          <td style="color:var(--accent-blue); font-weight:700;">${{formatarMoeda(ppe)}}</td>
+          <td style="color:var(--accent-cyan); font-weight:700;">${{formatarMoeda(ppe)}}</td>
           <td style="font-weight:700; color:${{spread > 0 ? 'var(--bear-red)' : 'var(--bull-green)'}};">
             ${{spread > 0 ? '+' : ''}}${{spread.toFixed(2)}}
           </td>
