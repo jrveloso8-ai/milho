@@ -467,6 +467,34 @@ def test_feed_noticias_montar_html():
         assert ".news-sidebar" in css_feed
         assert "alternarSidebarFeed" in js_feed
 
+def test_feed_noticias_falha_rede_sem_cache(tmp_path):
+    """Valida resiliência de feed_noticias sem cache e com falha na rede (timeout)."""
+    caminho_cache_falso = str(tmp_path / "cache_inexistente.json")
+    
+    # Mock de falha de conexão simulando a rede caindo
+    with patch("urllib.request.urlopen", side_effect=Exception("Timeout de Conexão (Mock)")):
+        # Tenta obter chamando a internet
+        itens = fn.obter_noticias_milho(caminho_cache=caminho_cache_falso, forcar=True)
+        # Deve retornar array vazio de forma graciosa (não quebrar e não fabricar dados)
+        assert itens == []
+
+def test_feed_noticias_falha_rede_com_cache(tmp_path):
+    """Valida resiliência de feed_noticias com cache existente quando a rede cai."""
+    caminho_cache_fake = tmp_path / "cache_falso.json"
+    
+    # Criar um cache antigo
+    import json
+    dados_mock = [{"categoria": "CEPEA", "titulo": "Notícia em Cache", "fonte": "Cepea", "link": "http", "pubDate": "Wed, 16 Sep 2026 18:00:00 GMT"}]
+    caminho_cache_fake.write_text(json.dumps(dados_mock), encoding="utf-8")
+    
+    # Mock de falha de conexão simulando a rede caindo (e forçando busca online)
+    with patch("urllib.request.urlopen", side_effect=Exception("Timeout de Conexão (Mock)")):
+        itens = fn.obter_noticias_milho(caminho_cache=str(caminho_cache_fake), forcar=True)
+        
+        # Como a rede falhou, deve cair no fallback do cache antigo (mesmo forçando a rede)
+        assert len(itens) == 1
+        assert itens[0]["titulo"] == "Notícia em Cache"
+
 
 def test_gerar_tabela_proveniencia_md(tmp_path):
     """Valida a geração dinâmica automática de tabela_proveniencia.md (Seção 1 / Achado 6)."""
