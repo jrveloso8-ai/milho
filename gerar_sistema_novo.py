@@ -1598,12 +1598,12 @@ def gerar_sistema_novo():
     with open(caminho_sistema, "w", encoding="utf-8") as f:
         f.write(html_conteudo)
 
-    caminho_mockup = os.path.join(PASTA, "mockup_sentinel_sistema_novo.html")
-    with open(caminho_mockup, "w", encoding="utf-8") as f:
+    caminho_index = os.path.join(PASTA, "index.html")
+    with open(caminho_index, "w", encoding="utf-8") as f:
         f.write(html_conteudo)
 
     print(f"Sistema Novo gerado em: {caminho_sistema}")
-    print(f"Mockup sincronizado em: {caminho_mockup}")
+    print(f"Index web sincronizado em: {caminho_index}")
 
 if __name__ == "__main__":
     gerar_sistema_novo()
