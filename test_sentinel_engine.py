@@ -21,16 +21,17 @@ from sentinel_engine import (
 
 
 def test_calcular_ppe_precisao():
-    """Valida o cálculo exato da Paridade de Exportação com parâmetros de mercado."""
+    """Valida o cálculo exato da Paridade de Exportação com parâmetros de mercado (prêmio em centavos)."""
     cbot = 450.0
-    premio = 0.70
+    premio = 0.70  # US$/bu -> 70 cents/bu
     cambio = 5.50
     custos = 10.00
 
-    # PPE_bruta = (450.70) * 0.39368 * 5.50 * 0.06 = 58.5539
-    # PPE_liquida = 58.5539 - 10.00 = 48.55
+    # cbot_total_cents = 450.0 + (0.70 * 100) = 520.0
+    # PPE_bruta = 520.0 * 0.39368 * 5.50 * 0.06 = 67.5555
+    # PPE_liquida = 67.5555 - 10.00 = 57.56
     ppe = calcular_ppe(cbot, premio, cambio, custos)
-    assert ppe == 48.55
+    assert ppe == 57.56
 
 
 def test_calcular_ponto_inflexao_cambio_reciprocidade():
@@ -38,7 +39,7 @@ def test_calcular_ponto_inflexao_cambio_reciprocidade():
     cbot = 450.0
     premio = 0.70
     custos = 10.00
-    preco_b3 = 48.56
+    preco_b3 = 57.56
 
     cambio_inflexao = calcular_ponto_inflexao_cambio(preco_b3, cbot, premio, custos)
     # Deve ser aproximadamente 5.50

@@ -45,8 +45,10 @@ def calcular_ppe(
 ) -> Optional[float]:
     """
     Calcula a Paridade de Exportação (PPE) em R$/saca (60kg).
-    Fórmula do usuário/mercado:
-      PPE = ((CBOT + Prêmio) * 0.39368 * Câmbio * 0.06) - Custos_Logísticos
+    Fórmula corrigida:
+      cbot_total_cents = cbot_cents + (premio_porto_usd * 100.0)
+      PPE_bruta = cbot_total_cents * 0.39368 * cambio_usdbrl * 0.06
+      PPE = PPE_bruta - custos_logisticos_brl
     Retorna None se CBOT ou Câmbio forem nulos/indisponíveis.
     """
     if cbot_cents is None or cbot_cents <= 0:
@@ -54,7 +56,8 @@ def calcular_ppe(
     if cambio_usdbrl is None or cambio_usdbrl <= 0:
         return None
 
-    ppe_bruta = (cbot_cents + premio_porto_usd) * 0.39368 * cambio_usdbrl * 0.06
+    cbot_total_cents = cbot_cents + (premio_porto_usd * 100.0)
+    ppe_bruta = cbot_total_cents * 0.39368 * cambio_usdbrl * 0.06
     ppe_liquida = ppe_bruta - custos_logisticos_brl
     return round(ppe_liquida, 2)
 
@@ -68,12 +71,14 @@ def calcular_ponto_inflexao_cambio(
     """
     Calcula qual patamar de Dólar (R$/USD) tornaria o preço B3 em tela igual à PPE.
     Isolando Câmbio na equação:
-      Preço_B3 + Custos = (CBOT + Prêmio) * 0.39368 * Câmbio * 0.06
-      Câmbio_Inflexão = (Preço_B3 + Custos) / ((CBOT + Prêmio) * 0.39368 * 0.06)
+      cbot_total_cents = cbot_cents + (premio_porto_usd * 100.0)
+      Preço_B3 + Custos = cbot_total_cents * 0.39368 * Câmbio * 0.06
+      Câmbio_Inflexão = (Preço_B3 + Custos) / (cbot_total_cents * 0.39368 * 0.06)
     """
     if cbot_cents is None or cbot_cents <= 0:
         return None
-    denominador = (cbot_cents + premio_porto_usd) * 0.39368 * 0.06
+    cbot_total_cents = cbot_cents + (premio_porto_usd * 100.0)
+    denominador = cbot_total_cents * 0.39368 * 0.06
     if denominador <= 0:
         return None
 
