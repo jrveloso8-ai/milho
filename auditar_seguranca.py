@@ -80,6 +80,35 @@ def main():
     else:
         print("[2/3] Varredura profunda de conteúdo no Git: OK (zero segredos ou tokens hardcoded)")
 
+    # 4. Checa configuracao de TLS desabilitada
+    padroes_tls_inseguro = [
+        (r'ssl\.CERT_NONE', 'validação TLS desabilitada (ssl.CERT_NONE)'),
+        (r'check_hostname\s*=\s*False', 'validação TLS desabilitada (check_hostname = False)')
+    ]
+    
+    achados_tls = []
+    for a in arquivos_git:
+        if os.path.isfile(a):
+            base = os.path.basename(a)
+            if base.endswith('.py') and not base.startswith('test_') and not base.endswith('_test.py') and base != 'auditar_seguranca.py':
+                try:
+                    with open(a, 'r', encoding='utf-8', errors='ignore') as f:
+                        lines = f.readlines()
+                    for i, line in enumerate(lines):
+                        for regex, desc in padroes_tls_inseguro:
+                            if re.search(regex, line):
+                                achados_tls.append((a, i + 1, desc))
+                except Exception:
+                    pass
+
+    if achados_tls:
+        print("[ALERTA] Código inseguro de TLS detectado:")
+        for ac in achados_tls:
+            print(f"[FALHA] arquivo:{ac[0]}:{ac[1]} — {ac[2]}")
+        sys.exit(1)
+    else:
+        print("[4/4] Validação de configurações TLS no Git: OK (nenhum CERT_NONE ou check_hostname=False)")
+
     # 3. Checa proteção no .gitignore
     itens_obrigatorios_gitignore = ['.env', '.env.local', '.pytest_cache', '*.tmp']
     gitignore_path = os.path.join(os.path.dirname(__file__), '.gitignore')
