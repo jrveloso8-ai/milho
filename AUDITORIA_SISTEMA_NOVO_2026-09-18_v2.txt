@@ -1,0 +1,155 @@
+======================================================================================================
+AUDITORIA COMPLETA (REFEITA) — MILHO TRADER "SISTEMA NOVO" — substitui as duas anteriores
+Método: /auditoria-sistema-existente — inventário completo (incluindo, desta vez, feed_noticias.py,
+ingestao_cepea.py e o JavaScript embutido em gerar_sistema_novo.py, que nas rodadas anteriores eu só tinha
+lido por referência de chamada, não linha a linha) -> classificação -> priorização por risco de decisão ->
+avaliação dos gates -> critério de fechamento.
+Executado por: Claude (Cowork) | Data: 18/09/2026
+Escopo: raiz do projeto (exclui /versao_anterior, conforme pedido original).
+======================================================================================================
+
+O QUE MUDOU EM RELAÇÃO ÀS DUAS AUDITORIAS ANTERIORES
+------------------------------------------------------
+Nas rodadas de hoje eu já tinha confirmado, lendo o código, que os dois achados críticos da auditoria
+original (CBOT/Câmbio hardcoded 530.0/5.166, e o calendário econômico morto por AttributeError) foram
+corrigidos de verdade — com fallback INDISPONÍVEL explícito, teste de integração real, e um tripwire no
+próprio dados_curva.json. Isso continua valendo e não vou repetir toda a evidência aqui (está nos arquivos
+AUDITORIA_SISTEMA_NOVO_2026-09-18.txt e _REVISAO.txt, já salvos na sua pasta).
+
+O que mudou agora é que, ao refazer a auditoria de forma completa (não só revisar os achados antigos), eu
+li pela primeira vez, linha a linha, o JavaScript de renderização em gerar_sistema_novo.py e os dois módulos
+que antes eu só tinha checado por referência (feed_noticias.py, ingestao_cepea.py). Isso revelou um achado
+novo e sério que nenhuma das duas auditorias anteriores pegou — porque elas verificaram o lado Python
+(sentinel_engine.py, testado e com tripwire) mas não o lado que efetivamente aparece na tela do navegador.
+
+======================================================================================================
+ACHADO NOVO — CRÍTICO — A tabela de arbitragem que aparece na tela usa uma fórmula DIFERENTE da que foi
+corrigida e testada; o resultado exibido diverge do resultado calculado e tripwired
+======================================================================================================
+Onde: gerar_sistema_novo.py, função `renderizarTabelaArbitragem()` (linhas ~1566-1622), que popula
+`<tbody id="arbitrage-tbody">` — esta é a tabela de Paridade de Exportação que efetivamente aparece em
+sistema_sentinel.html/index.html, os dois arquivos que você abre.
+
+O que descobri: essa função NÃO usa os valores que `sentinel_engine.processar_sentimento_curva()` já
+calculou, testou e protegeu com tripwire (`sentinel_dados["tabela_arbitragem_porto"]`, com PPE=R$54,27 e
+recomendação "ALERTA DE VENDA" para todos os 7 contratos, conforme dados_curva.json de hoje). Em vez disso,
+ela reimplementa a fórmula da PPE e a lógica de decisão de compra/venda DO ZERO em JavaScript, lendo só os
+parâmetros brutos (cbot_cents, cambio_usdbrl, premio_porto_usd, custos_log_brl) e recalculando.
+
+Essa reimplementação tem dois problemas próprios, independentes do que já foi corrigido no Python:
+
+1. Bug de unidade no prêmio de porto — e ele existe NOS DOIS LADOS, mas de formas diferentes:
+   - Python (`sentinel_engine.calcular_ppe`): soma `premio_porto_usd` (0,70, um valor em DÓLARES por
+     bushel) diretamente a `cbot_cents` (526,5, um valor em CENTAVOS por bushel) antes de aplicar o fator
+     de conversão 0,39368 — ou seja, trata os 0,70 como se fossem 0,70 CENTAVOS, não 70 centavos. Resultado:
+     o prêmio de porto contribui só ~R$0,09/sc para a PPE, quando devia contribuir ~R$8,50/sc. É um erro de
+     escala de 100x, silencioso, sem teste que pegue isso (os testes existentes usam premio=0,70 em todos
+     os casos e nunca verificam o tamanho da contribuição isolada do prêmio).
+   - JavaScript (`renderizarTabelaArbitragem`): converte cbot para dólares primeiro (`cbot/100.0`) e SÓ
+     ENTÃO soma o prêmio (`+ premioPorto`) — isso é dimensionalmente correto e dá ao prêmio o peso real de
+     ~R$8,50/sc que ele deveria ter.
+   Resultado prático, calculado por mim com os números reais de hoje (CBOT=526,5¢/bu, câmbio=R$5,161):
+     PPE via Python (o valor "oficial", testado e tripwired): R$ 54,27/sc
+     PPE via JavaScript (o valor que efetivamente aparece na tabela na tela): R$ 62,71/sc
+   Uma diferença de R$ 8,44/sc — não é arredondamento, é a mesma métrica, com o mesmo nome, mostrando dois
+   valores diferentes dependendo de qual parte da tela você olha.
+
+2. Além do valor mudar, a REGRA DE DECISÃO também é outra: o JS classifica só por `spread > 3.0` (VENDA)
+   ou `spread < -3.0` (COMPRA), ignorando contango/backwardation e o basis contra o RTCNI físico — que é
+   exatamente o que `matriz_decisao_basis_paridade()` em Python foi desenhado para considerar (e que a
+   tabela_proveniencia.md descreve como "Algoritmo determinístico de spreads entre B3, RTCNI físico e PPE").
+   A tela mostra uma decisão calculada por uma regra mais simples do que a documentada e testada.
+
+3. Agravante encontrado ao rastrear os nomes dos campos: a função JS lê
+   `parametros_arbitragem?.custos_log_brl` — esse campo NÃO EXISTE no dados_curva.json (o campo real,
+   escrito pelo Python, se chama `custos_logisticos_brl`). Então `custosLog` no JS SEMPRE cai no fallback
+   `?? 10.00`, nunca lê o valor real, mesmo que ele já esteja corretamente calculado e disponível. Hoje isso
+   não se nota porque o valor real também é 10.00 (é o default do Python), mas é uma bomba-relógio: se você
+   um dia mudar o custo logístico, o número vai continuar mudando no relatório de texto e no JSON, mas
+   NUNCA na tabela visível na tela, por um erro de nome de campo, não de lógica.
+
+Por que isso é CRÍTICO e não um detalhe de estilo: é exatamente o padrão que a skill de auditoria pede para
+caçar — "uma função num componente A pode formatar/gerar um número que é renderizado num componente B
+diferente... sempre confirme onde CADA campo é efetivamente renderizado, não só onde é calculado". Eu
+verifiquei nas duas auditorias anteriores que sentinel_engine.py estava correto e testado — mas nunca tinha
+verificado se o HTML que você realmente abre usa esse resultado ou recalcula por conta própria. Não usa.
+Nenhum teste (pytest só testa .py; não existe teste algum para o JavaScript) e nenhum item do portão de
+auditoria (6.1-6.6) toca nessa função — é um ponto cego novo, tão real quanto os dois que motivaram a
+correção anterior.
+
+Recomendação direta: a função `renderizarTabelaArbitragem()` deve ser reescrita para CONSUMIR
+`DADOS.sentinel_corn.tabela_arbitragem_porto` (já computado, testado e protegido por tripwire), em vez de
+recalcular PPE e decisão a partir dos parâmetros brutos. Isso elimina as duas fontes de divergência de uma
+vez (a fórmula deixa de existir duas vezes) e corrige de tabela o bug do nome do campo. Separadamente, o
+bug de unidade do prêmio de porto em `sentinel_engine.calcular_ppe()` (item 1) precisa ser corrigido — a
+forma correta é converter premio_porto_usd para centavos antes de somar: `(cbot_cents + premio_porto_usd *
+100)`. Isso vai FAZER a PPE oficial subir de R$54,27 para ~R$62,71/sc — reduzindo o gap de venda em ~R$8,50/
+sc em todos os contratos, o que pode inclusive mudar o veredito de alguns deles perto da fronteira. Recomendo
+fortemente corrigir isso antes de confiar de novo no "ALERTA DE VENDA".
+
+======================================================================================================
+ACHADO NOVO — BAIXO/MÉDIO — feed_noticias.py desabilita a validação de certificado TLS na busca de notícias
+======================================================================================================
+Onde: feed_noticias.py, função `_criar_ssl_context()`:
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+Isso desliga completamente a verificação de certificado na chamada ao RSS do Google News — diferente de
+ingestao_cepea.py, que no mesmo projeto usa `ssl.create_default_context()` (validação padrão, correta) para
+uma finalidade equivalente (buscar dado externo via HTTPS). Não é um vetor de fabricação de dado (o
+conteúdo das notícias em si não fica comprometido de forma que eu possa provar aqui), mas é uma prática de
+segurança inconsistente dentro do mesmo projeto, e — mais relevante para esta auditoria — é exatamente o
+tipo de coisa que `auditar_seguranca.py` (item 6.6) NÃO verifica: ele varre só 4 padrões de regex para
+segredo/token hardcoded, nunca configuração de TLS. Prioridade baixa/média porque o dado em risco (RSS
+público de notícias) não é sensível, mas é uma correção simples (usar `ssl.create_default_context()` como
+o resto do projeto já faz) e devia ser feita por consistência e por hábito de segurança.
+
+======================================================================================================
+CONFIRMAÇÃO POSITIVA (não é achado, é verificação que fecha limpo)
+======================================================================================================
+`ingestao_cepea.py`, lido linha a linha nesta rodada por completo pela primeira vez: sem achados. Coleta
+real via scraping do site oficial CEPEA/ESALQ com fallback para o espelho Notícias Agrícolas, TLS validado
+corretamente, escrita atômica no CSV local (arquivo temporário + os.replace), sem duplicar datas, retorna
+sucesso=False/N-D explícito quando as duas fontes falham. Este módulo está bem construído.
+
+======================================================================================================
+STATUS CONSOLIDADO DOS 7 ACHADOS DA AUDITORIA ORIGINAL (re-confirmado nesta rodada)
+======================================================================================================
+1. CRÍTICO — CBOT/Câmbio hardcoded (530.0/5.166) ................... CORRIGIDO E VERIFICADO
+   (ressalva: o bug de unidade do prêmio de porto, achado nesta rodada, é NOVO e diferente deste)
+2. CRÍTICO — Calendário econômico morto (AttributeError engolido) .... CORRIGIDO E VERIFICADO
+3. ALTO — Score de notícias fora de sincronia ........................ CORRIGIDO E VERIFICADO
+4. MÉDIO — Gates não cobriam Sentinel-Corn ........................... CORRIGIDO (tripwire no JSON +
+   escopo do AST ampliado para todo o módulo, não só funções de plot — verifiquei o código novo agora,
+   ele varre atribuição de literal "em qualquer função ou módulo", e passou a auditar dois arquivos:
+   ccm_trix_curva.py e sentinel_engine.py)
+5. MÉDIO — Badge misto "MEDIDO/B3" no card de opções ................. CORRIGIDO E VERIFICADO
+6. BAIXO — tabela_proveniencia.md estática/manual .................... AINDA PENDENTE (baixo risco)
+7. BAIXO — "100% seguro para publicação" ............................. CORRIGIDO E VERIFICADO
+
+======================================================================================================
+VEREDITO E RECOMENDAÇÃO
+======================================================================================================
+As correções da rodada anterior foram reais e bem feitas no lado Python — não estou revertendo esse
+elogio. Mas a auditoria completa desta vez descobriu que a correção não chegou até a tela: a tabela que
+você efetivamente vê usa uma conta própria, com um erro de unidade que MUDA o número em ~R$8,50/sc e uma
+regra de decisão mais simples que a documentada. Isso significa que, neste momento, o "ALERTA DE VENDA"
+que você vê no dashboard não é o mesmo número que o sistema já provou estar calculando corretamente nos
+bastidores — são dois sistemas de decisão coexistindo, um testado e um não.
+
+Não considero esta entrega fechada enquanto esse ponto não for corrigido. Recomendação direta, em ordem:
+  1. Reescrever `renderizarTabelaArbitragem()` para ler `tabela_arbitragem_porto` do JSON em vez de
+     recalcular — isso by itself já resolve a divergência de valor e o typo do custos_log_brl.
+  2. Corrigir a escala do prêmio de porto em `calcular_ppe()`/`calcular_ponto_inflexao_cambio()`
+     (sentinel_engine.py) — multiplicar premio_porto_usd por 100 antes de somar a cbot_cents.
+  3. Adicionar um teste que compele isso a nunca mais divergir: por exemplo, extrair um `gerar_dados_
+     arbitragem_json()` ou similar que sirva tanto o texto quanto o HTML a partir da MESMA fonte, e um
+     teste de regressão que compare o PPE de um contrato de exemplo contra um valor de referência calculado
+     à mão (como já existe em test_calcular_ppe_precisao, só que hoje esse teste só cobre a função Python,
+     não o que está de fato na tela).
+  4. Trocar `ssl.CERT_NONE` por `ssl.create_default_context()` em feed_noticias.py, por consistência com o
+     resto do projeto.
+
+Depois disso, e só depois disso, eu consideraria o módulo Sentinel-Corn 2.0 fechado de ponta a ponta —
+Python testado E tela consistente com o Python. Continuo sem poder confirmar disciplina de commit (git log)
+nem rodar o portão eu mesmo, porque o bridge com seu computador segue indisponível hoje; isso não mudou
+desde a revisão anterior.

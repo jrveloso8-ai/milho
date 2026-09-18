@@ -1,0 +1,227 @@
+PROMPT PARA OPERADOR/PROGRAMADOR INDEPENDENTE — MILHO TRADER
+Projeto: C:\Projetos Phyton\Milho
+Data: 18/09/2026
+Base: Auditoria completa v2 (AUDITORIA_SISTEMA_NOVO_MILHO_2026-09-18_v2.txt)
+
+===============================================================================
+LEIA ANTES DE COMEÇAR
+===============================================================================
+
+Este documento é uma ESPECIFICAÇÃO, não código. Ele foi escrito por Claude
+(auditor) e deve ser implementado por você (operador/programador independente
+ou agente de código). Claude não escreve código neste projeto — apenas audita
+o que for entregue, comparando com evidência real (git log, diffs, saída de
+testes), nunca com resumo narrativo.
+
+Por isso, ao final da implementação, sua entrega DEVE incluir, colados de
+forma literal (não resumidos, não parafraseados):
+
+  1. Saída bruta de `git log --oneline -20` (ou mais, se necessário para
+     mostrar todos os commits desta entrega).
+  2. Listagem bruta dos arquivos alterados (`git status --porcelain` ou
+     `git diff --stat` desde o commit anterior à entrega).
+  3. Saída bruta da execução de `portao_auditoria.bat` (todas as etapas
+     6.1 a 6.6), do início ao fim, sem cortes.
+  4. Saída bruta de `pytest` (não apenas "todos os testes passaram" — a
+     contagem real de testes coletados, passados, falhos).
+
+Commits pequenos e frequentes, um por correção lógica. NÃO agrupe as 3
+correções abaixo em um único commit gigante — isso impede rastrear qual
+mudança causou qual efeito e dificulta reverter se algo quebrar.
+
+Se qualquer um dos itens abaixo não puder ser corrigido como especificado,
+não invente uma solução alternativa silenciosa: pare e explique o
+impedimento, com evidência (mensagem de erro real, trecho de código que
+conflita, etc.).
+
+===============================================================================
+SEÇÃO 1 — O QUE AINDA NÃO FOI CORRIGIDO (Achado 6 da auditoria original)
+===============================================================================
+
+Arquivo: tabela_proveniencia.md
+
+Situação: este arquivo continua sendo mantido manualmente/estático e NÃO é
+regenerado automaticamente pelo pipeline a cada execução. Isso foi a causa
+raiz do achado original: o arquivo divergiu de resumo_trix_curva.txt (fonte
+de verdade real, gerada pelo pipeline), com discrepâncias como:
+
+  - CCMX26: tabela_proveniencia.md indicava 235 pregões em 27/02/2026;
+    resumo_trix_curva.txt (real) indicava 02/03/2026.
+  - CCMF27: 168 pregões (arquivo) vs. 169 pregões (real).
+  - CCMN27: Call Wall R$79,00 / 1.242 contratos (arquivo) vs. R$79,50 /
+    850 contratos (real).
+
+Correção exigida (escolha uma das duas, e documente qual foi escolhida):
+
+  Opção A (preferida): fazer o pipeline (ccm_trix_curva.py, na mesma etapa
+  em que gera resumo_trix_curva.txt) também regenerar tabela_proveniencia.md
+  automaticamente a cada execução, a partir dos mesmos dados em memória —
+  eliminando a possibilidade de divergência por construção.
+
+  Opção B: se a Opção A não for viável no tempo desta entrega, aposentar
+  tabela_proveniencia.md completamente (remover do repositório ou marcar
+  claramente como "NÃO USAR — CONSULTE resumo_trix_curva.txt") e usar
+  resumo_trix_curva.txt como única fonte de proveniência.
+
+Não é aceitável deixar o arquivo manual como está sem pelo menos um aviso
+explícito de que ele não é fonte confiável.
+
+===============================================================================
+SEÇÃO 2 — ACHADO NOVO CRÍTICO: DIVERGÊNCIA PPE PYTHON x JAVASCRIPT
+===============================================================================
+
+Este é o achado mais grave da auditoria v2. A tabela de arbitragem exibida
+ao usuário na tela (sistema_sentinel.html / index.html) é calculada duas
+vezes, de forma independente e com resultados diferentes:
+
+  (a) Em Python: sentinel_engine.py, função calcular_ppe() e
+      calcular_ponto_inflexao_cambio() — testado, com tripwires, resultado
+      salvo em dados_curva.json como tabela_arbitragem_porto.
+
+  (b) Em JavaScript: gerar_sistema_novo.py, dentro da função
+      renderizarTabelaArbitragem() (aprox. linhas 1566-1622, chamada por
+      init() na linha ~1059/1563) — reimplementa a MESMA fórmula do zero,
+      lendo os parâmetros brutos de DADOS.sentinel_corn.parametros_arbitragem
+      e recalculando PPE e a decisão de compra/venda no navegador.
+
+Isso violA o princípio de fonte única de verdade: o que o usuário vê na tela
+não é garantidamente o mesmo número que o Python calculou e testou.
+
+--- 2.1 — Evidência numérica real (dados do dia, dados_curva.json) ---
+
+Inputs reais do dia auditado:
+  cbot_cents = 526.5 (¢/bu, CME ZC=F)
+  cambio_usdbrl = 5.161 (BRL/USD, WDOFUT)
+  premio_porto_usd = 0.70 (US$/bu)
+  custos_logisticos_brl = 10.00 (R$/sc)
+
+  PPE calculado em Python (sentinel_engine.calcular_ppe): R$ 54,27/sc
+  PPE calculado em JavaScript (renderizarTabelaArbitragem): R$ 62,71/sc
+
+  Divergência: R$ 8,44/sc — o suficiente para inverter uma decisão de
+  compra/venda perto do ponto de equilíbrio.
+
+--- 2.2 — Causa raiz nº 1: bug de escala de unidade no prêmio de porto ---
+
+Em sentinel_engine.py, calcular_ppe() e calcular_ponto_inflexao_cambio():
+
+  ppe_bruta = (cbot_cents + premio_porto_usd) * 0.39368 * cambio_usdbrl * 0.06
+
+Aqui, cbot_cents está em CENTAVOS de dólar por bushel (ex: 526.5), mas
+premio_porto_usd está em DÓLARES por bushel (ex: 0.70). Somar os dois
+diretamente dilui o prêmio ~100x: seu efeito real na PPE cai de ~R$8,50/sc
+para ~R$0,09/sc — o prêmio de porto praticamente desaparece do cálculo.
+
+Correção exigida: converter premio_porto_usd para centavos antes de somar:
+
+  cbot_total_cents = cbot_cents + (premio_porto_usd * 100.0)
+  ppe_bruta = cbot_total_cents * 0.39368 * cambio_usdbrl * 0.06
+
+Aplicar a mesma correção em calcular_ponto_inflexao_cambio() (mesmo padrão
+de soma direta existe lá).
+
+--- 2.3 — Causa raiz nº 2: reimplementação divergente em JavaScript ---
+
+O JavaScript em renderizarTabelaArbitragem() NÃO tem esse bug de escala
+(ele já converte: `(cbot / 100.0) + premioPorto`), mas isso não o torna
+correto — ele apenas erra de um jeito diferente do Python, e usa uma regra
+de decisão mais simples (apenas spread > 3.0 / < -3.0), sem considerar
+contango/backwardation/basis como o motor Python faz.
+
+Correção exigida (obrigatória, não opcional): remover completamente a
+lógica de recálculo de PPE do JavaScript. renderizarTabelaArbitragem() deve
+apenas LER e EXIBIR os valores já calculados por sentinel_engine.py, que já
+estão salvos em dados_curva.json como
+DADOS.sentinel_corn.tabela_arbitragem_porto (ou estrutura equivalente
+existente) — incluindo PPE, spread, decisão/recomendação e sinal, todos já
+prontos. Nenhuma fórmula de PPE deve existir em JavaScript depois desta
+correção.
+
+--- 2.4 — Causa raiz nº 3: nome de campo incorreto (typo) ---
+
+No JavaScript:
+  let custosLog = DADOS.sentinel_corn.parametros_arbitragem?.custos_log_brl ?? 10.00;
+
+O campo real em dados_curva.json é custos_logisticos_brl (confirmado via
+inspeção direta do JSON), não custos_log_brl. Como o campo não existe, o
+JavaScript sempre cai no fallback hardcoded 10.00 — silenciosamente, sem
+nenhum aviso. Este bug se torna irrelevante se a correção da Seção 2.3 for
+aplicada (o JS deixa de recalcular), mas deve ser corrigido de qualquer
+forma caso alguma leitura direta desse campo permaneça em outro lugar do
+código.
+
+--- 2.5 — Teste de regressão obrigatório ---
+
+Após a correção, adicionar um teste (em test_sentinel_engine.py ou novo
+arquivo) que:
+
+  1. Gera um dados_curva.json de exemplo com sentinel_engine.py.
+  2. Extrai o valor de PPE de tabela_arbitragem_porto para um contrato.
+  3. Simula/valida que o HTML gerado por gerar_sistema_novo.py, ao
+     renderizar a tabela de arbitragem, usa exatamente esse mesmo valor
+     (por exemplo, verificando que o JSON embutido no HTML final contém o
+     mesmo número, já que o JS não deve mais recalcular nada).
+
+O objetivo deste teste é impedir que essa divergência volte a aparecer no
+futuro sem ser detectada por portao_auditoria.bat.
+
+===============================================================================
+SEÇÃO 3 — ACHADO NOVO MENOR: TLS DESABILITADO EM feed_noticias.py
+===============================================================================
+
+Arquivo: feed_noticias.py
+
+Situação atual (função de criação de contexto SSL):
+  ctx.check_hostname = False
+  ctx.verify_mode = ssl.CERT_NONE
+
+Isso desabilita completamente a validação de certificado TLS nas chamadas
+HTTPS ao Google News RSS. Por comparação, ingestao_cepea.py usa o padrão
+correto sem essas linhas (apenas `ssl.create_default_context()`).
+
+Correção exigida: remover as duas linhas que desabilitam a validação,
+deixando feed_noticias.py usar `ssl.create_default_context()` puro, no
+mesmo padrão de ingestao_cepea.py. Se isso causar falha de conexão com o
+Google News RSS (ex: certificado intermediário ausente na cadeia local),
+investigar a causa real do erro em vez de reintroduzir CERT_NONE — não é
+aceitável desabilitar validação de certificado como solução de
+compatibilidade.
+
+Nota: auditar_seguranca.py atualmente não verifica configuração de TLS
+(só varre segredos/tokens hardcoded via regex). Não é obrigatório expandir
+esse gate nesta entrega, mas registre no relatório de entrega se isso foi
+considerado.
+
+===============================================================================
+SEÇÃO 4 — CRITÉRIOS DE ENCERRAMENTO (o que preciso ver na sua entrega)
+===============================================================================
+
+A entrega só será considerada fechada quando eu (auditor) conseguir
+verificar, com evidência real e não com narrativa, que:
+
+  [ ] Seção 1: tabela_proveniencia.md passou a ser gerado automaticamente
+      pelo pipeline OU foi formalmente aposentado com aviso explícito.
+  [ ] Seção 2.2: o bug de escala do prêmio de porto foi corrigido em
+      AMBAS as funções (calcular_ppe e calcular_ponto_inflexao_cambio).
+  [ ] Seção 2.3: renderizarTabelaArbitragem() não contém mais nenhuma
+      fórmula de PPE — apenas leitura/exibição dos dados já calculados
+      em Python.
+  [ ] Seção 2.4: o nome de campo custos_log_brl foi corrigido (ou tornado
+      irrelevante pela remoção do cálculo em JS).
+  [ ] Seção 2.5: existe um teste de regressão novo cobrindo a consistência
+      Python/HTML do valor de PPE exibido.
+  [ ] Seção 3: feed_noticias.py usa ssl.create_default_context() sem
+      CERT_NONE/check_hostname=False.
+  [ ] portao_auditoria.bat (6.1 a 6.6) passa integralmente, com saída bruta
+      anexada ao relatório de entrega.
+  [ ] git log --oneline mostra commits pequenos e separados por correção
+      lógica (mínimo esperado: 1 commit para Seção 1, 1+ para Seção 2,
+      1 para Seção 3, além do commit do teste de regressão).
+
+Não vou aceitar "tudo corrigido, testes passando" como relatório final.
+Preciso da saída bruta dos itens 1 a 4 listados no topo deste documento.
+
+===============================================================================
+FIM DO PROMPT — dúvidas sobre qualquer item devem ser esclarecidas antes de
+iniciar a implementação, não assumidas.
+===============================================================================
