@@ -1,0 +1,159 @@
+======================================================================================================
+REAUDITORIA — MILHO TRADER "SISTEMA NOVO" (verificação das correções sobre a auditoria de 18/09/2026)
+Método: releitura do código-fonte real (não da narrativa "foi corrigido") + comparação byte a byte contra
+o estado anterior + inspeção do dados_curva.json e resumo_trix_curva.txt gerados na rodada mais recente
+(18/09/2026, 11:12:40) como evidência de execução real, não alegação.
+Executado por: Claude (Cowork) | Data: 18/09/2026
+======================================================================================================
+
+LIMITAÇÃO DESTA REAUDITORIA (declarada, não omitida)
+-----------------------------------------------------
+O bridge de shell com o seu computador está indisponível agora (falha conhecida ligada a uma atualização
+do Windows de 08/09, fora do meu controle) — não consegui rodar `portao_auditoria.bat` nem `git log
+--oneline` eu mesmo. Toda a verificação abaixo foi feita lendo o código-fonte real arquivo por arquivo e
+comparando com o `dados_curva.json`/`resumo_trix_curva.txt` já gerados por uma rodada real de hoje — o que
+é evidência de execução, não a mesma coisa que eu ter executado a suíte de teste agora. Para fechar com o
+rigor que eu mesmo exijo de qualquer entrega, preciso que você rode e cole aqui, sem editar:
+  1. `git log --oneline -20`  (quero ver disciplina de commit — pequenos e por achado, não um só agrupando
+     tudo)
+  2. `portao_auditoria.bat` completo (a saída, não só "passou tudo")
+Sem isso, o veredito abaixo é "aprovado por leitura de código direta", não "aprovado com evidência de
+execução independente" — a diferença importa e não vou fingir que não.
+
+======================================================================================================
+VEREDITO
+======================================================================================================
+Os dois achados CRÍTICOS que bloqueavam o uso do Sentinel-Corn 2.0 foram corrigidos de verdade, não
+superficialmente — verifiquei isso lendo a implementação nova, não a mensagem de commit. O sistema pode
+voltar a ser usado, incluindo o parecer do Sentinel-Corn, com uma ressalva sobre o tamanho do gap PPE que
+aponto no Achado 1 (revisado) abaixo — isso é uma pergunta de mercado, não um bug.
+
+Dos 7 achados da auditoria original: 5 corrigidos e verificados no código, 1 corrigido parcialmente
+(mitigado por outra via, não pela via que eu tinha sugerido), 1 ainda pendente (baixo risco, não bloqueia).
+
+======================================================================================================
+ACHADO 1 (CRÍTICO) — CBOT/Câmbio hardcoded — STATUS: CORRIGIDO E VERIFICADO
+======================================================================================================
+O que mudou: `cbot_val = 530.0` / `cambio_val = 5.166` foram substituídos por duas funções novas em
+ccm_trix_curva.py:
+  - `coletar_cbot_chicago()` — busca ZC=F real via yfinance, retorna (None, "[INDISPONIVEL]") se falhar.
+  - `coletar_cambio_wdofut()` — busca WDOFUT real via `ingestao_brapi.coletar_cambio()` (já existia, agora
+    conectado), mesmo padrão de fallback explícito.
+`sentinel_engine.calcular_ppe()` e `calcular_ponto_inflexao_cambio()` agora retornam `None` (não mais 0.0)
+quando CBOT/Câmbio ausentes, e `matriz_decisao_basis_paridade()` tem um ramo novo — "PARIDADE
+INDISPONÍVEL" / sinal "NEUTRO" — quando ppe é None. Isso é exatamente a correção certa: antes, ausência de
+dado virava 0.0 silencioso (que teria gerado um "ALERTA DE VENDA" fabricado por outra via); agora ausência
+de dado é INDISPONÍVEL explícito, nunca um número.
+
+Evidência de execução real (não alegação): o `dados_curva.json` gerado hoje às 11:12:40 mostra
+cbot_cents=526.5 (via "[MEDIDO / CME ZC=F]") e cambio_usdbrl=5.161 (via "[MEDIDO / B3 WDOV26]") — dois
+números que NÃO são os literais antigos (530.0/5.166), o que já prova por si só que dado real está
+entrando ali agora.
+
+Teste de integração novo (`test_processar_sentimento_curva_sem_dados_macro_indisponivel`, em
+test_sentinel_engine.py): chama `processar_sentimento_curva()` com cbot_cents=None/cambio_usdbrl=None e
+verifica que a saída é PARIDADE INDISPONÍVEL/NEUTRO sem quebrar — este é o "tripwire" que eu pedi, e ele
+testa exatamente o caminho de falha que causava o bug original.
+
+RESSALVA (não é bug, é pergunta de negócio): com dado real, a PPE calculada ficou em R$ 54,27/sc contra
+preços B3 de R$ 76-82/sc — gap de ~R$ 22-27/sc, ainda gerando "ALERTA DE VENDA" nos 7 contratos. Validei a
+fórmula manualmente (bushel→tonelada→saca, 0,39368 e 0,06 conferem matematicamente) e ela está internamente
+consistente com os parâmetros dados. Mas um gap desse tamanho persistente merece sua validação de negócio:
+ou é um prêmio de porto real muito maior que os US$ 0,70/bu e R$ 10,00/sc hardcoded no `premio_porto_usd` e
+`custos_logisticos_brl` (que continuam sendo valores fixos, não vindos de fonte externa — só não são mais
+o problema crítico porque agora estão documentados como parâmetro assumido, não como dado de mercado
+disfarçado), ou há alguma diferença de especificação de contrato que a fórmula não captura. Isso é auditoria
+de dado, não de tese de mercado — não vou opinar se o gap "faz sentido" comercialmente, mas registro que
+ele é grande e estável o suficiente para merecer uma segunda checagem sua antes de confiar no sinal de
+venda.
+
+======================================================================================================
+ACHADO 2 (CRÍTICO) — Calendário Econômico morto (AttributeError engolido) — STATUS: CORRIGIDO E VERIFICADO
+======================================================================================================
+`calendario_economico.py` agora define `obter_eventos_proximos(data_ref, dias_a_frente=15)` — a função que
+`sentinel_engine.py` sempre chamou mas que nunca existiu. Li a implementação nova linha a linha: ela reusa
+`_montar_todos_eventos()`, soma o ano seguinte quando o mês atual é >= 11 (para não perder eventos de
+janeiro na virada do ano — detalhe correto que eu não tinha exigido explicitamente, mérito do programador),
+e filtra por janela de dias corretamente.
+
+Evidência real: dados_curva.json de hoje mostra score_calendario com `dias_ate_proximo: 12`, evento
+"Estoques Trimestrais" em 2026-09-30 — isso é a função nova rodando de fato, não o fallback morto (que
+sempre dizia "JANELA_LIMPA" com dias_ate=None).
+
+Teste de integração novo (`test_calcular_score_calendario_integracao_real`): chama
+`sentinel_engine.calcular_score_calendario()` SEM MOCK, contra o módulo real — exatamente o teste que, se
+existisse antes, teria pegado o AttributeError no primeiro run. Isso é o tipo de teste que prova que a
+correção não vai regredir silenciosamente de novo.
+
+======================================================================================================
+ACHADO 3 (ALTO) — Score de notícias fora de sincronia — STATUS: CORRIGIDO
+======================================================================================================
+A ordem de execução em ccm_trix_curva.py foi invertida: agora `feed_noticias.obter_noticias_milho(forcar=
+True)` roda ANTES do bloco Sentinel-Corn (comentário no código diz isso explicitamente: "Garante notícias
+frescas para a análise de sentimento"). Confirmei que a função chamada existe com essa assinatura em
+feed_noticias.py (não é uma chamada fantasma como o Achado 2 original era) — essa ressalva importa porque
+uma correção que chama uma função que não existe teria o mesmo problema do Achado 2, só disfarçado.
+
+======================================================================================================
+ACHADO 4 (MÉDIO) — Gates não cobriam Sentinel-Corn — STATUS: CORRIGIDO POR OUTRA VIA (equivalente, não idêntica)
+======================================================================================================
+Eu tinha sugerido dois caminhos: (a) um item novo "6.7" dedicado no portão, e (b) ampliar o escopo do AST
+de `verificar_literais_plot.py` para cobrir a função de orquestração/main(), não só funções nomeadas
+plot/grafico/render. O que foi entregue:
+  - Um "tripwire" dedicado dentro do item 6.2 existente (`verificar_dados_fabricados.py`, nova função
+    `auditar_dados_curva_tripwires()`): falha explicitamente se `cbot_cents == 530.0` ou `cambio_usdbrl ==
+    5.166` no dados_curva.json, e valida que cbot_prov/cambio_prov/ppe_prov estão em formato de
+    proveniência reconhecido. `portao_auditoria.bat` já chama esse script no passo 6.2 — não precisa de
+    numeração nova para funcionar, é uma diferença de forma, não de substância, e eu aceito essa escolha:
+    checar o dado de SAÍDA (dados_curva.json) é mais direto e mais difícil de escapar do que checar o
+    código-fonte via AST.
+  - `verificar_literais_plot.py` teve a lista `VARIAVEIS_DADOS_PROIBIDAS` ampliada com "cbot", "cambio",
+    "ppe", "ptax" — mas o escopo do walker AST continua restrito a funções cujo nome contenha
+    plot/grafico/render/desenhar/chart. O ponto onde o bug original vivia (dentro da orquenstração/main,
+    fora de qualquer função com esse nome) continua fora do alcance desse gate especificamente. Não é um
+    problema bloqueante porque o tripwire no JSON de saída (acima) já cobre esse caminho de regressão de
+    forma mais robusta — mas registro a diferença para você decidir se quer fechar essa lacuna estrutural
+    também, ou se considera o tripwire de saída suficiente (eu considero suficiente).
+
+======================================================================================================
+ACHADO 5 (MÉDIO) — Badge misto "MEDIDO/B3" no card de Grade de Opções — STATUS: CORRIGIDO
+======================================================================================================
+O selo único foi substituído por dois selos separados e corretos: "OI: MEDIDO (B3)" e "PAREDES: DERIVADO
+(B3)" — bate exatamente com a classificação que a própria tabela_proveniencia.md já defendia. Verifiquei
+no HTML gerado (ccm_trix_curva.py, linha ~748-749).
+
+======================================================================================================
+ACHADO 6 (BAIXO) — tabela_proveniencia.md estática/manual — STATUS: NÃO CORRIGIDO (pendente, não bloqueia)
+======================================================================================================
+O conteúdo da Seção 6 foi atualizado manualmente para descrever a nova arquitetura real (yfinance/BRAPI,
+INDISPONIVEL explícito) — então o documento não está mais desatualizado NO CONTEÚDO. Mas ele continua
+sendo um arquivo editado à mão, não gerado automaticamente pelo pipeline a cada rodada — o mesmo problema
+estrutural que causou a divergência de datas que eu tinha achado na auditoria original (tabela dizendo uma
+coisa, resumo_trix_curva.txt gerado no mesmo dia dizendo outra) pode voltar a acontecer na próxima vez que
+alguém esquecer de atualizar esse arquivo manualmente. Fica como item de melhoria de processo, não é
+motivo para reprovar esta entrega.
+
+======================================================================================================
+ACHADO 7 (BAIXO) — "100% seguro para publicação" — STATUS: CORRIGIDO
+======================================================================================================
+A mensagem final de auditar_seguranca.py agora diz "Nenhum padrão conhecido de segredo ou credencial
+detectado nos arquivos rastreados" — exatamente a formulação que eu tinha sugerido, sem a afirmação
+absoluta que o script não sustenta.
+
+======================================================================================================
+RECOMENDAÇÃO FINAL
+======================================================================================================
+Pode considerar esta entrega FECHADA quanto aos dois bloqueadores críticos (Achados 1 e 2) — a correção é
+real, testada com teste de integração que não existia antes (não só teste unitário de função pura), e
+evidenciada por dado real gerado numa rodada de hoje. O Sentinel-Corn 2.0 pode voltar a ser usado.
+
+Duas coisas que eu recomendo antes de tratar isso como definitivamente encerrado:
+  1. Rode `portao_auditoria.bat` e `git log --oneline -20` você mesmo e me mande a saída bruta — quero
+     confirmar disciplina de commit (por achado, não um commit único) e ver o portão passar do zero, já
+     que eu não consegui executar isso remotamente hoje.
+  2. Decida o que fazer com o gap PPE de ~R$ 22-27/sc (ressalva do Achado 1) antes de agir sobre o "ALERTA
+     DE VENDA" — é uma pergunta de calibração de parâmetro/negócio, não uma falha de dado, e não é algo que
+     eu deva decidir por você.
+
+Achados 4 (parcial) e 6 (pendente) ficam registrados como dívida de baixo risco, não como pendência que
+bloqueia o uso do sistema.
