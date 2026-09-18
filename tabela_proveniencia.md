@@ -79,4 +79,21 @@ Conforme especificado na seção 2.6b do prompt original, a Watchlist apresenta 
 
 *Nota de Auditoria*: Nenhum indicador técnico, sinal de posição, interpolação ou cor de estado é aplicado na Watchlist. Todos os preços exibidos têm proveniência estritamente **MEDIDO**.
 
+---
+
+## 6. Proveniência do Módulo Sentinel-Corn 2.0 (Análise 360°)
+
+Conforme implementado em `sentinel_engine.py` e integrado no pipeline e dashboard:
+
+| Campo Sentinel-Corn | Origem dos Dados | Classificação | Justificativa / Rastreabilidade |
+| :--- | :--- | :--- | :--- |
+| **Preço de Paridade de Exportação (PPE)** | Fórmula matemática: `((CBOT + Prêmio) * 0.39368 * Câmbio * 0.06) - Custos` | **DERIVADO** | Cálculo determinístico com CBOT e Câmbio reais (MEDIDO/DERIVADO) e parâmetros de custos portuários auditados. |
+| **Ponto de Inflexão Cambial (WDO)** | Isolamento algébrico: `(Preço_B3 + Custos) / ((CBOT + Prêmio) * 0.39368 * 0.06)` | **DERIVADO** | Nível exato de câmbio que iguala paridade de exportação ao mercado interno. |
+| **Matriz de Decisão Basis vs Paridade** | Algoritmo determinístico de spreads entre B3, RTCNI físico e PPE | **DERIVADO** | Classificação algorítmica estrita (Alerta de Venda, Oportunidade de Compra, etc.) sem arbitrariedade. |
+| **Sentimento de Mercado (RSS, 20%)** | RSS oficial de notícias agrícolas (feed XML real) + dicionário léxico auditado | **DERIVADO** | Score léxico determinístico no intervalo [-100, +100] sobre manchetes reais. Sem dados inventados. |
+| **Calendário Econômico (20%)** | Calendário oficial de relatórios USDA (WASDE) e CONAB | **DERIVADO** / **MEDIDO** | Janela temporal baseada nas datas oficiais de divulgação de safra. |
+| **Sentimento Técnico & Opções (60%)** | Ponderação TRIX v5, NTSL e barreiras reais de Call/Put Wall e Max Pain | **DERIVADO** | Indicadores técnicos e concentração de Open Interest apurados pela B3. |
+| **Score Consolidado e Classificação** | Média ponderada linear: $0.60 \times \text{Técnico} + 0.20 \times \text{RSS} + 0.20 \times \text{Calendário}$ | **DERIVADO** | Classificação formal em ALTISTA, LATERAL ou BAIXISTA com rastreabilidade 100% matemática. |
+
+
 

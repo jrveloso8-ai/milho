@@ -26,6 +26,7 @@ Funcionalidades:
 import os
 import sys
 import re
+import json
 from datetime import datetime
 import numpy as np
 import pandas as pd
@@ -1033,16 +1034,198 @@ def montar_html_grade_opcoes(resultados: list) -> tuple:
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# 5d. CARD HTML SENTINEL-CORN 2.0 (ARBITRAGEM DE PORTO E SENTIMENTO 360°)
+# ══════════════════════════════════════════════════════════════════════════
+
+def montar_html_sentinel_corn(sentinel_dados: dict) -> str:
+    """
+    Gera o card visual do consultor de IA Sentinel-Corn 2.0:
+    - Ponderação Tripla: 60% Técnico, 20% Notícias RSS, 20% Calendário Oficial
+    - Tabela de Arbitragem de Porto (PPE vs B3)
+    - Ponto de Inflexão de Câmbio (Dólar justo de exportação)
+    - Parecer Estratégico com Pivot Points e Leitura de Gamma
+    """
+    if not sentinel_dados or not sentinel_dados.get("contratos"):
+        return ""
+
+    contratos = sentinel_dados.get("contratos", [])
+    tab_arb = sentinel_dados.get("tabela_arbitragem_porto", [])
+    score_noticias = sentinel_dados.get("score_noticias", {})
+    score_calendario = sentinel_dados.get("score_calendario", {})
+    params = sentinel_dados.get("parametros_arbitragem", {})
+
+    linhas_arb = []
+    for a in tab_arb:
+        rec = a.get("recomendacao", "")
+        if "COMPRA" in rec:
+            cor_rec = "#00d060"
+        elif "VENDA" in rec:
+            cor_rec = "#ff3b30"
+        else:
+            cor_rec = "#f0883e"
+
+        linhas_arb.append(
+            f'<tr>'
+            f'<td style="font-weight: 700; color: #ffffff; padding: 12px 16px;">{a["contrato"]}</td>'
+            f'<td style="padding: 12px 16px; font-family: monospace;">R$ {a["preco_b3"]:.2f}</td>'
+            f'<td style="padding: 12px 16px; font-family: monospace; color: #58a6ff;">R$ {a["ppe"]:.2f}</td>'
+            f'<td style="padding: 12px 16px; font-family: monospace; font-weight: 700; color: {cor_rec};">{a["spread_gap"]:+.2f}</td>'
+            f'<td style="padding: 12px 16px;"><span style="background: rgba(255,255,255,0.06); color: {cor_rec}; border: 1px solid {cor_rec}; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">{rec}</span></td>'
+            f'</tr>'
+        )
+    corpo_arb = "".join(linhas_arb)
+
+    cards_sent = []
+    for c in contratos:
+        sent = c.get("sentimento", "LATERAL")
+        if sent == "ALTISTA":
+            cor_sent = "#00d060"
+        elif sent == "BAIXISTA":
+            cor_sent = "#ff3b30"
+        else:
+            cor_sent = "#f0883e"
+        p = c.get("pesos", {})
+
+        cards_sent.append(
+            f'<div style="background: #141720; border: 1px solid #232a38; border-radius: 8px; padding: 14px; min-width: 220px; flex: 1;">'
+            f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">'
+            f'<span style="font-weight: 700; font-size: 15px; color: #ffffff;">{c["contrato"]}</span>'
+            f'<span style="background: rgba(255,255,255,0.08); color: {cor_sent}; border: 1px solid {cor_sent}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">{sent}</span>'
+            f'</div>'
+            f'<div style="font-size: 20px; font-weight: 700; font-family: monospace; color: #ffffff; margin-bottom: 6px;">R$ {c["preco"]:.2f}</div>'
+            f'<div style="font-size: 11px; color: #8b949e; margin-bottom: 10px;">Score: <b style="color:{cor_sent};">{c["score_final"]:+.1f}/100</b></div>'
+            f'<div style="font-size: 10px; color: #8b949e; border-top: 1px solid #20252e; padding-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">'
+            f'<span>Técnico (60%): <b>{p.get("tecnico_60", 0):+.0f}</b></span>'
+            f'<span>Notícias (20%): <b>{p.get("noticias_20", 0):+.0f}</b></span>'
+            f'<span>Calendário (20%): <b>{p.get("calendario_20", 0):+.0f}</b></span>'
+            f'<span>WDO Inflexão: <b>R$ {c["ponto_inflexao_cambio"]:.2f}</b></span>'
+            f'</div>'
+            f'</div>'
+        )
+    cards_sent_html = "".join(cards_sent)
+
+    parecer_txt = sentinel_dados.get("parecer_executivo", "").replace("<", "&lt;").replace(">", "&gt;")
+
+    card_sentinel_html = f"""
+    <div class="profit-card" style="margin-top: 24px; border: 1px solid #2563eb;">
+        <div class="profit-card-header" style="background: linear-gradient(90deg, #0f172a 0%, #181d28 100%);">
+            <div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 18px;">🤖</span>
+                    <h3 class="profit-title-text" style="color: #60a5fa;">SENTINEL-CORN 2.0 — Análise de Sentimento 360° & Paridade de Exportação (B3)</h3>
+                </div>
+                <p class="profit-subtitle">
+                    Ponderação Tripla: <b>60% Técnico & Opções</b> (TRIX v5, NTSL, Call/Put Wall) + <b>20% Notícias Agro RSS</b> + <b>20% Calendário Oficial</b> (USDA/CONAB).
+                </p>
+            </div>
+            <div>
+                <span style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #3b82f6; padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700;">CONSULTOR IA B3</span>
+            </div>
+        </div>
+        <div style="padding: 20px;">
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+                {cards_sent_html}
+            </div>
+
+            <div style="background: #0d1117; border: 1px solid #232a38; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 13px; font-weight: 700; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px;">⚓ Tabela de Arbitragem de Porto (PPE)</span>
+                    <span style="font-size: 11px; color: #8b949e;">CBOT: {params.get('cbot_cents', 0):.1f}¢/bu | Câmbio: R$ {params.get('cambio_usdbrl', 0):.3f} | Prêmio: +US$ {params.get('premio_porto_usd', 0.7):.2f} | Logística: R$ {params.get('custos_logisticos_brl', 10):.2f}</span>
+                </div>
+                <table class="profit-table">
+                    <thead>
+                        <tr>
+                            <th style="padding: 10px 16px;">Contrato</th>
+                            <th style="padding: 10px 16px;">Preço B3 (Tela)</th>
+                            <th style="padding: 10px 16px;">PPE Calculada</th>
+                            <th style="padding: 10px 16px;">Spread (Gap vs PPE)</th>
+                            <th style="padding: 10px 16px;">Recomendação Sentinel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {corpo_arb}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="background: #121622; border: 1px solid #1f293d; border-radius: 8px; padding: 18px; font-size: 13px; line-height: 1.6; color: #cbd5e1;">
+                <div style="font-weight: 700; font-size: 14px; color: #f8fafc; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <span>📜</span> Parecer Estratégico & Leitura de Mercado (Sentinel-Corn 2.0)
+                </div>
+                <pre style="white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 12px; margin: 0; color: #94a3b8; line-height: 1.5;">{parecer_txt}</pre>
+            </div>
+        </div>
+    </div>
+    """
+    return card_sentinel_html
+
+
+def salvar_dados_curva_json(resultados: list, watchlist: list, sentinel_dados: dict, output_path: str = None):
+    """Exporta payload estruturado em JSON para desacoplar a visualização e acelerar a SPA."""
+    if output_path is None:
+        output_path = os.path.join(PASTA_PROJETO, "dados_curva.json")
+
+    series_contratos = {}
+    contratos_resumo = []
+
+    for r in resultados:
+        if not r.get("sucesso"):
+            continue
+        cod = r["codigo"]
+        u = r["ultimo_bar"]
+        op = r.get("opcoes") or {}
+        contratos_resumo.append({
+            "codigo": cod,
+            "vencimento_iso": r["vencimento_iso"],
+            "ultimo_close": u["close"],
+            "posicao": u["posicao"],
+            "sma100": u["sma100"],
+            "call_wall": op.get("call_wall"),
+            "put_wall": op.get("put_wall"),
+            "max_pain": op.get("max_pain")
+        })
+
+        df_calc = r["df_calculado"]
+        reais = df_calc[~df_calc["is_sintetico"]].copy()
+        pts = []
+        for _, row in reais.iterrows():
+            pts.append({
+                "data": row["Data"].strftime("%Y-%m-%d"),
+                "open": round(float(row["Open"]), 2),
+                "high": round(float(row["High"]), 2),
+                "low": round(float(row["Low"]), 2),
+                "close": round(float(row["Close"]), 2),
+                "volume": float(row.get("Volume", 0) or 0),
+                "posicao": row.get("posicao_trix_v5", "FLAT"),
+                "sma100": round(float(row["sma100"]), 2) if pd.notna(row.get("sma100")) else None,
+                "trix": round(float(row["trix"]), 4) if pd.notna(row.get("trix")) else None,
+                "sinal": round(float(row["sinal"]), 4) if pd.notna(row.get("sinal")) else None,
+            })
+        series_contratos[cod] = pts
+
+    payload = {
+        "gerado_em": datetime.now().isoformat(),
+        "contratos": contratos_resumo,
+        "watchlist": watchlist or [],
+        "sentinel_corn": sentinel_dados or {},
+        "series_contratos": series_contratos
+    }
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, indent=2)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # 6. GERADOR DO GRÁFICO INTERATIVO COM SELETOR (SEÇÃO 2.5 / MOCKUP VALIDADO)
 # ══════════════════════════════════════════════════════════════════════════
 
-def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, watchlist: list = None):
+def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, watchlist: list = None, sentinel_dados: dict = None):
     """
     Gera gráfico interativo standalone em HTML utilizando Plotly,
     replicando com fidelidade visual o padrão de design Profit:
-      - Estética escura profissional (dark terminal / trading desk).
-      - Candlesticks desenhados SOMENTE para dias reais (is_sintetico == False).
-      - Cor dos candles baseada no ESTADO (PaintBar NTSL: COMPRADO=verde Profit, VENDIDO=vermelho Profit, FLAT=cinza).
+    - Estética escura profissional (dark terminal / trading desk).
+    - Candlesticks desenhados SOMENTE para dias reais (is_sintetico == False).
+    - Cor dos candles baseada no ESTADO (PaintBar NTSL: COMPRADO=verde Profit, VENDIDO=vermelho Profit, FLAT=cinza).
       - Linha única no painel de preço: SMA(100) / VTend em branco/prata nítido.
       - Linha pontilhada magenta (#ff00cc) para o RTCNI Físico (Cepea/Esalq).
       - Escala de preços no lado direito (side="right", padrão Profit).
@@ -1589,10 +1772,15 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
                     pills_html = "".join(pills_btns)
 
                     top_bar_html = (
-                        f'<div class="chart-contract-pills-bar">\n'
-                        f'    <span class="pills-label">CONTRATO B3:</span>\n'
-                        f'    <div class="pills-scroll-wrapper">\n'
-                        f'        {pills_html}\n'
+                        f'<div class="chart-contract-pills-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">\n'
+                        f'    <div style="display:flex;align-items:center;gap:8px;">\n'
+                        f'        <span class="pills-label">CONTRATO B3:</span>\n'
+                        f'        <div class="pills-scroll-wrapper">\n'
+                        f'            {pills_html}\n'
+                        f'        </div>\n'
+                        f'    </div>\n'
+                        f'    <div>\n'
+                        f'        <a href="milho_dashboard.html" style="text-decoration:none;color:#f59e0b;font-size:12px;font-weight:600;padding:6px 12px;background:rgba(245,158,11,0.12);border:1px solid #f59e0b;border-radius:6px;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;">🤖 Plataforma Sentinel-Corn 2.0</a>\n'
                         f'    </div>\n'
                         f'</div>'
                     )
@@ -1636,7 +1824,8 @@ def gerar_grafico_interativo(resultados: list, output_html: str = ARQUIVO_HTML, 
             if "</head>" in conteudo:
                 conteudo = conteudo.replace("</head>", f"{meta_viewport}\n{css_profit}\n{grade_css}\n{css_feed}\n</head>")
             if "</body>" in conteudo:
-                corpo_adicional = f"{tabela_html}\n{grade_card_html}\n{grade_js}\n{js_feed}"
+                sentinel_card_html = montar_html_sentinel_corn(sentinel_dados) if sentinel_dados else ""
+                corpo_adicional = f"{sentinel_card_html}\n{tabela_html}\n{grade_card_html}\n{grade_js}\n{js_feed}"
                 conteudo = conteudo.replace("</body>", f"{corpo_adicional}\n</body>")
             with open(output_html, "w", encoding="utf-8") as f:
                 f.write(conteudo)
@@ -1698,6 +1887,59 @@ def executar():
     print("\nMontando Watchlist (Curva CCM vs Físico RTCNI)...")
     watchlist = montar_watchlist(resultados, PASTA_PROJETO)
 
+    # 5b. Executar Motor Sentinel-Corn 2.0 (Análise de Sentimento 360° e Paridade de Exportação)
+    print("\nProcessando análise de sentimento Sentinel-Corn 2.0...")
+    sentinel_dados = {}
+    try:
+        import sentinel_engine
+        cbot_val = 530.0
+        cambio_val = 5.166
+        caminho_dados_milho = os.path.join(PASTA_PROJETO, "dados_milho.json")
+        if os.path.isfile(caminho_dados_milho):
+            try:
+                with open(caminho_dados_milho, "r", encoding="utf-8") as f_d:
+                    d_m = json.load(f_d)
+                    cbot_val = float((d_m.get("zc_cme") or {}).get("ultimo_preco") or 530.0)
+                    cambio_val = float((d_m.get("cambio") or {}).get("wdofut_usdbrl") or 5.166)
+            except Exception:
+                pass
+
+        spot_val = watchlist[0].get("rtcni_preco") if watchlist else None
+        curva_para_sentinel = []
+        for r in resultados:
+            if not r.get("sucesso"):
+                continue
+            u = r["ultimo_bar"]
+            op = r.get("opcoes") or {}
+            curva_para_sentinel.append({
+                "codigo": r["codigo"],
+                "ultimo_bar": u,
+                "atr14": 1.50,
+                "barreiras_opcoes": {
+                    "call_wall": op.get("call_wall"),
+                    "put_wall": op.get("put_wall"),
+                    "max_pain": op.get("max_pain")
+                }
+            })
+
+        sentinel_dados = sentinel_engine.processar_sentimento_curva(
+            curva_resultados=curva_para_sentinel,
+            cbot_cents=cbot_val,
+            cambio_usdbrl=cambio_val,
+            preco_spot_rtcni=spot_val,
+            estrutura_curva="CONTANGO"
+        )
+        print(f"Sentimento Sentinel-Corn 2.0 calculado para {len(sentinel_dados.get('contratos', []))} contratos.")
+    except Exception as e_sent:
+        print(f"Aviso no Sentinel-Corn 2.0: {e_sent}")
+
+    # 5c. Salva dados_curva.json para a SPA reativa
+    try:
+        salvar_dados_curva_json(resultados, watchlist, sentinel_dados)
+        print("Arquivo de dados leves salvo em: dados_curva.json")
+    except Exception as e_json:
+        print(f"Aviso ao salvar dados_curva.json: {e_json}")
+
     # 6. Gerar resumo em texto simples
     resumo_texto = gerar_resumo_texto(resultados, watchlist=watchlist)
     print("\n" + resumo_texto)
@@ -1706,9 +1948,9 @@ def executar():
         f.write(resumo_texto)
     print(f"\nResumo gravado em: {ARQUIVO_RESUMO_TXT}")
 
-    # 7. Gerar gráfico interativo com seletor
-    print("\nGerando gráfico interativo com seletor de contratos e Watchlist...")
-    gerar_grafico_interativo(resultados, ARQUIVO_HTML, watchlist=watchlist)
+    # 7. Gerar gráfico interativo com seletor e Sentinel-Corn 2.0
+    print("\nGerando gráfico interativo com seletor de contratos, Sentinel-Corn e Watchlist...")
+    gerar_grafico_interativo(resultados, ARQUIVO_HTML, watchlist=watchlist, sentinel_dados=sentinel_dados)
 
     print("\nProcessamento concluído com sucesso.")
 

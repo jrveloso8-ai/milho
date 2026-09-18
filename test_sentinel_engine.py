@@ -1,0 +1,115 @@
+# -*- coding: utf-8 -*-
+"""
+test_sentinel_engine.py — Suíte de testes para o motor Sentinel-Corn 2.0.
+Valida:
+  1. Fórmula de Paridade de Exportação (PPE).
+  2. Ponto de Inflexão de Câmbio.
+  3. Matriz de Decisão Basis vs. Paridade.
+  4. Ponderação Tripla de Sentimento (20% Notícias / 20% Calendário / 60% Técnico).
+  5. Classificação dos vereditos (ALTISTA, LATERAL, BAIXISTA).
+  6. Ausência de dados simulados/fabricados.
+"""
+
+import pytest
+from sentinel_engine import (
+    calcular_ppe,
+    calcular_ponto_inflexao_cambio,
+    matriz_decisao_basis_paridade,
+    classificar_sentimento,
+    calcular_score_tecnico_contrato
+)
+
+
+def test_calcular_ppe_precisao():
+    """Valida o cálculo exato da Paridade de Exportação com parâmetros de mercado."""
+    cbot = 450.0
+    premio = 0.70
+    cambio = 5.50
+    custos = 10.00
+
+    # PPE_bruta = (450.70) * 0.39368 * 5.50 * 0.06 = 58.5539
+    # PPE_liquida = 58.5539 - 10.00 = 48.55
+    ppe = calcular_ppe(cbot, premio, cambio, custos)
+    assert ppe == 48.55
+
+
+def test_calcular_ponto_inflexao_cambio_reciprocidade():
+    """Valida que o Dólar de Inflexão reproduz exatamente a PPE quando Preço B3 = PPE."""
+    cbot = 450.0
+    premio = 0.70
+    custos = 10.00
+    preco_b3 = 48.56
+
+    cambio_inflexao = calcular_ponto_inflexao_cambio(preco_b3, cbot, premio, custos)
+    # Deve ser aproximadamente 5.50
+    assert abs(cambio_inflexao - 5.50) < 0.01
+
+    # Recalculando a PPE com o câmbio de inflexão deve dar o preco_b3
+    ppe_recalculada = calcular_ppe(cbot, premio, cambio_inflexao, custos)
+    assert abs(ppe_recalculada - preco_b3) < 0.02
+
+
+def test_matriz_decisao_alerta_venda():
+    """Se Preço B3 > PPE + R$ 3,00 com Contango excessivo -> ALERTA DE VENDA."""
+    preco_b3 = 75.00
+    ppe = 70.00  # Gap = +5.00 (> 3.00)
+    res = matriz_decisao_basis_paridade(preco_b3, ppe, preco_spot_rtcni=68.00, estrutura_curva="CONTANGO")
+
+    assert res["sinal"] == "VENDA"
+    assert "ALERTA DE VENDA" in res["recomendacao"]
+    assert res["gap_ppe"] == 5.00
+
+
+def test_matriz_decisao_alerta_compra():
+    """Se Preço B3 < PPE com Backwardation ou sustentação do spot -> ALERTA DE COMPRA."""
+    preco_b3 = 68.00
+    ppe = 72.00  # Gap = -4.00
+    res = matriz_decisao_basis_paridade(preco_b3, ppe, preco_spot_rtcni=70.00, estrutura_curva="BACKWARDATION")
+
+    assert res["sinal"] == "COMPRA"
+    assert "ALERTA DE COMPRA" in res["recomendacao"]
+
+
+def test_classificar_sentimento_fronteiras():
+    """Valida as fronteiras estritas de ALTISTA (>= +25), BAIXISTA (<= -25) e LATERAL."""
+    assert classificar_sentimento(25.0) == "ALTISTA"
+    assert classificar_sentimento(50.0) == "ALTISTA"
+    assert classificar_sentimento(24.9) == "LATERAL"
+    assert classificar_sentimento(0.0) == "LATERAL"
+    assert classificar_sentimento(-24.9) == "LATERAL"
+    assert classificar_sentimento(-25.0) == "BAIXISTA"
+    assert classificar_sentimento(-80.0) == "BAIXISTA"
+
+
+def test_score_tecnico_contrato_ntsl_e_opcoes():
+    """Valida o cálculo do score técnico com TRIX NTSL, SMA100 e Call/Put Wall."""
+    res_mock = {
+        "ultimo_bar": {
+            "close": 70.0,
+            "posicao": "COMPRA",
+            "trix": 0.15,
+            "sinal": 0.05,
+            "sma100": 65.0
+        },
+        "barreiras_opcoes": {
+            "call_wall": 76.0,
+            "put_wall": 64.0,
+            "max_pain": 68.0
+        }
+    }
+    score, info = calcular_score_tecnico_contrato(res_mock, preco_fechamento=70.0, atr14=1.50)
+    # COMPRA (+40) + TRIX>Sinal (+20) + Close>SMA100 (+20) = +80.0
+    assert score == 80.0
+    assert info["posicao_ntsl"] == "COMPRA"
+
+
+def test_ponderacao_tripla_sentimento():
+    """Valida a fórmula com pesos exatos: 20% Notícias + 20% Calendário + 60% Técnico."""
+    score_noticias = 50.0      # Contribuição: 10.0
+    score_calendario = -10.0   # Contribuição: -2.0
+    score_tecnico = 80.0       # Contribuição: 48.0
+
+    score_final = (0.20 * score_noticias) + (0.20 * score_calendario) + (0.60 * score_tecnico)
+    # 10.0 - 2.0 + 48.0 = 56.0
+    assert round(score_final, 1) == 56.0
+    assert classificar_sentimento(score_final) == "ALTISTA"

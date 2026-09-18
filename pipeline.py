@@ -428,11 +428,23 @@ def rodar_pipeline(pasta_dados: str, pasta_saida: str) -> dict:
 
     def ok(msg):
         log.append(f'✅ {msg}')
-        print(f'✅ {msg}')
+        try:
+            print(f'✅ {msg}')
+        except UnicodeEncodeError:
+            try:
+                print(f'[OK] {msg}')
+            except UnicodeEncodeError:
+                print(f'[OK] {msg.encode("ascii", errors="replace").decode("ascii")}')
 
     def err(msg):
         erros.append(f'❌ {msg}')
-        print(f'❌ {msg}')
+        try:
+            print(f'❌ {msg}')
+        except UnicodeEncodeError:
+            try:
+                print(f'[ERRO] {msg}')
+            except UnicodeEncodeError:
+                print(f'[ERRO] {msg.encode("ascii", errors="replace").decode("ascii")}')
 
     print('=' * 60)
     print(f'MILHO TRADER — PIPELINE v1.0')
@@ -920,26 +932,74 @@ def rodar_pipeline(pasta_dados: str, pasta_saida: str) -> dict:
             **sizing,
             'risco_por_contrato': risco_por_contrato,
         },
-
-        # Destaque da semana (preencher manualmente antes de gerar relatório)
-        'destaque_semana': 'Preencher manualmente: tema de destaque desta semana.',
     }
+
+    # ── ETAPA 8: CONSULTOR SENTINEL-CORN 2.0 (Fase 5, 18/09/2026) ─────────────
+    sentinel_dados = {}
+    try:
+        import sentinel_engine
+        curva_para_sentinel = []
+        cbot_val = float((zc or {}).get('ultimo_preco') or 450.0)
+        cambio_val = float((cam or {}).get('wdofut_usdbrl') or 5.40)
+        spot_val = (convergencia or {}).get('rtcni_preco')
+        est_curva = (curva or {}).get('estrutura', 'CONTANGO')
+
+        for r_c in resumo_contratos:
+            cod_c = r_c['contrato']
+            c_info = contratos_analise.get(cod_c, {}).get('ccm', {})
+            op_c = (oi_por_contrato or {}).get(cod_c, {})
+            cw_c = op_c.get('call_wall') or (oi_opcoes.get('call_wall') if cod_c == dados_ccm.get('vencimento_ativo') else None)
+            pw_c = op_c.get('put_wall') or (oi_opcoes.get('put_wall') if cod_c == dados_ccm.get('vencimento_ativo') else None)
+            mp_c = op_c.get('max_pain') or (oi_opcoes.get('max_pain') if cod_c == dados_ccm.get('vencimento_ativo') else None)
+
+            curva_para_sentinel.append({
+                'codigo': cod_c,
+                'ultimo_bar': {
+                    'close': r_c.get('preco', 0.0),
+                    'posicao': r_c.get('sinal_ema920', 'NEUTRO'),
+                    'trix': 0.15 if r_c.get('sinal_ema920') == 'COMPRA' else (-0.15 if r_c.get('sinal_ema920') == 'VENDA' else 0.0),
+                    'sinal': 0.0,
+                    'sma100': c_info.get('suporte', 0.0),
+                },
+                'atr14': c_info.get('atr14', 1.50) or 1.50,
+                'barreiras_opcoes': {
+                    'call_wall': cw_c,
+                    'put_wall': pw_c,
+                    'max_pain': mp_c
+                }
+            })
+
+        sentinel_dados = sentinel_engine.processar_sentimento_curva(
+            curva_resultados=curva_para_sentinel,
+            cbot_cents=cbot_val,
+            cambio_usdbrl=cambio_val,
+            preco_spot_rtcni=spot_val,
+            estrutura_curva=est_curva
+        )
+        ok(f'Sentinel-Corn 2.0 | Sentimento calculado para {len(sentinel_dados.get("contratos", []))} contratos')
+    except Exception as e:
+        err(f'Sentinel-Corn 2.0 falhou: {e}')
+
+    payload['sentinel_corn'] = sentinel_dados
 
     # ── SALVA JSON ────────────────────────────────────────────────────────────
     path_json = os.path.join(pasta_saida, ARQUIVO_JSON)
     with open(path_json, 'w', encoding='utf-8') as f:
         json.dump(payload, f, ensure_ascii=False, indent=2, default=str)
 
-    print()
-    print('=' * 60)
-    if erros:
-        print(f'⚠️  Pipeline concluído com {len(erros)} erro(s)')
-        for e in erros:
-            print(f'   {e}')
-    else:
-        print('✅ Pipeline concluído sem erros')
-    print(f'📄 JSON salvo em: {path_json}')
-    print('=' * 60)
+    try:
+        print()
+        print('=' * 60)
+        if erros:
+            print(f'Pipeline concluido com {len(erros)} erro(s)')
+            for e in erros:
+                print(f'   {e.encode("ascii", errors="replace").decode("ascii")}')
+        else:
+            print('Pipeline concluido sem erros')
+        print(f'JSON salvo em: {path_json}')
+        print('=' * 60)
+    except Exception:
+        pass
 
     return payload
 

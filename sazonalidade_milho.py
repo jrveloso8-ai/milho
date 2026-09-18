@@ -287,10 +287,16 @@ def calcular_sazonalidade(pasta_dados: str, data_referencia=None) -> dict:
     caminho_csv = os.path.join(pasta_dados, NOME_CSV)
 
     if not os.path.exists(caminho_csv):
-        return {
-            "erro":    f"Arquivo não encontrado: {caminho_csv}",
-            "status":  "FALHA",
-        }
+        import glob
+        candidatos = glob.glob(os.path.join(pasta_dados, "CCMFUT*Diário*.csv")) + glob.glob(os.path.join(pasta_dados, "CCMFUT*.csv"))
+        candidatos = [c for c in candidatos if "seed" not in os.path.basename(c).lower()]
+        if candidatos:
+            caminho_csv = sorted(candidatos)[-1]
+        else:
+            return {
+                "erro":    f"Arquivo não encontrado: {caminho_csv}",
+                "status":  "FALHA",
+            }
 
     try:
         registros      = _ler_csv(caminho_csv)
@@ -350,30 +356,30 @@ if __name__ == "__main__":
     resultado = calcular_sazonalidade(pasta, date.today())
 
     if resultado.get("status") != "OK":
-        print(f"❌ ERRO: {resultado.get('erro')}")
+        print(f"[ERRO] {resultado.get('erro')}")
         sys.exit(1)
 
     ctx = resultado["contexto_atual"]
-    print(f"\n📅 Data referência : {date.today().strftime('%d/%m/%Y')}")
-    print(f"📊 Base histórica  : {resultado['periodo_base']} ({resultado['total_obs']} obs)")
-    print(f"⚠️  {resultado['aviso_historico']}")
+    print(f"\nData referencia : {date.today().strftime('%d/%m/%Y')}")
+    print(f"Base historica  : {resultado['periodo_base']} ({resultado['total_obs']} obs)")
+    print(f"Aviso: {resultado['aviso_historico']}")
     print()
-    print(f"🌱 Fase agrícola   : {ctx['fase_agricola']}")
-    print(f"   Descrição       : {ctx['descricao_fase']}")
-    print(f"   Viés sazonal    : {ctx['vies_sazonal']}")
+    print(f"Fase agricola   : {ctx['fase_agricola']}")
+    print(f"Descricao       : {ctx['descricao_fase']}")
+    print(f"Vies sazonal    : {ctx['vies_sazonal']}")
     print()
-    print(f"📍 Quinzena atual  : {ctx['quinzena_atual']}")
-    print(f"   Desvio médio    : {ctx['desvio_atual_pct']:+.1f}% (±{ctx['desvio_std_pct']:.1f}%) | {ctx['n_obs_atual']} obs")
-    print(f"   Próxima quinzena: {ctx['proxima_quinzena']} → {ctx['desvio_proxima_pct']:+.1f}%")
-    print(f"   Delta quinzenal : {ctx['delta_quinzenal_pct']:+.2f}% ({ctx['tendencia_sazonal']})")
-    print(f"   Virada sazonal  : {'✅ SIM — Jul-Q2 é historicamente a virada de baixa para alta' if ctx['virada_sazonal'] else '❌ NÃO — ainda em zona de pressão'}")
-    print(f"   Meses até pico  : {ctx['meses_ate_pico_mar']} meses (pico histórico: Março)")
+    print(f"Quinzena atual  : {ctx['quinzena_atual']}")
+    print(f"Desvio medio    : {ctx['desvio_atual_pct']:+.1f}% (+-{ctx['desvio_std_pct']:.1f}%) | {ctx['n_obs_atual']} obs")
+    print(f"Proxima quinzena: {ctx['proxima_quinzena']} -> {ctx['desvio_proxima_pct']:+.1f}%")
+    print(f"Delta quinzenal : {ctx['delta_quinzenal_pct']:+.2f}% ({ctx['tendencia_sazonal']})")
+    print(f"Virada sazonal  : {'SIM — Jul-Q2 é historicamente a virada' if ctx['virada_sazonal'] else 'NAO — ainda em zona de pressão'}")
+    print(f"Meses ate pico  : {ctx['meses_ate_pico_mar']} meses (pico historico: Marco)")
     print()
-    print("📆 CALENDÁRIO SAZONAL COMPLETO:")
-    print(f"   {'Mês':5s} | {'Desvio':>8s} | {'±':>6s} | {'Min':>7s} | {'Max':>7s} | {'Obs':>4s} | Fase")
+    print("CALENDARIO SAZONAL COMPLETO:")
+    print(f"   {'Mes':5s} | {'Desvio':>8s} | {'+-':>6s} | {'Min':>7s} | {'Max':>7s} | {'Obs':>4s} | Fase")
     print("   " + "-" * 72)
     for m in resultado["calendario_mensal"]:
-        sinal = "▲" if (m["avg_pct"] or 0) > 0 else "▼"
+        sinal = "+" if (m["avg_pct"] or 0) > 0 else "-"
         print(f"   {m['mes']:5s} | {m['avg_pct']:+7.1f}% | {m['std_pct']:5.1f}% | "
               f"{m['min_pct']:+6.1f}% | {m['max_pct']:+6.1f}% | {m['n_obs']:4d} | "
               f"{sinal} {m['fase']}")
@@ -383,8 +389,8 @@ if __name__ == "__main__":
     try:
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(resultado, f, ensure_ascii=False, indent=2, default=str)
-        print(f"\n✅ JSON de debug salvo em: {out_path}")
+        print(f"\n[OK] JSON de debug salvo em: {out_path}")
     except Exception:
-        print("\n⚠️  Não foi possível salvar o JSON de debug.")
+        print("\n[AVISO] Nao foi possivel salvar o JSON de debug.")
 
     print("=" * 60)

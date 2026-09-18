@@ -444,6 +444,7 @@ body {
   </div>
   <div class="header-right">
     <span class="last-update" id="last-update">—</span>
+    <button class="btn-refresh" onclick="window.open('ccm_trix_curva.html', '_blank')">📈 Curva & TRIX v5</button>
     <button class="btn-refresh" onclick="window.open('relatorio_cliente.html', '_blank')">📄 Relatório PDF</button>
     <button class="btn-refresh" onclick="loadData()">↻ Atualizar</button>
   </div>
@@ -456,8 +457,10 @@ body {
 
 <!-- TABS -->
 <nav class="tabs-bar">
-  <button class="tab-btn active" onclick="switchTab('decisao')">🎯 Decisão</button>
+  <button class="tab-btn active" onclick="switchTab('sentinel')">🤖 Sentinel-Corn 2.0</button>
+  <button class="tab-btn" onclick="switchTab('decisao')">🎯 Decisão</button>
   <button class="tab-btn" onclick="switchTab('guia')">🧭 Guia Operador</button>
+  <button class="tab-btn" onclick="switchTab('grafico')">📈 Gráfico & TRIX v5</button>
   <button class="tab-btn" onclick="switchTab('tecnico')">📊 Técnico</button>
   <button class="tab-btn" onclick="switchTab('macro')">🌍 Macro</button>
   <button class="tab-btn" onclick="switchTab('convergencia')">⚖️ Convergência</button>
@@ -467,11 +470,81 @@ body {
   <button class="tab-btn" onclick="switchTab('spread')">↔️ Spread Calendário</button>
 </nav>
 
+<!-- TAB: SENTINEL-CORN 2.0 -->
+<div id="tab-sentinel" class="tab-content active">
+  <div class="card" style="border: 1px solid #3b82f6; background: linear-gradient(135deg, rgba(30,58,138,0.2) 0%, rgba(17,24,39,0.9) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span style="font-size: 32px;">🤖</span>
+        <div>
+          <div style="font-size: 16px; font-weight: 700; color: #60a5fa; letter-spacing: 0.02em;">SENTINEL-CORN 2.0 — CONSULTOR ESTRATÉGICO B3</div>
+          <div style="font-size: 12px; color: var(--text3);">Sentimento 360° Ponderado: 60% Técnico & Opções · 20% Notícias Agro RSS · 20% Calendário Oficial</div>
+        </div>
+      </div>
+      <div>
+        <span class="badge blue">ESTRATEGISTA B3 SÊNIOR</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Sentimento Consolidado por Contrato Vivo <span style="color:var(--text3);font-size:10px;font-weight:400">(60% TRIX v5/Opções · 20% RSS Notícias · 20% Calendário Oficial)</span></div>
+    <div id="sentinel-contratos-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 12px;"></div>
+  </div>
+
+  <div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div class="card-title" style="margin-bottom: 4px;">⚓ Simulador de Arbitragem de Porto (PPE)</div>
+        <div style="font-size: 12px; color: var(--text3);">Fórmula: PPE = ((CBOT + Prêmio) × 0.39368 × Câmbio × 0.06) - Custos Logísticos</div>
+      </div>
+      <div style="display: flex; gap: 20px; align-items: center; background: var(--surface2); padding: 10px 16px; border-radius: 8px;">
+        <div>
+          <label style="font-size: 11px; color: var(--text3); display: block;">Prêmio Porto (Basis USD/bu): <b id="val-premio-porto" style="color:var(--text);">+US$ 0.70</b></label>
+          <input type="range" id="slider-premio-porto" min="0.0" max="2.0" step="0.05" value="0.70" oninput="recalcularPPEInterativa()" style="width: 130px; accent-color: #3b82f6;">
+        </div>
+        <div>
+          <label style="font-size: 11px; color: var(--text3); display: block;">Custos Logísticos (Frete R$/sc): <b id="val-custos-log" style="color:var(--text);">R$ 10.00</b></label>
+          <input type="range" id="slider-custos-log" min="4.0" max="20.0" step="0.5" value="10.00" oninput="recalcularPPEInterativa()" style="width: 130px; accent-color: #3b82f6;">
+        </div>
+      </div>
+    </div>
+    <div id="sentinel-tabela-arbitragem-container"></div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Visão de Risco Cambial (Ponto de Inflexão WDO)</div>
+      <div id="sentinel-inflexao-card"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Matriz de Decisão Basis vs. Paridade</div>
+      <div id="sentinel-matriz-basis-card"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Parecer Estratégico Sentinel-Corn 2.0 <span style="color:var(--text3);font-size:10px;font-weight:400">(Leitura profunda de mercado, cenários Bullish vs Bearish e Gamma)</span></div>
+    <div id="sentinel-parecer-texto" style="background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; font-size: 13px; line-height: 1.6; color: var(--text2); white-space: pre-wrap; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"></div>
+  </div>
+</div>
+
+<!-- TAB: GRÁFICO & TRIX V5 -->
+<div id="tab-grafico" class="tab-content">
+  <div class="card" style="padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <span style="font-weight: 700; font-size: 14px;">Terminal Interativo — TRIX v5 & Curva CCM</span>
+      <span style="font-size: 12px; color: var(--text3); margin-left: 10px;">Candles reais, SMA 100 VTend, RTCNI físico, Call Wall e Put Wall</span>
+    </div>
+    <button class="btn-refresh" onclick="window.open('ccm_trix_curva.html', '_blank')">⤢ Abrir em Tela Cheia</button>
+  </div>
+  <div style="width: 100%; height: 820px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border);">
+    <iframe src="ccm_trix_curva.html" style="width: 100%; height: 100%; border: none;"></iframe>
+  </div>
+</div>
+
 <!-- TAB: DECISÃO -->
-<!-- Fundida com Bias Estrutural em 20/07/2026 — um único veredito, não dois
-     banners que o operador precisa reconciliar na cabeça. Ver
-     calcular_veredito_consolidado() em pipeline.py para a regra. -->
-<div id="tab-decisao" class="tab-content active">
+<div id="tab-decisao" class="tab-content">
 
   <div class="card">
     <div class="card-title">Resumo de Todos os Contratos <span style="color:var(--text3);font-size:10px;font-weight:400">(mesmo critério técnico — EMA9/20 + Setup 9.1 + Bias Estrutural — rodado em cada vencimento vivo)</span></div>
@@ -2345,8 +2418,175 @@ async function loadData() {
   }
 }
 
+let CURRENT_SENTINEL = null;
+let CURRENT_MACRO_CBOT = 530.0;
+let CURRENT_MACRO_CAMBIO = 5.166;
+
+function renderSentinelCorn(d) {
+  const sc = d.sentinel_corn;
+  const grid = document.getElementById('sentinel-contratos-grid');
+  if (!sc || !sc.contratos || sc.contratos.length === 0) {
+    if (grid) grid.innerHTML = '<div class="alert alert-warning" style="grid-column: 1 / -1;">Análise Sentinel-Corn 2.0 em processamento. Execute o pipeline para atualizar.</div>';
+    return;
+  }
+
+  CURRENT_SENTINEL = sc;
+  const params = sc.parametros_arbitragem || {};
+  CURRENT_MACRO_CBOT = params.cbot_cents || 530.0;
+  CURRENT_MACRO_CAMBIO = params.cambio_usdbrl || 5.166;
+
+  // Grid de Contratos Vivos com Sentimento 360°
+  grid.innerHTML = sc.contratos.map(c => {
+    const sent = c.sentimento;
+    const badgeCls = sent === 'ALTISTA' ? 'green' : (sent === 'BAIXISTA' ? 'red' : 'amber');
+    const p = c.pesos || {};
+    const scoreColor = sent === 'ALTISTA' ? 'var(--positive)' : (sent === 'BAIXISTA' ? 'var(--negative)' : 'var(--warning)');
+    
+    return `
+      <div class="kpi-card" style="border-left: 3px solid ${scoreColor};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 14px; font-weight: 700; color: var(--text);">${c.contrato}</span>
+          <span class="badge ${badgeCls}">${sent}</span>
+        </div>
+        <div class="kpi-value" style="font-size: 24px; margin-bottom: 4px;">R$ ${fmt(c.preco, 2)}</div>
+        <div style="font-size: 11px; color: var(--text3); margin-bottom: 10px;">Score: <b style="color:${scoreColor}">${c.score_final > 0 ? '+' : ''}${fmt(c.score_final, 1)}</b>/100</div>
+
+        <div style="font-size: 10px; color: var(--text3); border-top: 1px solid var(--border); padding-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+          <span>Técnico (60%): <b style="color:var(--text);">${p.tecnico_60 > 0 ? '+' : ''}${fmt(p.tecnico_60, 0)}</b></span>
+          <span>Notícias (20%): <b style="color:var(--text);">${p.noticias_20 > 0 ? '+' : ''}${fmt(p.noticias_20, 0)}</b></span>
+          <span>Calendário (20%): <b style="color:var(--text);">${p.calendario_20 > 0 ? '+' : ''}${fmt(p.calendario_20, 0)}</b></span>
+          <span>WDO Inflexão: <b style="color:var(--accent);">R$ ${fmt(c.ponto_inflexao_cambio, 3)}</b></span>
+        </div>
+        <div style="font-size: 10px; color: var(--text3); margin-top: 6px; background: rgba(0,0,0,0.25); padding: 5px 8px; border-radius: 4px;">
+          Pivot Points: Sup <b>R$ ${fmt(c.pivot_points?.suporte, 2)}</b> · Res <b>R$ ${fmt(c.pivot_points?.resistencia, 2)}</b>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Tabela de Arbitragem Interativa
+  recalcularPPEInterativa();
+
+  // Visão de Risco Cambial
+  const cAtivo = sc.contratos[0] || {};
+  const diffCambio = cAtivo.diferenca_cambio_atual || 0;
+  document.getElementById('sentinel-inflexao-card').innerHTML = `
+    <div style="padding: 6px 0;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text3); font-size: 12px;">Dólar de Mercado (WDOFUT):</span>
+        <span style="font-family: 'JetBrains Mono'; font-weight: 700; color: var(--text);">R$ ${fmt(CURRENT_MACRO_CAMBIO, 3)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text3); font-size: 12px;">Ponto de Inflexão de Paridade (${cAtivo.contrato || 'CCM'}):</span>
+        <span style="font-family: 'JetBrains Mono'; font-weight: 700; color: var(--accent);">R$ ${fmt(cAtivo.ponto_inflexao_cambio, 3)}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+        <span style="color: var(--text3); font-size: 12px;">Diferença (Gap vs Paridade):</span>
+        <span style="font-family: 'JetBrains Mono'; font-weight: 700; color: ${diffCambio >= 0 ? 'var(--positive)' : 'var(--negative)'};">
+          ${diffCambio > 0 ? '+' : ''}${fmt(diffCambio, 3)}
+        </span>
+      </div>
+      <div class="alert ${diffCambio >= 0 ? 'alert-ok' : 'alert-warning'}" style="margin: 0; font-size: 11px;">
+        ${diffCambio >= 0 
+          ? '✅ Câmbio ACIMA da paridade — exportação ativada no porto (sustentação de preço físico e prêmio).' 
+          : '⚠️ Câmbio ABAIXO da paridade — exportação fechada; mercado dependente do consumo doméstico.'}
+      </div>
+    </div>
+  `;
+
+  // Matriz Basis vs Paridade
+  const mb = cAtivo.matriz_basis_paridade || {};
+  document.getElementById('sentinel-matriz-basis-card').innerHTML = `
+    <div style="padding: 6px 0;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text3); font-size: 12px;">Recomendação da Matriz:</span>
+        <span class="badge ${mb.sinal === 'COMPRA' ? 'green' : (mb.sinal === 'VENDA' ? 'red' : 'amber')}">${mb.recomendacao || 'NEUTRO'}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+        <span style="color: var(--text3); font-size: 12px;">Basis Físico (Spot RTCNI - Futuro):</span>
+        <span style="font-family: 'JetBrains Mono'; font-weight: 600;">${mb.basis != null ? (mb.basis > 0 ? '+' : '') + fmtR(mb.basis) : '—'}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+        <span style="color: var(--text3); font-size: 12px;">Spread vs PPE Internacional:</span>
+        <span style="font-family: 'JetBrains Mono'; font-weight: 600;">${mb.gap_ppe != null ? (mb.gap_ppe > 0 ? '+' : '') + fmtR(mb.gap_ppe) : '—'}</span>
+      </div>
+      <div style="font-size: 11px; color: var(--text2); line-height: 1.4; background: rgba(0,0,0,0.25); padding: 8px; border-radius: 6px;">
+        ${mb.explicacao || 'Banda de arbitragem internacional normal.'}
+      </div>
+    </div>
+  `;
+
+  // Parecer Texto Estratégico
+  document.getElementById('sentinel-parecer-texto').textContent = sc.parecer_executivo || 'Parecer analítico Sentinel-Corn 2.0 em processamento.';
+}
+
+function recalcularPPEInterativa() {
+  if (!CURRENT_SENTINEL) return;
+  const premio = parseFloat(document.getElementById('slider-premio-porto')?.value || 0.70);
+  const custos = parseFloat(document.getElementById('slider-custos-log')?.value || 10.00);
+
+  const elP = document.getElementById('val-premio-porto');
+  if (elP) elP.textContent = `+US$ ${premio.toFixed(2)}`;
+  const elC = document.getElementById('val-custos-log');
+  if (elC) elC.textContent = `R$ ${custos.toFixed(2)}`;
+
+  const cbot = CURRENT_MACRO_CBOT;
+  const cambio = CURRENT_MACRO_CAMBIO;
+  const ppeCalculada = ((cbot + premio) * 0.39368 * cambio * 0.06) - custos;
+
+  const container = document.getElementById('sentinel-tabela-arbitragem-container');
+  if (!container) return;
+
+  const contratos = CURRENT_SENTINEL.contratos || [];
+  const rows = contratos.map(c => {
+    const pr = c.preco;
+    const gap = pr - ppeCalculada;
+    let rec = 'NEUTRO / FAIR';
+    let cor = 'var(--warning)';
+    let badgeCls = 'amber';
+
+    if (gap > 3.0) {
+      rec = 'ALERTA DE VENDA (Short)';
+      cor = 'var(--negative)';
+      badgeCls = 'red';
+    } else if (gap < 0) {
+      rec = 'ALERTA DE COMPRA (Long)';
+      cor = 'var(--positive)';
+      badgeCls = 'green';
+    }
+
+    return `
+      <tr>
+        <td style="font-weight: 700; color: var(--text);">${c.contrato}</td>
+        <td>R$ ${fmt(pr, 2)}</td>
+        <td style="color: var(--accent);">R$ ${fmt(ppeCalculada, 2)}</td>
+        <td style="color: ${cor}; font-weight: 700;">${gap > 0 ? '+' : ''}${fmt(gap, 2)}</td>
+        <td><span class="badge ${badgeCls}">${rec}</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <table class="curve-table">
+      <thead>
+        <tr>
+          <th>Contrato</th>
+          <th>Preço B3 (Tela)</th>
+          <th>PPE Calculada</th>
+          <th>Spread (Gap vs PPE)</th>
+          <th>Recomendação Sentinel</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
 function renderAll(d) {
   renderTicker(d);
+  renderSentinelCorn(d);
   renderDecisao(d);
   renderGuiaOperador(d);
   renderTecnico(d);
@@ -2356,8 +2596,6 @@ function renderAll(d) {
   renderSazonalidade(d);
   renderOpcoes(d);
   renderSpreadCalendario(d);
-  // renderBiasBreakdown(d) já é chamado dentro de renderDecisao(d) —
-  // o Bias virou parte da aba Decisão, não uma aba própria.
 }
 
 // ── TAB NAVIGATION ────────────────────────────────────────

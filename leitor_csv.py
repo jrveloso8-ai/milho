@@ -19,6 +19,8 @@ def _encontrar_arquivo(pasta: str, prefixo: str) -> str:
     """
     padrao = os.path.join(pasta, f'{prefixo}*.csv')
     encontrados = glob.glob(padrao)
+    # Ignora arquivos de seed contínuo como ccmfut_seed_*.csv
+    encontrados = [f for f in encontrados if 'seed' not in os.path.basename(f).lower()]
     if not encontrados:
         return None
     # Retorna o mais recente se houver múltiplos
