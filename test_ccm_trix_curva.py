@@ -468,3 +468,71 @@ def test_feed_noticias_montar_html():
         assert "alternarSidebarFeed" in js_feed
 
 
+def test_gerar_tabela_proveniencia_md(tmp_path):
+    """Valida a geração dinâmica automática de tabela_proveniencia.md (Seção 1 / Achado 6)."""
+    from ccm_trix_curva import gerar_tabela_proveniencia_md
+    import verificar_dados_fabricados as vdf
+
+    mock_resultados = [
+        {
+            "codigo": "CCMX26",
+            "vencimento_iso": "2026-11-16",
+            "sucesso": True,
+            "transicao": {
+                "total_pregoes_reais": 235,
+                "sma100_suficiente": True,
+                "data_transicao": "2026-03-02",
+                "classificacao_atual": "DERIVADO",
+                "detalhe": "235 pregões reais",
+            },
+            "opcoes": {
+                "disponivel": True,
+                "call_wall": 80.0,
+                "call_wall_oi": 6580,
+                "put_wall": 75.0,
+                "put_wall_oi": 3104,
+                "max_pain": 71.0,
+            },
+        },
+        {
+            "codigo": "CCMN27",
+            "vencimento_iso": "2027-07-15",
+            "sucesso": True,
+            "transicao": {
+                "total_pregoes_reais": 60,
+                "sma100_suficiente": False,
+                "data_transicao": None,
+                "classificacao_atual": "ESTIMADO",
+                "detalhe": "60 pregões reais",
+            },
+            "opcoes": {
+                "disponivel": True,
+                "call_wall": 79.5,
+                "call_wall_oi": 850,
+                "put_wall": 72.75,
+                "put_wall_oi": 2200,
+                "max_pain": 73.5,
+            },
+        },
+    ]
+
+    out_file = str(tmp_path / "tabela_proveniencia.md")
+    conteudo = gerar_tabela_proveniencia_md(mock_resultados, output_path=out_file)
+
+    # Verifica se os dados dinâmicos foram renderizados
+    assert "CCMX26" in conteudo
+    assert "235" in conteudo
+    assert "02/03/2026" in conteudo
+    assert "Call Wall: R$ 80.00 (6,580 contratos)" in conteudo
+    assert "CCMN27" in conteudo
+    assert "60" in conteudo
+    assert "Call Wall: R$ 79.50 (850 contratos)" in conteudo
+    assert "*Pendente* (faltam 40 pregões reais)" in conteudo
+
+    # Valida compliance com os requisitos de auditoria de proveniência
+    with patch.object(vdf, "ARQ_TABELA", out_file):
+        erros = vdf.auditar_tabela_proveniencia()
+        assert erros == [], f"Erros na auditoria de proveniência: {erros}"
+
+
+
