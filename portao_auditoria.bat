@@ -19,7 +19,7 @@ set "FALHA_ITEM="
 echo ----------------------------------------------------------------------
 echo [6.1] Executando suite de testes automatizados (pytest)...
 echo ----------------------------------------------------------------------
-pytest -v test_ccm_trix_curva.py test_sentinel_engine.py
+pytest -v test_ccm_trix_curva.py test_sentinel_engine.py test_auditar_seguranca.py
 if errorlevel 1 (
     set "FALHA_ITEM=6.1 (Suite pytest falhou)"
     goto REPROVADO
