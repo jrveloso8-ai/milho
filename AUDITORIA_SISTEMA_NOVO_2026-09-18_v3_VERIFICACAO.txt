@@ -1,0 +1,144 @@
+VERIFICAÇÃO INDEPENDENTE DA ENTREGA DO OPERADOR — MILHO TRADER
+Data: 18/09/2026
+Base comparada: relatório de entrega do operador (colado no chat) vs. código real
+staged diretamente de C:\Projetos Phyton\Milho, e execução real (não narrada) de
+testes e gates neste ambiente.
+
+===============================================================================
+MÉTODO
+===============================================================================
+
+Não aceitei o relatório do operador como prova. Fiz o seguinte, com o código real:
+
+1. Stage direto dos arquivos-fonte reais (sentinel_engine.py, gerar_sistema_novo.py,
+   feed_noticias.py, ccm_trix_curva.py, test_sentinel_engine.py, test_ccm_trix_curva.py,
+   dados_curva.json, tabela_proveniencia.md, resumo_trix_curva.txt, e dependências).
+2. Leitura linha a linha das funções que o relatório alega ter corrigido.
+3. Execução REAL de `pytest` neste ambiente sobre o código staged (não a saída colada
+   pelo operador) — 23 testes coletados, 23 passaram, resultado idêntico ao relatado.
+4. Execução REAL de `verificar_literais_plot.py` (gate 6.3) — APROVADO, idêntico ao relatado.
+5. Execução REAL de `verificar_dados_fabricados.py` (gate 6.2) — 3 de 4 checagens
+   passaram; a 4ª (ccm_trix_curva.html) não pôde ser verificada porque optei por não
+   stagear esse arquivo de 5,6MB — não é uma falha real, é uma checagem que não rodei,
+   e está sinalizada como tal abaixo (não confundir com reprovação).
+
+LIMITAÇÃO QUE PERMANECE: não tenho acesso a shell no dispositivo (`device_bash` continua
+bloqueado pela atualização do Windows de 8/9 — "Workspace unavailable"), então não pude
+rodar `git log` ou `portao_auditoria.bat` diretamente por mim mesmo. A saída de git log
+colada pelo operador não foi verificada quanto à sua autenticidade — apenas quanto à
+sua COERÊNCIA com o código real, que é o que segue abaixo.
+
+===============================================================================
+SEÇÃO 1 — tabela_proveniencia.md dinâmico (Achado 6): CONFIRMADO CORRETO
+===============================================================================
+
+Evidência real:
+- ccm_trix_curva.py, linha 481: função `gerar_tabela_proveniencia_md(resultados, output_path)`
+  existe e monta o conteúdo a partir da lista `resultados` (os mesmos objetos em memória
+  usados para resumo_trix_curva.txt).
+- ccm_trix_curva.py, linhas 2175-2180: a função é efetivamente CHAMADA dentro do pipeline
+  principal, logo após a etapa que gera resumo_trix_curva.txt — não é uma função órfã
+  criada mas nunca invocada (verifiquei isso especificamente, pois é um erro comum).
+- Evidência cruzada: os timestamps de modificação dos três arquivos de saída no
+  dispositivo são idênticos ao segundo (tabela_proveniencia.md, resumo_trix_curva.txt e
+  dados_curva.json todos com mtime 1789746738***), confirmando que foram escritos na
+  mesma execução do pipeline.
+- Conteúdo real comparado: tabela_proveniencia.md agora mostra CCMX26 com 235 pregões/
+  02/03/2026 e CCMF27 com 169 pregões — exatamente os valores que resumo_trix_curva.txt
+  (fonte real) mostra, eliminando a divergência original do achado.
+- Teste de regressão `test_gerar_tabela_proveniencia_md` existe em test_ccm_trix_curva.py
+  e passou na execução real que fiz.
+
+Veredito: FECHADO. Escolheram a Opção A (auto-geração), corretamente implementada e
+efetivamente ligada ao pipeline, não apenas escrita e esquecida.
+
+===============================================================================
+SEÇÃO 2 — Divergência PPE Python x JavaScript: CONFIRMADO CORRETO
+===============================================================================
+
+--- 2.2 (escala do prêmio de porto) ---
+sentinel_engine.py, linhas 40-86: `calcular_ppe()` e `calcular_ponto_inflexao_cambio()`
+agora convertem `premio_porto_usd * 100.0` antes de somar a `cbot_cents`. Recalculei
+manualmente com os inputs reais do dia (cbot=526.25¢, câmbio=5.161, prêmio=US$0.70,
+custos=R$10.00) e o resultado bate: PPE ≈ R$62,69/sc — idêntico ao valor gravado em
+dados_curva.json (`ppe_referencia: 62.69`) e na tabela de arbitragem do próprio JSON.
+O teste `test_calcular_ppe_precisao` também confirma a fórmula com outro conjunto de
+números (cbot=450, câmbio=5.50 → PPE=57.56) e passou na execução real.
+
+--- 2.3 (remoção do recálculo em JavaScript) ---
+gerar_sistema_novo.py, função `renderizarTabelaArbitragem()` (linhas 1554-1609): li a
+função inteira. Ela NÃO contém mais nenhuma fórmula de PPE — lê exclusivamente
+`item.ppe`, `item.spread_gap`, `item.cambio_inflexao`, `item.recomendacao`, `item.sinal`
+da lista `DADOS.sentinel_corn.tabela_arbitragem` (com fallback para `tabela_arbitragem_porto`).
+Não há mais `0.39368`, `premioPorto` ou qualquer aritmética de paridade no lado do cliente.
+Isso é exatamente a correção exigida na Seção 2.3 do meu prompt.
+
+--- 2.4 (typo custos_log_brl) ---
+Inspecionei dados_curva.json diretamente: o campo real é `custos_logisticos_brl`. Como
+o JavaScript não lê mais nenhum campo de custo (a correção da 2.3 tornou a leitura
+desnecessária), o typo ficou irrelevante por construção — não sobrou nenhuma referência
+a `custos_log_brl` em gerar_sistema_novo.py (confirmei via busca no arquivo inteiro).
+
+--- 2.5 (teste de regressão) ---
+`test_regressao_paridade_ppe_html_sem_recalculo_js` em test_sentinel_engine.py é um teste
+de integração real e substancial — não mock do módulo sob teste: ele chama
+`sentinel_engine.processar_sentimento_curva()` de verdade, depois chama
+`gerar_sistema_novo.gerar_sistema_novo()` de verdade (com `PASTA` trocada para um
+diretório temporário via patch), lê o HTML gerado de volta, extrai o JSON embutido via
+regex, e afirma (a) que o PPE no HTML é bit-a-bit igual ao PPE calculado em Python, e
+(b) que as strings `"0.39368"`, `"custos_log_brl"` e `"premioPorto"` NÃO aparecem em
+lugar nenhum do HTML final. Rodei esse teste eu mesmo, de forma independente — passou.
+Esse é exatamente o tipo de teste que impede a regressão de voltar silenciosamente.
+
+Veredito: FECHADO. As três causas raiz foram endereçadas de forma consistente entre si
+e com um teste de regressão real guardando o resultado — não apenas "parece corrigido".
+
+===============================================================================
+SEÇÃO 3 — TLS desabilitado em feed_noticias.py: CONFIRMADO CORRETO
+===============================================================================
+
+feed_noticias.py, linha 42: a função de contexto SSL agora é
+`return ssl.create_default_context()` — sem `check_hostname = False` nem
+`verify_mode = ssl.CERT_NONE`. Busquei essas duas strings no arquivo inteiro e nenhuma
+ocorrência restou. Padrão agora idêntico ao de ingestao_cepea.py, como exigido.
+
+Veredito: FECHADO.
+
+===============================================================================
+VERIFICAÇÃO INDEPENDENTE DE TESTES E GATES (execução real, não a saída colada)
+===============================================================================
+
+- `pytest test_ccm_trix_curva.py test_sentinel_engine.py` neste ambiente, sobre o
+  código staged: 23 items coletados, 23 passaram. Bate exatamente com o número e a
+  lista de nomes de teste do relatório do operador.
+- `verificar_literais_plot.py`: PARECER APROVADO, exit code 0. Bate com o relatado.
+- `verificar_dados_fabricados.py`: 3 de 4 checagens rodaram e passaram (resumo,
+  tabela_proveniencia, tripwires). A checagem de ccm_trix_curva.html não rodou porque
+  não stageei esse arquivo (5,6MB) — isso é uma lacuna da MINHA verificação, não uma
+  reprovação do sistema; não deve ser lido como achado.
+- `git log`, `git status --porcelain`, `portao_auditoria.bat` completo e `mypy`: NÃO
+  pude executar diretamente (sem shell no dispositivo). A saída colada pelo operador é
+  internamente coerente com o código real que auditei linha a linha, e a contagem de
+  7 commits separados por etapa lógica (TLS, escala PPE, unificação JS, regeneração de
+  proveniência, teste de regressão, docs, dados) é consistente com a disciplina de
+  commits pequenos exigida — mas isso é inferência a partir da coerência textual, não
+  verificação direta do histórico de git. Continuo pedindo que você rode
+  `git log --oneline -20` você mesmo e cole aqui se quiser essa camada adicional de
+  certeza, especialmente antes de considerar este projeto definitivamente encerrado.
+
+===============================================================================
+VEREDITO FINAL
+===============================================================================
+
+Dos 3 blocos exigidos no prompt ao operador (tabela_proveniencia.md dinâmico, correção
+da paridade PPE Python/JavaScript com teste de regressão, e TLS em feed_noticias.py),
+os 3 foram implementados corretamente, de forma consistente entre código e dados
+gerados, e com verificação real (não apenas narrativa) rodada por mim de forma
+independente nesta sessão.
+
+Considero esta entrega FECHADA quanto ao escopo do prompt de 18/09/2026. A única
+pendência que registro é a ausência de verificação direta do git log/portao_auditoria.bat
+por mim mesmo, por limitação de ambiente (não do operador) — se quiser fechar 100% essa
+lacuna, basta colar aqui a saída de `git log --oneline -20` rodada por você.
+
+Não identifiquei, nesta rodada, nenhum achado novo além dos que já estavam no prompt.

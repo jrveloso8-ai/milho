@@ -1,0 +1,112 @@
+PROMPT PARA OPERADOR/PROGRAMADOR INDEPENDENTE — MILHO TRADER
+Projeto: C:\Projetos Phyton\Milho
+Data: 18/09/2026
+Base: Follow-ups da verificação independente v3 (AUDITORIA_SISTEMA_NOVO_2026-09-18_v3_VERIFICACAO.txt)
+
+===============================================================================
+LEIA ANTES DE COMEÇAR
+===============================================================================
+
+Este documento é uma ESPECIFICAÇÃO, não código. Escrito por Claude (auditor), a ser
+implementado por você (operador/programador independente ou agente de código).
+
+A entrega anterior (correção da divergência PPE Python/JS, regeneração dinâmica de
+tabela_proveniencia.md, e TLS em feed_noticias.py) foi verificada e está FECHADA — não
+há nada pendente daquela rodada. Este prompt trata de DOIS itens novos e menores,
+levantados como follow-up depois do fechamento daquela entrega. Não são bugs críticos;
+são lacunas de cobertura de gate/teste que ficaram evidentes durante a verificação.
+
+Ao final, sua entrega deve incluir, colados de forma literal (não resumidos):
+
+  1. Saída bruta de `git log --oneline -10` cobrindo apenas os commits desta entrega.
+  2. Saída bruta da execução de `portao_auditoria.bat` (etapas 6.1 a 6.6) do início ao fim.
+  3. Saída bruta de `pytest` (contagem real coletada/passada/falha, não "tudo passou").
+
+Commits pequenos, um por item abaixo (mínimo 2 commits: um para cada seção).
+
+===============================================================================
+SEÇÃO 1 — Expandir o gate de segurança (6.6) para cobrir configuração de TLS
+===============================================================================
+
+Contexto: o achado da rodada anterior (feed_noticias.py com `ssl.CERT_NONE` e
+`check_hostname = False`) foi corrigido no código, mas foi encontrado por leitura manual
+do auditor — não por nenhum gate automatizado. Hoje, `auditar_seguranca.py` (item 6.6 do
+portão de auditoria) só varre segredos/tokens hardcoded via regex; nada nele detectaria
+se essa mesma falha de TLS voltasse a aparecer, em feed_noticias.py ou em qualquer outro
+arquivo que faça requisição HTTPS.
+
+Correção exigida: adicionar a `auditar_seguranca.py` uma nova checagem (item 4 dentro do
+próprio script, ou uma função separada chamada pelo `main()` existente) que:
+
+  - Varra todos os arquivos .py rastreados pelo git na raiz do projeto (mesmo padrão de
+    varredura já usado pelo gate para segredos).
+  - Sinalize como REPROVADO qualquer ocorrência de `ssl.CERT_NONE` ou
+    `check_hostname = False` fora de um contexto de teste (arquivos de teste, ex.:
+    test_*.py, podem ser ignorados dessa checagem específica, já que podem
+    legitimamente mockar isso).
+  - Imprima o arquivo e a linha exata da ocorrência, no mesmo formato usado pelas
+    outras checagens do script (ex.: "[FALHA] arquivo:linha — validação TLS desabilitada").
+
+Não é necessário testar contra certificados reais — é uma checagem estática de texto,
+no mesmo espírito de `verificar_literais_plot.py` (AST) e `verificar_dados_fabricados.py`
+(tripwires), só que para padrões de código insegura em vez de dados fabricados.
+
+Teste de regressão: adicionar um teste que cria um arquivo temporário com
+`ssl.CERT_NONE` e confirma que a nova checagem o detecta e retorna reprovação — e outro
+teste com `ssl.create_default_context()` puro confirmando que passa.
+
+===============================================================================
+SEÇÃO 2 — Teste de resiliência para falha de rede em feed_noticias.py
+===============================================================================
+
+Contexto: feed_noticias.py faz requisições HTTPS reais ao Google News RSS. Hoje existe
+cobertura de teste para o caminho de sucesso (mock de RSS respondendo corretamente,
+conforme `test_feed_noticias_coleta_rss_mock` em test_ccm_trix_curva.py), mas não existe
+nenhum teste que force uma falha de rede (timeout, exceção de conexão, resposta HTTP de
+erro) e confirme que o sistema:
+
+  (a) não quebra (não propaga a exceção para o pipeline principal),
+  (b) não fabrica dados de notícia/sentimento na ausência de dados reais,
+  (c) usa o cache local (TTL de 1h) quando disponível, ou retorna lista vazia/estado
+      "indisponível" de forma explícita quando não há cache válido.
+
+Correção exigida: adicionar um teste (em test_ccm_trix_curva.py, ao lado dos testes
+existentes de feed_noticias) que:
+
+  1. Faz mock de `urllib.request.urlopen` (ou do que quer que feed_noticias.py use
+     para a requisição HTTP) para levantar uma exceção de timeout/conexão.
+  2. Chama `feed_noticias.obter_noticias_milho(forcar=True)` (ou a função equivalente
+     usada pelo pipeline).
+  3. Confirma que a função retorna sem lançar exceção, e que o resultado é
+     explicitamente vazio/marcado como indisponível — nunca uma lista de notícias
+     fabricada ou um valor de sentimento simulado.
+  4. Adiciona um segundo caso: com cache local válido (dentro do TTL de 1h) presente,
+     confirma que a função retorna o conteúdo cacheado em vez de falhar, mesmo com a
+     rede fora.
+
+===============================================================================
+CRITÉRIOS DE ENCERRAMENTO
+===============================================================================
+
+  [ ] Seção 1: auditar_seguranca.py detecta TLS desabilitado, com teste de regressão
+      cobrindo os dois casos (detecta e não detecta falso-positivo).
+  [ ] Seção 2: existe teste cobrindo falha de rede em feed_noticias.py com e sem cache
+      válido, sem exceção não tratada e sem dado fabricado.
+  [ ] portao_auditoria.bat passa integralmente, saída bruta anexada.
+  [ ] git log mostra pelo menos 2 commits separados (um por seção).
+
+===============================================================================
+NOTA — item não incluído neste prompt
+===============================================================================
+
+Uma terceira frente foi mencionada na conversa com o cliente: auditar a QUALIDADE da
+decisão do Sentinel-Corn (a matriz basis-paridade e os pesos 20% notícias / 20%
+calendário / 60% técnico+opções). Esse item NÃO está especificado aqui de propósito:
+não é uma correção de código, é uma análise de mérito da lógica de decisão, que cabe ao
+auditor (Claude) fazer diretamente sobre os dados e a lógica existentes — não é uma
+tarefa para o programador implementar. Se o cliente confirmar que quer essa análise,
+ela virá como um relatório de auditoria separado, não como uma especificação de código.
+
+===============================================================================
+FIM DO PROMPT
+===============================================================================
