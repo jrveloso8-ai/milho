@@ -1970,6 +1970,7 @@ def executar():
             op = r.get("opcoes") or {}
             curva_para_sentinel.append({
                 "codigo": r["codigo"],
+                "vencimento_iso": r["vencimento_iso"],
                 "ultimo_bar": u,
                 "atr14": 1.50,
                 "barreiras_opcoes": {

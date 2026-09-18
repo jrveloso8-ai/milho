@@ -454,9 +454,11 @@ def processar_sentimento_curva(
 
         tabela_arbitragem.append({
             "contrato": cod,
+            "vencimento_iso": c.get("vencimento_iso", ""),
             "preco_b3": preco_close,
             "ppe": ppe_ref,
             "spread_gap": matriz["gap_ppe"],
+            "cambio_inflexao": cambio_inflexao,
             "recomendacao": matriz["recomendacao"],
             "sinal": matriz["sinal"]
         })

@@ -916,20 +916,20 @@ def gerar_sistema_novo():
         </div>
       </div>
       <div class="content-card-body">
-        <div class="slider-group">
-          <div class="slider-item">
-            <div class="slider-label">
-              <span>Prêmio Porto (Basis Paranaguá/Santos):</span>
-              <b id="lbl-premio-porto">+US$ 0.70/bu</b>
+        <div class="slider-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div class="slider-item" style="background: rgba(255,255,255,0.03); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+            <div class="slider-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--text-muted);">Prêmio Porto (Basis Paranaguá/Santos):</span>
+              <b id="lbl-premio-porto" style="font-size: 13px; color: var(--corn-gold); font-family: 'JetBrains Mono', monospace;">+US$ 0.70/bu</b>
             </div>
-            <input type="range" id="slider-premio" min="0.0" max="2.5" step="0.05" value="0.70" oninput="atualizarSliders()">
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Parâmetro FOB Santos/Paranaguá auditado</div>
           </div>
-          <div class="slider-item">
-            <div class="slider-label">
-              <span>Custos Logísticos (Frete Fazenda-Porto):</span>
-              <b id="lbl-custos-log">R$ 10.00/sc</b>
+          <div class="slider-item" style="background: rgba(255,255,255,0.03); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border);">
+            <div class="slider-label" style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--text-muted);">Custos Logísticos (Frete Fazenda-Porto):</span>
+              <b id="lbl-custos-log" style="font-size: 13px; color: var(--corn-gold); font-family: 'JetBrains Mono', monospace;">R$ 10.00/sc</b>
             </div>
-            <input type="range" id="slider-custos" min="4.0" max="25.0" step="0.5" value="10.00" oninput="atualizarSliders()">
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Frete interior-porto e despesas deduzidas</div>
           </div>
         </div>
 
@@ -977,7 +977,7 @@ def gerar_sistema_novo():
   let contratoAtual = (DADOS.contratos && DADOS.contratos.length > 0) ? DADOS.contratos[0].codigo : "CCMX26";
   let periodoBarras = 90;
   let premioPorto = DADOS.sentinel_corn.parametros_arbitragem?.premio_porto_usd ?? 0.70;
-  let custosLog = DADOS.sentinel_corn.parametros_arbitragem?.custos_log_brl ?? 10.00;
+  let custosLog = DADOS.sentinel_corn.parametros_arbitragem?.custos_logisticos_brl ?? 10.00;
 
   function formatarMoeda(val) {{
     if (val === null || val === undefined || isNaN(val)) return "N/D";
@@ -1553,69 +1553,57 @@ def gerar_sistema_novo():
     }});
   }}
 
-  function atualizarSliders() {{
-    premioPorto = parseFloat(document.getElementById("slider-premio").value);
-    custosLog = parseFloat(document.getElementById("slider-custos").value);
-
-    document.getElementById("lbl-premio-porto").innerText = `+US$ ${{premioPorto.toFixed(2)}}/bu`;
-    document.getElementById("lbl-custos-log").innerText = `R$ ${{custosLog.toFixed(2)}}/sc`;
-
-    renderizarTabelaArbitragem();
-  }}
-
   function renderizarTabelaArbitragem() {{
     const tbody = document.getElementById("arbitrage-tbody");
     tbody.innerHTML = "";
 
-    const pArb = DADOS.sentinel_corn.parametros_arbitragem || {{}};
-    const cbot = pArb.cbot_cents;
-    const cambio = pArb.cambio_usdbrl ?? pArb.cambio_ptax;
-    const convBushel = 0.39368 * 0.06;
+    const listaArbitragem = DADOS.sentinel_corn.tabela_arbitragem || DADOS.sentinel_corn.tabela_arbitragem_porto || [];
 
-    DADOS.contratos.forEach(c => {{
-      const closeVal = c.ultimo_close ?? c.close ?? 0;
+    if (!listaArbitragem || listaArbitragem.length === 0) {{
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Tabela de arbitragem indisponível.</td></tr>`;
+      return;
+    }}
 
-      if (!cbot || !cambio) {{
-        tbody.innerHTML += `
-          <tr>
-            <td style="font-weight:700; color:#fff;">${{c.codigo}}</td>
-            <td style="color:var(--text-muted);">${{c.vencimento_iso || c.vencimento}}</td>
-            <td style="font-weight:700; color:#fff;">${{formatarMoeda(closeVal)}}</td>
-            <td style="color:var(--text-muted); font-style:italic;">INDISPONÍVEL</td>
-            <td style="color:var(--text-muted); font-style:italic;">—</td>
-            <td style="color:var(--text-muted); font-style:italic;">INDISPONÍVEL</td>
-            <td style="font-weight:700; color:var(--text-muted);">PARIDADE INDISPONÍVEL</td>
-          </tr>
-        `;
-        return;
-      }}
+    listaArbitragem.forEach(item => {{
+      const closeVal = item.preco_b3;
+      const ppeVal = item.ppe;
+      const spreadVal = item.spread_gap;
+      const inflexaoVal = item.cambio_inflexao;
+      const decisao = item.recomendacao || "PARIDADE INDISPONÍVEL";
+      const sinal = item.sinal || "NEUTRO";
 
-      const cbotTotal = (cbot / 100.0) + premioPorto;
-      const ppe = (cbotTotal * cambio * convBushel * 100.0) - custosLog;
-      const spread = closeVal - ppe;
-      const inflexao = (closeVal + custosLog) / (cbotTotal * convBushel * 100.0);
-
-      let decisao = "PARIDADE EM EQUILÍBRIO";
       let corDecisao = "var(--corn-gold)";
-
-      if (spread > 3.0) {{
-        decisao = "ALERTA VENDA (B3 CARA)";
+      if (sinal === "VENDA") {{
         corDecisao = "var(--bear-red)";
-      }} else if (spread < -3.0) {{
-        decisao = "OPORTUNIDADE COMPRA (B3 DESCONTADA)";
+      }} else if (sinal === "COMPRA") {{
         corDecisao = "var(--bull-green)";
+      }} else if (decisao === "PARIDADE INDISPONÍVEL") {{
+        corDecisao = "var(--text-muted)";
       }}
+
+      const ppeStr = (ppeVal !== null && ppeVal !== undefined) 
+        ? formatarMoeda(ppeVal) 
+        : '<span style="color:var(--text-muted); font-style:italic;">INDISPONÍVEL</span>';
+
+      const spreadStr = (spreadVal !== null && spreadVal !== undefined)
+        ? `<span style="font-weight:700; color:${{spreadVal > 0 ? 'var(--bear-red)' : 'var(--bull-green)'}};">${{spreadVal > 0 ? '+' : ''}}${{spreadVal.toFixed(2)}}</span>`
+        : '<span style="color:var(--text-muted); font-style:italic;">—</span>';
+
+      const inflexaoStr = (inflexaoVal !== null && inflexaoVal !== undefined)
+        ? `US$ 1 = R$ ${{inflexaoVal.toFixed(3)}}`
+        : '<span style="color:var(--text-muted); font-style:italic;">INDISPONÍVEL</span>';
+
+      const contratoInfo = (DADOS.contratos || []).find(c => c.codigo === item.contrato) || {{}};
+      const vencStr = item.vencimento_iso || contratoInfo.vencimento_iso || contratoInfo.vencimento || "—";
 
       tbody.innerHTML += `
         <tr>
-          <td style="font-weight:700; color:#fff;">${{c.codigo}}</td>
-          <td style="color:var(--text-muted);">${{c.vencimento_iso || c.vencimento}}</td>
+          <td style="font-weight:700; color:#fff;">${{item.contrato}}</td>
+          <td style="color:var(--text-muted);">${{vencStr}}</td>
           <td style="font-weight:700; color:#fff;">${{formatarMoeda(closeVal)}}</td>
-          <td style="color:var(--accent-cyan); font-weight:700;">${{formatarMoeda(ppe)}}</td>
-          <td style="font-weight:700; color:${{spread > 0 ? 'var(--bear-red)' : 'var(--bull-green)'}};">
-            ${{spread > 0 ? '+' : ''}}${{spread.toFixed(2)}}
-          </td>
-          <td style="color:#e2e8f0;">US$ 1 = R$ ${{inflexao.toFixed(3)}}</td>
+          <td style="color:var(--accent-cyan); font-weight:700;">${{ppeStr}}</td>
+          <td>${{spreadStr}}</td>
+          <td style="color:#e2e8f0;">${{inflexaoStr}}</td>
           <td style="font-weight:700; color:${{corDecisao}};">${{decisao}}</td>
         </tr>
       `;
