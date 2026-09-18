@@ -1174,6 +1174,11 @@ def salvar_dados_curva_json(resultados: list, watchlist: list, sentinel_dados: d
         cod = r["codigo"]
         u = r["ultimo_bar"]
         op = r.get("opcoes") or {}
+        df_calc = r["df_calculado"]
+        top_calls_2d, top_puts_2d = selecionar_top_opcoes_desvio(
+            df_calc, op, close_ref=float(u["close"]), n_desvios=2.0, top_n=2
+        )
+
         contratos_resumo.append({
             "codigo": cod,
             "vencimento_iso": r["vencimento_iso"],
@@ -1181,11 +1186,19 @@ def salvar_dados_curva_json(resultados: list, watchlist: list, sentinel_dados: d
             "posicao": u["posicao"],
             "sma100": u["sma100"],
             "call_wall": op.get("call_wall"),
+            "call_wall_oi": op.get("call_wall_oi"),
             "put_wall": op.get("put_wall"),
-            "max_pain": op.get("max_pain")
+            "put_wall_oi": op.get("put_wall_oi"),
+            "max_pain": op.get("max_pain"),
+            "total_calls": op.get("total_calls", 0),
+            "total_puts": op.get("total_puts", 0),
+            "opcoes_disponivel": bool(op.get("disponivel", False)),
+            "preco_ref": op.get("preco_ref"),
+            "data_lote": (op.get("meta") or {}).get("data_referencia_lote", "N/D"),
+            "top_calls_2desvios": top_calls_2d,
+            "top_puts_2desvios": top_puts_2d,
+            "grade_opcoes": op.get("grade") or []
         })
-
-        df_calc = r["df_calculado"]
         reais = df_calc[~df_calc["is_sintetico"]].copy()
         pts = []
         for _, row in reais.iterrows():

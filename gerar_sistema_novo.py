@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 gerar_sistema_novo.py — Gera a interface oficial do Novo Sistema Sentinel-Corn 360°
-Incorpora o padrão exato de gráfico candlestick multi-painel (Candles + Call/Put Wall + Volume + TRIX v5),
-com seletor de períodos (20P, 50P, 90P, 180P, Tudo), conforme o padrão de referência.
+Incorpora:
+1. Gráfico Candlestick & TRIX v5 unificado no MESMO gráfico (overlayed com eixo secundário y2).
+2. Barreiras de Opções:
+   - As maiores de Call e Put de cada vencimento (Call Wall e Put Wall major).
+   - As 2 maiores de Call e 2 maiores de Put dentro de 2 desvios padrões do fechamento (Top 2σ).
+3. Tabela Completa com a Grade de Opções (Calls & Puts espelhadas por strike, KPIs e barras de OI).
+4. Ponderação 360° Matemática Estrita (60% Técnico, 20% Notícias RSS, 20% Calendário Oficial).
+5. Paridade de Exportação (PPE Porto) e Parecer Executivo do Consultor Sentinel-Corn.
 """
 
 import json
@@ -29,7 +35,7 @@ def gerar_sistema_novo():
         except Exception:
             pass
 
-    # Payload 100% real
+    # Payload 100% real proveniente do motor da B3 / BRAPI
     dados_payload = {
         "contratos": dados_curva.get("contratos", []),
         "watchlist": dados_curva.get("watchlist", []),
@@ -46,7 +52,7 @@ def gerar_sistema_novo():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Milho Trader — Sentinel-Corn 360°</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
@@ -249,35 +255,39 @@ def gerar_sistema_novo():
   }}
   .verdict-ALTISTA {{
     background: rgba(0, 208, 96, 0.15);
-    border: 1px solid var(--bull-green);
+    border: 1.5px solid var(--bull-green);
     color: var(--bull-green);
-  }}
-  .verdict-LATERAL {{
-    background: rgba(245, 158, 11, 0.15);
-    border: 1px solid var(--corn-gold);
-    color: var(--corn-gold);
+    box-shadow: 0 0 16px rgba(0, 208, 96, 0.25);
   }}
   .verdict-BAIXISTA {{
     background: rgba(255, 59, 48, 0.15);
-    border: 1px solid var(--bear-red);
+    border: 1.5px solid var(--bear-red);
     color: var(--bear-red);
+    box-shadow: 0 0 16px rgba(255, 59, 48, 0.25);
+  }}
+  .verdict-LATERAL {{
+    background: rgba(245, 158, 11, 0.15);
+    border: 1.5px solid var(--corn-gold);
+    color: var(--corn-gold);
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
   }}
 
   /* 3 PILARES GRID */
   .pillars-grid {{
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 18px;
   }}
   @media (max-width: 1024px) {{
     .pillars-grid {{ grid-template-columns: 1fr; }}
   }}
+
   .pillar-card {{
-    background: var(--card-bg);
+    background: #090d14;
     border: 1px solid var(--border);
     border-radius: 10px;
-    padding: 18px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -291,67 +301,76 @@ def gerar_sistema_novo():
     padding-bottom: 8px;
   }}
   .pillar-title {{
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    color: #fff;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    color: #ffffff;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
   }}
   .pillar-weight {{
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border: 1px solid #3b82f6;
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--corn-gold);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(245, 158, 11, 0.3);
   }}
   .pillar-value-box {{
-    margin: 6px 0;
+    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-  }}
-  .pillar-metric-name {{ font-size: 12px; color: var(--text-muted); }}
-  .pillar-metric-val {{ font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 700; color: #fff; }}
-  .pillar-score-badge {{
+    align-items: center;
     font-size: 12px;
+  }}
+  .pillar-metric-name {{ color: var(--text-muted); }}
+  .pillar-metric-val {{
+    font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 4px;
+    color: #e2e8f0;
+  }}
+  .pillar-score-badge {{
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 800;
   }}
 
   /* NEWS LIST */
   .news-list {{
     list-style: none;
     margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
   }}
   .news-item {{
-    font-size: 11px;
-    color: var(--text-muted);
-    background: #090c12;
-    padding: 7px 10px;
-    border-radius: 6px;
-    border-left: 3px solid var(--accent-blue);
+    font-size: 12px;
+    color: #cbd5e1;
+    margin-bottom: 6px;
     line-height: 1.4;
+    padding-left: 12px;
+    position: relative;
   }}
-  .news-item.bullish {{ border-left-color: var(--bull-green); }}
-  .news-item.bearish {{ border-left-color: var(--bear-red); }}
+  .news-item::before {{
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--corn-gold);
+    font-weight: bold;
+  }}
+  .news-item.bullish::before {{ color: var(--bull-green); }}
+  .news-item.bearish::before {{ color: var(--bear-red); }}
 
-  /* SEÇÃO GRÁFICO (PADRÃO REF CNPI-T / PROFIT) */
+  /* CHART CARD */
   .chart-card {{
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
     margin-bottom: 24px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
   }}
   .chart-card-header {{
     background: var(--card-header);
@@ -366,11 +385,11 @@ def gerar_sistema_novo():
   .chart-header-left {{
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
   }}
   .pulse-icon {{
+    font-size: 16px;
     color: var(--accent-cyan);
-    font-size: 18px;
   }}
   .chart-title-text {{
     font-size: 14px;
@@ -420,7 +439,139 @@ def gerar_sistema_novo():
   }}
   .chart-box {{
     width: 100%;
-    height: 640px;
+    height: 660px;
+  }}
+
+  /* GRADE DE OPÇÕES ESTILOS */
+  .grade-kpis-container {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }}
+  .grade-kpi-card {{
+    background: #090d14;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }}
+  .grade-kpi-label {{
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+  }}
+  .grade-kpi-value {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }}
+
+  .grade-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    background: #0a0d14;
+  }}
+  .grade-table th {{
+    padding: 8px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }}
+  .grade-table td {{
+    padding: 7px 10px;
+    border-bottom: 1px solid #141a26;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+  }}
+  .grade-table tr:hover td {{
+    background: rgba(255, 255, 255, 0.03);
+  }}
+  .strike-atm-row td {{
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-top: 1px solid rgba(245, 158, 11, 0.3);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+  }}
+  .strike-cell {{
+    text-align: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #fff;
+    background: #0f1420;
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }}
+  .strike-atm-row .strike-cell {{
+    color: var(--corn-gold);
+    background: rgba(245, 158, 11, 0.18);
+  }}
+
+  .badge-opt {{
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }}
+  .badge-wall-call {{
+    background: rgba(255, 59, 48, 0.2);
+    border: 1px solid #ff3b30;
+    color: #ff3b30;
+  }}
+  .badge-wall-put {{
+    background: rgba(0, 208, 96, 0.2);
+    border: 1px solid #00d060;
+    color: #00d060;
+  }}
+  .badge-top2d-call {{
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+  }}
+  .badge-top2d-put {{
+    background: rgba(244, 63, 94, 0.2);
+    border: 1px solid #f43f5e;
+    color: #f43f5e;
+  }}
+  .badge-itm {{
+    background: rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+  }}
+  .badge-otm {{
+    color: #5a6678;
+  }}
+  .badge-atm-tag {{
+    background: rgba(245, 158, 11, 0.25);
+    border: 1px solid var(--corn-gold);
+    color: var(--corn-gold);
+    margin-left: 4px;
+  }}
+  .oi-bar-container {{
+    height: 6px;
+    background: #141926;
+    border-radius: 3px;
+    overflow: hidden;
+    width: 100%;
+  }}
+  .oi-bar-fill-call {{
+    height: 100%;
+    background: linear-gradient(90deg, #0284c7, #38bdf8);
+    border-radius: 3px;
+  }}
+  .oi-bar-fill-put {{
+    height: 100%;
+    background: linear-gradient(90deg, #e11d48, #f43f5e);
+    border-radius: 3px;
   }}
 
   /* SEÇÃO PARIDADE & PARECER */
@@ -679,14 +830,14 @@ def gerar_sistema_novo():
     </div>
   </div>
 
-  <!-- SEÇÃO GRÁFICO DIÁRIO MULTI-PAINEL (EXATAMENTE COMO O PADRÃO DE REFERÊNCIA) -->
+  <!-- SEÇÃO GRÁFICO CANDLESTICK & TRIX v5 NO MESMO GRÁFICO (COM BARREIRAS MAJOR E 2 DESVIOS PADRÕES) -->
   <div class="chart-card">
     <div class="chart-card-header">
       <div class="chart-header-left">
         <span class="pulse-icon">⚡</span>
         <div>
           <div class="chart-title-text" id="chart-card-title">GRÁFICO CANDLESTICK & TRIX v5 — CCMX26</div>
-          <div class="chart-subtitle-text">Candles diários com Barreiras de Opções (Call/Put Walls), Volume e Indicador TRIX v5 (Tripla EMA)</div>
+          <div class="chart-subtitle-text">Candles diários com Indicador TRIX v5 (Tripla EMA) no mesmo gráfico, SMA(100), Call/Put Walls e Top Barreiras a 2 Desvios Padrão (2σ)</div>
         </div>
       </div>
       <div class="range-pills">
@@ -699,6 +850,57 @@ def gerar_sistema_novo():
     </div>
     <div class="chart-container-inner">
       <div id="plotly-chart" class="chart-box"></div>
+    </div>
+  </div>
+
+  <!-- SEÇÃO GRADE DE OPÇÕES (CALLS & PUTS POR STRIKE) -->
+  <div class="content-card" style="margin-bottom: 24px;">
+    <div class="content-card-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 18px;">📊</span>
+        <div>
+          <span class="content-card-title">Grade de Opções B3 — Calls & Puts Abertas</span>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;" id="grade-subtitulo">CCMX26 · Vencimento 2026-11-16</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <span class="badge-proveniencia">B3 DERIVADOS</span>
+        <span style="font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;" id="grade-data-lote">Lote B3: 2026-09-17</span>
+      </div>
+    </div>
+    <div class="content-card-body" style="padding: 16px 20px;">
+      <!-- KPIs BAR DE OPÇÕES -->
+      <div class="grade-kpis-container" id="grade-kpis-container"></div>
+      <!-- TABELA ESPELHADA -->
+      <div style="overflow-x: auto; max-height: 520px; border-radius: 6px; border: 1px solid var(--border);">
+        <table class="grade-table" id="grade-tabela">
+          <thead>
+            <tr>
+              <th colspan="4" style="text-align: center; color: #38bdf8; background: rgba(56, 189, 248, 0.08); border-bottom: 2px solid #38bdf8;">
+                CALLS (OPÇÕES DE COMPRA)
+              </th>
+              <th rowspan="2" style="text-align: center; color: #f59e0b; background: rgba(245, 158, 11, 0.12); border-bottom: 2px solid #f59e0b; width: 130px;">
+                STRIKE (R$)
+              </th>
+              <th colspan="4" style="text-align: center; color: #f43f5e; background: rgba(244, 63, 94, 0.08); border-bottom: 2px solid #f43f5e;">
+                PUTS (OPÇÕES DE VENDA)
+              </th>
+            </tr>
+            <tr>
+              <th style="width: 140px;">Ticker</th>
+              <th style="width: 120px;">Status</th>
+              <th style="text-align: right; width: 110px;">OI (Ct)</th>
+              <th style="width: 120px;">Distribuição</th>
+              <th style="width: 120px;">Distribuição</th>
+              <th style="text-align: left; width: 110px;">OI (Ct)</th>
+              <th style="width: 120px;">Status</th>
+              <th style="width: 140px;">Ticker</th>
+            </tr>
+          </thead>
+          <tbody id="grade-tbody"></tbody>
+        </table>
+      </div>
+      <div id="grade-empty-msg" style="display: none; text-align: center; padding: 40px 20px; color: var(--text-muted);"></div>
     </div>
   </div>
 
@@ -770,7 +972,7 @@ def gerar_sistema_novo():
   }}
 
   let contratoAtual = (DADOS.contratos && DADOS.contratos.length > 0) ? DADOS.contratos[0].codigo : "CCMX26";
-  let periodoBarras = 90; // Default idêntico ao 90P da imagem
+  let periodoBarras = 90;
   let premioPorto = DADOS.sentinel_corn.parametros_arbitragem?.premio_porto_usd ?? 0.70;
   let custosLog = DADOS.sentinel_corn.parametros_arbitragem?.custos_log_brl ?? 10.00;
 
@@ -854,7 +1056,7 @@ def gerar_sistema_novo():
       }}
     }});
     const c = DADOS.contratos.find(x => x.codigo === contratoAtual) || DADOS.contratos[0];
-    desenharGraficoMultiPainel(c);
+    desenharGraficoUnificado(c);
   }}
 
   function selecionarContrato(cod) {{
@@ -903,10 +1105,15 @@ def gerar_sistema_novo():
       `Score = (60% × ${{sTec.toFixed(1)}}) + (20% × ${{sRss.toFixed(1)}}) + (20% × ${{sCal.toFixed(1)}}) = ${{sCons > 0 ? '+' : ''}}${{sCons.toFixed(1)}}`;
 
     document.getElementById("chart-card-title").innerText = `GRÁFICO CANDLESTICK & TRIX v5 — ${{c.codigo}}`;
-    desenharGraficoMultiPainel(c);
+    desenharGraficoUnificado(c);
+    renderizarGradeOpcoes(c);
   }}
 
-  function desenharGraficoMultiPainel(c) {{
+  // ══════════════════════════════════════════════════════════════════════════
+  // GRÁFICO CANDLESTICK & TRIX v5 UNIFICADO NO MESMO PAINEL
+  // COM BARREIRAS MAJOR E AS 2 MAIORES DENTRO DE 2 DESVIOS PADRÕES (TOP 2σ)
+  // ══════════════════════════════════════════════════════════════════════════
+  function desenharGraficoUnificado(c) {{
     const serieCompleta = DADOS.series_contratos?.[c.codigo] || [];
     let serie = serieCompleta;
     if (periodoBarras !== 'Tudo' && typeof periodoBarras === 'number') {{
@@ -919,13 +1126,15 @@ def gerar_sistema_novo():
     const lows = serie.map(item => item.low);
     const closes = serie.map(item => item.close);
     const volumes = serie.map(item => item.volume);
+    const sma100Vals = serie.map(item => item.sma100);
     const trixVals = serie.map(item => item.trix);
     const sinalVals = serie.map(item => item.sinal);
 
-    // Cores de volume: verde se close >= open, vermelho se close < open
-    const volumeColors = closes.map((cls, i) => (cls >= opens[i] ? '#00d060' : '#ff3b30'));
+    let maxVol = 0;
+    volumes.forEach(v => {{ if (v > maxVol) maxVol = v; }});
+    const volumeColors = closes.map((cls, i) => (cls >= opens[i] ? 'rgba(0, 208, 96, 0.28)' : 'rgba(255, 59, 48, 0.28)'));
 
-    // 1. Painel Superior: Candlestick
+    // 1. Candlesticks no eixo primário (Preço B3 em R$)
     const traceCandles = {{
       x: dates,
       open: opens,
@@ -933,111 +1142,181 @@ def gerar_sistema_novo():
       low: lows,
       close: closes,
       type: 'candlestick',
-      name: `${{c.codigo}}`,
-      increasing: {{ line: {{ color: '#00d060', width: 1 }}, fillcolor: '#00d060' }},
-      decreasing: {{ line: {{ color: '#ff3b30', width: 1 }}, fillcolor: '#ff3b30' }},
+      name: `${{c.codigo}} (Preço)`,
+      increasing: {{ line: {{ color: '#00d060', width: 1.2 }}, fillcolor: '#00d060' }},
+      decreasing: {{ line: {{ color: '#ff3b30', width: 1.2 }}, fillcolor: '#ff3b30' }},
       yaxis: 'y1',
       xaxis: 'x'
     }};
 
-    // 2. Painel Central: Volume Diário
+    // 2. SMA(100) / Tendência sobre os candles
+    const traceSMA100 = {{
+      x: dates,
+      y: sma100Vals,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'SMA(100) Tendência',
+      line: {{ color: '#e2e8f0', width: 1.3, dash: 'dot' }},
+      yaxis: 'y1',
+      xaxis: 'x'
+    }};
+
+    // 3. Volume diário discreto em overlay na base
     const traceVolume = {{
       x: dates,
       y: volumes,
       type: 'bar',
-      name: 'Volume',
+      name: 'Volume Diário',
       marker: {{ color: volumeColors }},
-      yaxis: 'y2',
+      yaxis: 'y3',
       xaxis: 'x'
     }};
 
-    // 3. Painel Inferior: TRIX v5
+    // 4. TRIX v5 (Tripla EMA 7) no MESMO gráfico, eixo secundário y2
     const traceTrix = {{
       x: dates,
       y: trixVals,
       type: 'scatter',
       mode: 'lines',
       name: 'TRIX v5 (7)',
-      line: {{ color: '#00e5ff', width: 1.5 }},
-      yaxis: 'y3',
+      line: {{ color: '#00e5ff', width: 2.0 }},
+      yaxis: 'y2',
       xaxis: 'x'
     }};
 
+    // 5. Sinal TRIX (SMA 3) no MESMO gráfico, eixo secundário y2
     const traceSinal = {{
       x: dates,
       y: sinalVals,
       type: 'scatter',
       mode: 'lines',
-      name: 'Sinal (3)',
-      line: {{ color: '#f59e0b', width: 1.2 }},
-      yaxis: 'y3',
+      name: 'Sinal TRIX (3)',
+      line: {{ color: '#f59e0b', width: 1.5, dash: 'dot' }},
+      yaxis: 'y2',
       xaxis: 'x'
     }};
 
     const shapes = [];
     const annotations = [];
 
-    // Barreiras de Opções no Painel Superior (Call Wall e Put Wall)
+    // ── BARREIRAS DE CALL E PUT ──
     const callPrice = typeof c.call_wall === 'number' ? c.call_wall : c.call_wall?.preco;
+    const callOi = c.call_wall_oi || 0;
     const putPrice = typeof c.put_wall === 'number' ? c.put_wall : c.put_wall?.preco;
+    const putOi = c.put_wall_oi || 0;
 
+    // A. Maior de Call de cada vencimento (CALL WALL)
     if (callPrice) {{
       shapes.push({{
         type: 'line', xref: 'x', yref: 'y1',
         x0: dates[0], x1: dates[dates.length - 1],
         y0: callPrice, y1: callPrice,
-        line: {{ color: '#ff3b30', width: 1.5, dash: 'dash' }}
+        line: {{ color: '#ff3b30', width: 2.0, dash: 'dash' }}
       }});
       annotations.push({{
         xref: 'paper', yref: 'y1',
         x: 1.0, y: callPrice,
         xanchor: 'left', yanchor: 'middle',
-        text: `RES ${{callPrice.toFixed(2)}}`,
+        text: `CALL WALL R$ ${{callPrice.toFixed(2)}} (${{callOi.toLocaleString()}} ct)`,
         font: {{ size: 10, color: '#ff3b30', family: 'JetBrains Mono', weight: 'bold' }},
         showarrow: false,
-        bgcolor: 'rgba(255,59,48,0.15)',
+        bgcolor: 'rgba(255,59,48,0.2)',
         bordercolor: '#ff3b30',
         borderwidth: 1,
         borderpad: 2
       }});
     }}
 
+    // B. Maior de Put de cada vencimento (PUT WALL)
     if (putPrice) {{
       shapes.push({{
         type: 'line', xref: 'x', yref: 'y1',
         x0: dates[0], x1: dates[dates.length - 1],
         y0: putPrice, y1: putPrice,
-        line: {{ color: '#00d060', width: 1.5, dash: 'dash' }}
+        line: {{ color: '#00d060', width: 2.0, dash: 'dash' }}
       }});
       annotations.push({{
         xref: 'paper', yref: 'y1',
         x: 1.0, y: putPrice,
         xanchor: 'left', yanchor: 'middle',
-        text: `SUP ${{putPrice.toFixed(2)}}`,
+        text: `PUT WALL R$ ${{putPrice.toFixed(2)}} (${{putOi.toLocaleString()}} ct)`,
         font: {{ size: 10, color: '#00d060', family: 'JetBrains Mono', weight: 'bold' }},
         showarrow: false,
-        bgcolor: 'rgba(0,208,96,0.15)',
+        bgcolor: 'rgba(0,208,96,0.2)',
         bordercolor: '#00d060',
         borderwidth: 1,
         borderpad: 2
       }});
     }}
 
-    // Linha Zero do TRIX
-    shapes.push({{
-      type: 'line', xref: 'x', yref: 'y3',
-      x0: dates[0], x1: dates[dates.length - 1],
-      y0: 0, y1: 0,
-      line: {{ color: '#2a3447', width: 1, dash: 'dot' }}
+    // C. As 2 maiores de Call dentro de 2 desvios padrões (Top 2σ)
+    const topCalls2d = c.top_calls_2desvios || [];
+    topCalls2d.forEach((item, idx) => {{
+      const st = item.strike;
+      const oi = item.oi;
+      if (callPrice && Math.abs(st - callPrice) < 0.001) return; // Se já é a Call Wall, pula
+      shapes.push({{
+        type: 'line', xref: 'x', yref: 'y1',
+        x0: dates[0], x1: dates[dates.length - 1],
+        y0: st, y1: st,
+        line: {{ color: '#38bdf8', width: 1.3, dash: 'dashdot' }}
+      }});
+      annotations.push({{
+        xref: 'paper', yref: 'y1',
+        x: 1.0, y: st,
+        xanchor: 'left', yanchor: 'middle',
+        text: `Top ${{idx+1}} Call (2σ) R$ ${{st.toFixed(2)}} (${{oi.toLocaleString()}} ct)`,
+        font: {{ size: 9, color: '#38bdf8', family: 'JetBrains Mono', weight: 'bold' }},
+        showarrow: false,
+        bgcolor: 'rgba(56,189,248,0.2)',
+        bordercolor: '#38bdf8',
+        borderwidth: 1,
+        borderpad: 2
+      }});
     }});
 
-    // Layout Multi-Painel
+    // D. As 2 maiores de Put dentro de 2 desvios padrões (Top 2σ)
+    const topPuts2d = c.top_puts_2desvios || [];
+    topPuts2d.forEach((item, idx) => {{
+      const st = item.strike;
+      const oi = item.oi;
+      if (putPrice && Math.abs(st - putPrice) < 0.001) return; // Se já é a Put Wall, pula
+      shapes.push({{
+        type: 'line', xref: 'x', yref: 'y1',
+        x0: dates[0], x1: dates[dates.length - 1],
+        y0: st, y1: st,
+        line: {{ color: '#f43f5e', width: 1.3, dash: 'dashdot' }}
+      }});
+      annotations.push({{
+        xref: 'paper', yref: 'y1',
+        x: 1.0, y: st,
+        xanchor: 'left', yanchor: 'middle',
+        text: `Top ${{idx+1}} Put (2σ) R$ ${{st.toFixed(2)}} (${{oi.toLocaleString()}} ct)`,
+        font: {{ size: 9, color: '#f43f5e', family: 'JetBrains Mono', weight: 'bold' }},
+        showarrow: false,
+        bgcolor: 'rgba(244,63,94,0.2)',
+        bordercolor: '#f43f5e',
+        borderwidth: 1,
+        borderpad: 2
+      }});
+    }});
+
+    // Layout unificado em um mesmo painel com eixo secundário
     const layout = {{
       paper_bgcolor: '#07090e',
       plot_bgcolor: '#07090e',
       font: {{ color: '#8b99ad', family: 'Inter, sans-serif', size: 11 }},
-      margin: {{ l: 20, r: 85, t: 15, b: 35 }},
-      showlegend: false,
+      margin: {{ l: 65, r: 135, t: 40, b: 35 }},
+      showlegend: true,
+      legend: {{
+        orientation: 'h',
+        x: 0,
+        y: 1.07,
+        xanchor: 'left',
+        yanchor: 'bottom',
+        font: {{ size: 10, family: 'JetBrains Mono', color: '#94a3b8' }},
+        bgcolor: 'rgba(7, 9, 14, 0.85)'
+      }},
       xaxis: {{
         type: 'category',
         gridcolor: '#131824',
@@ -1049,56 +1328,212 @@ def gerar_sistema_novo():
         rangeslider: {{ visible: false }}
       }},
       yaxis: {{
-        domain: [0.38, 1.0],
         side: 'right',
         gridcolor: '#131824',
         zeroline: false,
         showline: true,
         linecolor: '#1e2638',
         tickformat: 'R$ .2f',
-        tickfont: {{ size: 10, family: 'JetBrains Mono' }}
+        tickfont: {{ size: 10, family: 'JetBrains Mono', color: '#cbd5e1' }},
+        title: {{ text: 'Preço B3 (R$/sc)', font: {{ size: 10, color: '#8b99ad' }} }}
       }},
       yaxis2: {{
-        domain: [0.22, 0.35],
-        side: 'right',
-        gridcolor: '#131824',
-        zeroline: false,
-        showticklabels: false,
-        showline: true,
-        linecolor: '#1e2638'
-      }},
-      yaxis3: {{
-        domain: [0.0, 0.19],
-        side: 'right',
-        gridcolor: '#131824',
-        zeroline: false,
+        overlaying: 'y',
+        side: 'left',
+        gridcolor: 'rgba(255, 255, 255, 0.02)',
+        zeroline: true,
+        zerolinecolor: 'rgba(0, 229, 255, 0.35)',
+        zerolinewidth: 1,
         showline: true,
         linecolor: '#1e2638',
-        tickfont: {{ size: 9, family: 'JetBrains Mono' }}
+        tickfont: {{ size: 9, family: 'JetBrains Mono', color: '#00e5ff' }},
+        title: {{ text: 'TRIX v5 (Tripla EMA 7)', font: {{ size: 10, color: '#00e5ff' }} }}
+      }},
+      yaxis3: {{
+        overlaying: 'y',
+        side: 'right',
+        range: [0, (maxVol > 0 ? maxVol : 1000) * 4.5],
+        showgrid: false,
+        showline: false,
+        showticklabels: false,
+        zeroline: false
       }},
       shapes: shapes,
-      annotations: [
-        ...annotations,
-        {{
-          xref: 'paper', yref: 'paper',
-          x: 0.01, y: 0.36,
-          xanchor: 'left', yanchor: 'bottom',
-          text: 'VOLUME DIÁRIO',
-          font: {{ size: 9, color: '#5a6678', weight: 'bold' }},
-          showarrow: false
-        }},
-        {{
-          xref: 'paper', yref: 'paper',
-          x: 0.01, y: 0.20,
-          xanchor: 'left', yanchor: 'bottom',
-          text: 'TRIX v5 (Tripla EMA 7 + SMA 3) — NTSL',
-          font: {{ size: 9, color: '#00e5ff', weight: 'bold' }},
-          showarrow: false
-        }}
-      ]
+      annotations: annotations
     }};
 
-    Plotly.newPlot('plotly-chart', [traceCandles, traceVolume, traceTrix, traceSinal], layout, {{ responsive: true, displayModeBar: false }});
+    Plotly.newPlot('plotly-chart', [traceCandles, traceSMA100, traceVolume, traceTrix, traceSinal], layout, {{ responsive: true, displayModeBar: false }});
+  }}
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // GRADE DE OPÇÕES: CALLS E PUTS POR STRIKE (PROFIT PRO PATTERN)
+  // ══════════════════════════════════════════════════════════════════════════
+  function renderizarGradeOpcoes(c) {{
+    const subtitulo = document.getElementById("grade-subtitulo");
+    const dataLote = document.getElementById("grade-data-lote");
+    const kpisBar = document.getElementById("grade-kpis-container");
+    const tbody = document.getElementById("grade-tbody");
+    const tabela = document.getElementById("grade-tabela");
+    const emptyMsg = document.getElementById("grade-empty-msg");
+
+    const vencStr = c.vencimento_iso || c.vencimento || "";
+    subtitulo.innerText = `${{c.codigo}} · Vencimento ${{vencStr}}`;
+    dataLote.innerText = `Lote B3: ${{c.data_lote || 'N/D'}}`;
+
+    const temOpcoes = c.opcoes_disponivel && Array.isArray(c.grade_opcoes) && c.grade_opcoes.length > 0;
+
+    const totCalls = c.total_calls || 0;
+    const totPuts = c.total_puts || 0;
+    const totOi = totCalls + totPuts;
+    const pcr = totCalls > 0 ? (totPuts / totCalls).toFixed(2) : "N/D";
+    const refClose = c.ultimo_close ?? c.close;
+
+    kpisBar.innerHTML = `
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Vencimento</span>
+        <span class="grade-kpi-value" style="color:#cad5e2;">${{vencStr}}</span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Preço CCM Ref</span>
+        <span class="grade-kpi-value" style="color:#fff;">${{formatarMoeda(refClose)}}</span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Call Wall (Res)</span>
+        <span class="grade-kpi-value" style="color:#ff3b30;">${{c.call_wall ? `${{formatarMoeda(c.call_wall)}} (${{(c.call_wall_oi||0).toLocaleString()}} ct)` : 'N/D'}}</span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Put Wall (Sup)</span>
+        <span class="grade-kpi-value" style="color:#00d060;">${{c.put_wall ? `${{formatarMoeda(c.put_wall)}} (${{(c.put_wall_oi||0).toLocaleString()}} ct)` : 'N/D'}}</span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Max Pain</span>
+        <span class="grade-kpi-value" style="color:#e3b341;">${{c.max_pain ? formatarMoeda(c.max_pain) : 'N/D'}}</span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Volume Calls / Puts</span>
+        <span class="grade-kpi-value">
+          <span style="color:#38bdf8;">${{totCalls.toLocaleString()}} C</span> · 
+          <span style="color:#f43f5e;">${{totPuts.toLocaleString()}} P</span>
+        </span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Razão P/C (Put/Call)</span>
+        <span class="grade-kpi-value" style="color:#38bdf8;">${{pcr}}</span>
+      </div>
+      <div class="grade-kpi-card">
+        <span class="grade-kpi-label">Total Aberto (OI)</span>
+        <span class="grade-kpi-value" style="color:#fff;">${{totOi.toLocaleString()}} ct</span>
+      </div>
+    `;
+
+    if (!temOpcoes) {{
+      tabela.style.display = "none";
+      emptyMsg.style.display = "block";
+      emptyMsg.innerHTML = `
+        <div style="font-size:15px; font-weight:700; color:#cad5e2; margin-bottom:6px;">Nenhuma Posição Aberta em Opções Registrada na B3</div>
+        <div style="font-size:12px; color:var(--text-muted);">Não constam posições de Call ou Put em aberto na B3 para o contrato <b>${{c.codigo}}</b> (vencimento ${{vencStr}}).</div>
+      `;
+      return;
+    }}
+
+    tabela.style.display = "table";
+    emptyMsg.style.display = "none";
+    tbody.innerHTML = "";
+
+    const grade = c.grade_opcoes;
+    let maxOi = 1;
+    grade.forEach(g => {{
+      if ((g.oi_call || 0) > maxOi) maxOi = g.oi_call;
+      if ((g.oi_put || 0) > maxOi) maxOi = g.oi_put;
+    }});
+
+    // Strikes top 2 sigma para badges
+    const topCalls2d = (c.top_calls_2desvios || []).map(x => x.strike);
+    const topPuts2d = (c.top_puts_2desvios || []).map(x => x.strike);
+
+    // Encontrar strike ATM (mais próximo do fechamento)
+    let closestStrike = null;
+    let minDiff = Infinity;
+    if (refClose) {{
+      grade.forEach(g => {{
+        const diff = Math.abs(g.strike - refClose);
+        if (diff < minDiff) {{
+          minDiff = diff;
+          closestStrike = g.strike;
+        }}
+      }});
+    }}
+
+    grade.forEach(g => {{
+      const isAtm = (closestStrike !== null && Math.abs(g.strike - closestStrike) < 0.001);
+      const isCallWall = g.is_call_wall || (c.call_wall && Math.abs(g.strike - c.call_wall) < 0.001);
+      const isPutWall = g.is_put_wall || (c.put_wall && Math.abs(g.strike - c.put_wall) < 0.001);
+      const isTopCall2d = !isCallWall && topCalls2d.some(s => Math.abs(s - g.strike) < 0.001);
+      const isTopPut2d = !isPutWall && topPuts2d.some(s => Math.abs(s - g.strike) < 0.001);
+
+      // Status Call
+      let callStatus = '<span class="badge-opt badge-otm">—</span>';
+      if (isCallWall) {{
+        callStatus = '<span class="badge-opt badge-wall-call">CALL WALL</span>';
+      }} else if (isTopCall2d) {{
+        callStatus = '<span class="badge-opt badge-top2d-call">TOP 2σ</span>';
+      }} else if (g.is_itm_call && (g.oi_call || 0) > 0) {{
+        callStatus = '<span class="badge-opt badge-itm">ITM</span>';
+      }} else if ((g.oi_call || 0) > 0) {{
+        callStatus = '<span class="badge-opt badge-otm">OTM</span>';
+      }}
+
+      // Status Put
+      let putStatus = '<span class="badge-opt badge-otm">—</span>';
+      if (isPutWall) {{
+        putStatus = '<span class="badge-opt badge-wall-put">PUT WALL</span>';
+      }} else if (isTopPut2d) {{
+        putStatus = '<span class="badge-opt badge-top2d-put">TOP 2σ</span>';
+      }} else if (g.is_itm_put && (g.oi_put || 0) > 0) {{
+        putStatus = '<span class="badge-opt badge-itm">ITM</span>';
+      }} else if ((g.oi_put || 0) > 0) {{
+        putStatus = '<span class="badge-opt badge-otm">OTM</span>';
+      }}
+
+      const pctCall = maxOi > 0 ? ((g.oi_call || 0) / maxOi * 100).toFixed(1) : 0;
+      const pctPut = maxOi > 0 ? ((g.oi_put || 0) / maxOi * 100).toFixed(1) : 0;
+
+      const rowCls = isAtm ? 'strike-atm-row' : '';
+      const atmTag = isAtm ? '<span class="badge-opt badge-atm-tag">ATM</span>' : '';
+
+      tbody.innerHTML += `
+        <tr class="${{rowCls}}">
+          <!-- CALLS -->
+          <td style="color:#94a3b8; font-size:10px;">${{g.ticker_call || '—'}}</td>
+          <td>${{callStatus}}</td>
+          <td style="text-align:right; font-weight:700; color:${{(g.oi_call || 0) > 0 ? '#38bdf8' : '#475569'}};">
+            ${{(g.oi_call || 0).toLocaleString()}}
+          </td>
+          <td>
+            <div class="oi-bar-container">
+              <div class="oi-bar-fill-call" style="width:${{pctCall}}%;"></div>
+            </div>
+          </td>
+
+          <!-- STRIKE -->
+          <td class="strike-cell">
+            ${{formatarMoeda(g.strike)}} ${{atmTag}}
+          </td>
+
+          <!-- PUTS -->
+          <td>
+            <div class="oi-bar-container">
+              <div class="oi-bar-fill-put" style="width:${{pctPut}}%;"></div>
+            </div>
+          </td>
+          <td style="text-align:left; font-weight:700; color:${{(g.oi_put || 0) > 0 ? '#f43f5e' : '#475569'}};">
+            ${{(g.oi_put || 0).toLocaleString()}}
+          </td>
+          <td>${{putStatus}}</td>
+          <td style="color:#94a3b8; font-size:10px;">${{g.ticker_put || '—'}}</td>
+        </tr>
+      `;
+    }});
   }}
 
   function atualizarSliders() {{
